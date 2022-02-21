@@ -17,3 +17,8 @@ wundergroundConfig = {
     "apiKey": "TODO",
     "stationId": "ISTRMI1"
 }
+
+skodaConfig = {
+    "username": "TODO",
+    "password": "TODO"
+}
