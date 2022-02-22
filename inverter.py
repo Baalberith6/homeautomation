@@ -33,7 +33,5 @@ async def store_runtime_data():
 #        if sensor.id_ in runtime_data:
 #            print(f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}")
 
-
-while True:
-    asyncio.run(store_runtime_data())
-    time.sleep(15)
+asyncio.run(store_runtime_data())
+    # time.sleep(15)

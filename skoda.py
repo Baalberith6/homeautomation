@@ -27,8 +27,7 @@ async def main():
             if (instrument.attr == "charging_power"):
                 write_api.write(bucket=influxConfig["bucket"], record=Point("Car").field("charging_power", instrument.state))
 
-while True:
-    if __name__ == "__main__":
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(main())
-    time.sleep(600)
+if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    # time.sleep(600)

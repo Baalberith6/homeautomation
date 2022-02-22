@@ -33,6 +33,5 @@ async def store_runtime_data():
     write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("winddir", w["winddir"]))
 
 
-while True:
-    asyncio.run(store_runtime_data())
-    time.sleep(60)
+asyncio.run(store_runtime_data())
+    # time.sleep(60)

@@ -65,6 +65,5 @@ async def store_runtime_data():
                                    forecast.data.intervals_between(datetime.today() + timedelta(days=1),
                                                                    datetime.today() + timedelta(days=2))))))
 
-while True:
-    asyncio.run(store_runtime_data())
-    time.sleep(1800)
+asyncio.run(store_runtime_data())
+    # time.sleep(1800)
