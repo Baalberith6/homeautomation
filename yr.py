@@ -1,6 +1,6 @@
 import asyncio
 import time
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 from config import influxConfig
 
 from influxdb_client import InfluxDBClient, Point
@@ -18,7 +18,7 @@ async def store_runtime_data():
 
     d = datetime.today()
     d_min = datetime.combine(d, time.min)
-    d_max = datetime.combine(d, time.max)
+    d_max = datetime.combine(d, time.max) + timedelta(hours=7)
 
     # print(forecast)
     write_api.write(bucket=influxConfig["bucket"], record=Point("WeatherForecast")
