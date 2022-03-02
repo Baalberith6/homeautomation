@@ -25,7 +25,7 @@ async def store_runtime_data():
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     write_api.write(bucket=influxConfig["bucket"], record=Point("FVE").tag("sum", "today").field("saved_energy", r["output"]["energy"][4]["value"]))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("FVE").field("saved_energy", r["output"]["power"][0]["value"]))
+    write_api.write(bucket=influxConfig["bucket"], record=Point("FVE").field("saved_energy", r["output"]["power"][0]["value"] + r["output"]["power"][1]["value"]))
 
 asyncio.run(store_runtime_data())
     # time.sleep(15)
