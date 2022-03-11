@@ -20,6 +20,8 @@ async def store_runtime_data():
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("direction", runtime_data["grid_in_out_label"]))
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("sum", "now").field("consumption", runtime_data["house_consumption"]))
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("battery_load", runtime_data["pbattery1"]))
+    write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("inverter_temp_air", runtime_data["temperature_air"]))
+    write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("inverter_temp_rad", runtime_data["temperature"]))
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("sum", "total").field("battery_charged", runtime_data["e_bat_charge_total"]))
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("sum", "today").field("battery_charged", runtime_data["e_bat_charge_day"]))
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("sum", "total").field("battery_discharged", runtime_data["e_bat_discharge_total"]))
