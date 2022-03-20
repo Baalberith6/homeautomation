@@ -38,6 +38,18 @@ async def store_runtime_data():
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("soc", runtime_data["battery_soc"]))
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("soh", runtime_data["battery_soh"]))
 
+    diag = runtime_data['diagnose_result_label']\
+        .replace("Discharge Driver On", "")\
+        .replace("Self-use load light", "")\
+        .replace("Battery Overcharged", "")\
+        .replace("BMS: Charge disabled", "")\
+        .replace("PF value set", "")
+
+    while diag.startswith(" ") or diag.startswith(",") or diag.endswith(" ") or diag.endswith(","):
+        diag = diag.strip(", ")
+
+    write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("diag", diag))
+
 #    for sensor in inverter.sensors():
 #        if sensor.id_ in runtime_data:
 #            print(f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}")
