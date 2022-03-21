@@ -43,6 +43,7 @@ async def store_runtime_data():
         .replace("Self-use load light", "")\
         .replace("Battery Overcharged", "")\
         .replace("BMS: Charge disabled", "")\
+        .replace("PF value set", "")\
         .replace("Battery SOC low", "")\
         .replace("Battery SOC in back", "")
 
