@@ -50,7 +50,8 @@ async def store_runtime_data():
     while diag.startswith(" ") or diag.startswith(",") or diag.endswith(" ") or diag.endswith(","):
         diag = diag.strip(", ")
 
-    write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("diag", diag))
+    if (len(diag) != 0):
+        write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("diag", diag))
 
 #    for sensor in inverter.sensors():
 #        if sensor.id_ in runtime_data:
