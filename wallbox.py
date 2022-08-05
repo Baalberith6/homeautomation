@@ -21,17 +21,17 @@ def calculate(arr, actual_charging_current):
     should_charge = True
     was_charging = actual_charging_current != 0
 
-    max_i1 = max_amp - (arr["igrid"] + arr["backup_i1"])
-    max_i2 = max_amp - (arr["igrid2"] + arr["backup_i2"])
-    max_i3 = max_amp - (arr["igrid3"] + arr["backup_i3"])
+    max_i1 = max_amp - (arr["load_p1"] / 230 + arr["backup_i2"])
+    max_i2 = max_amp - (arr["load_p2"] / 230 + arr["backup_i2"])
+    max_i3 = max_amp - (arr["load_p3"] / 230 + arr["backup_i3"])
     max_possible_current = min(max_i1, max_i2, max_i3)
-    available_current = min(max_possible_current, arr["active_power"] / 690)  # 230 * 3
+    available_current = min(max_possible_current, (arr["active_power"] / 690) - actual_charging_current)  # 230 * 3
     allowable_current = actual_charging_current + available_current - 0.5  # 345W min. reserve
     allowable_current_capped = min(max_amp - 1, max(stop_at, math.floor(allowable_current)))  # step down by 1A
     would_add = (allowable_current - actual_charging_current)
 
     if was_charging:
-        should_charge = allowable_current >= stop_at or arr["battery_soc"] > 97
+        should_charge = allowable_current >= stop_at or arr["battery_soc"] >= 90
         # print(f"if charging, would charge: {should_charge}, {allowable_current_capped} A")
 
     if not was_charging:
@@ -77,9 +77,8 @@ async def store_runtime_data():
     charging_curr = calculate(runtime_data, previous_charging_curr)
     # print(f"prev {previous_charging_curr} A")
     # print(f"now {charging_curr} A")
-
-    write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("car_charge_amp", charging_curr))
-
+    write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("car_charge_amp", int(charging_curr)))
+    # write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("car_charge_amp", int(0)))
     # write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("string", "2").field("power", runtime_data["ppv2"]))
     # write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("string", "all").field("power", runtime_data["ppv"]))
     # write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("direction", runtime_data["grid_in_out_label"]))

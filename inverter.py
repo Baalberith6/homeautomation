@@ -45,7 +45,8 @@ async def store_runtime_data():
         .replace("BMS: Charge disabled", "")\
         .replace("PF value set", "")\
         .replace("Battery SOC low", "")\
-        .replace("Battery SOC in back", "")
+        .replace("Battery SOC in back", "")\
+	.replace("SOC delta too volatile", "")
 
     while diag.startswith(" ") or diag.startswith(",") or diag.endswith(" ") or diag.endswith(","):
         diag = diag.strip(", ")
