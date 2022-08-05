@@ -21,7 +21,7 @@ def calculate(arr, actual_charging_current):
     should_charge = True
     was_charging = actual_charging_current != 0
 
-    max_i1 = max_amp - (arr["load_p1"] / 230 + arr["backup_i2"])
+    max_i1 = max_amp - (arr["load_p1"] / 230 + arr["backup_i1"])
     max_i2 = max_amp - (arr["load_p2"] / 230 + arr["backup_i2"])
     max_i3 = max_amp - (arr["load_p3"] / 230 + arr["backup_i3"])
     max_possible_current = min(max_i1, max_i2, max_i3)
