@@ -47,7 +47,7 @@ def calculate_current(inverter, actual_charging_current):
     max_i2 = max_amp - (inverter["load_p2"] / 230 + inverter["backup_i2"])
     max_i3 = max_amp - (inverter["load_p3"] / 230 + inverter["backup_i3"])
     max_possible_current = min(max_i1, max_i2, max_i3)
-    available_current = min(max_possible_current, (inverter["active_power"] / 690 - inverter["pbattery1"] / 690) - actual_charging_current)  # 230 * 3
+    available_current = min(max_possible_current, (inverter["active_power"] / 690) - actual_charging_current)  # 230 * 3
     allowable_current = actual_charging_current + available_current - 0.2  # 345W min. reserve
     allowable_current_capped = min(max_amp - 1, max(stop_at, math.floor(allowable_current)))  # step down by 1A
     would_add = (allowable_current - actual_charging_current)
