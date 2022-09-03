@@ -1,12 +1,8 @@
-import asyncio
 import math
 import json
-import time
-from os import truncate
 import requests as req
 
-import goodwe
-from config import generalConfig as c, inverterConfig, wallboxConfig
+from config import generalConfig as c, wallboxConfig
 
 
 # adjust amps
@@ -76,14 +72,7 @@ def calculate_current(inverter, actual_charging_current):
         return allowable_current_capped
 
 
-async def wallbox():
-    inverter = await goodwe.connect(inverterConfig["ip_address"])
-    runtime_data = await inverter.read_runtime_data()
-
-    # for sensor in inverter.sensors():
-    #     if sensor.id_ in runtime_data:
-    #         print(f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}")
-
+async def wallbox(inverter):
     response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car')
     res = json.loads(response.text)
     if res["car"] in [0, 1, 5]:
@@ -92,9 +81,9 @@ async def wallbox():
             if c["debug"]: print("setting force state to disabled")
             req.get(wallboxConfig["address"] + 'api/set?frc=1')
         return  # no charge allowed - perhaps car not connected, doesn't want to charge or disabled in app?
-    previous_charging_curr = res["amp"] if res["frc"] == 0 else 0
+    previous_charging_curr = res["amp"] if res["frc"] == 0 and res["car"] != 4 else 0 # if charging allowed and already charging
 
-    charging_curr = calculate_current(runtime_data, previous_charging_curr)
+    charging_curr = calculate_current(inverter, previous_charging_curr)
 
     if res["frc"] == 1 and charging_curr > 0:  # stopped, but should start
         if c["debug"]: print(f"stopped, but should start, {charging_curr}A")
@@ -117,6 +106,7 @@ async def wallbox():
 
 
 test_data = {
+    "ppv": 7641,
     "load_p1": 6.5,
     "load_p2": 6.1,
     "load_p3": 6.1,
@@ -127,5 +117,7 @@ test_data = {
     "battery_soc": 98
 }
 # calculate_current(test_data, 6)
-asyncio.run(wallbox())
+# inv = await goodwe.connect(inverterConfig["ip_address"])
+# runtime_data = await inv.read_runtime_data()
+# asyncio.run(wallbox(runtime_data))
 # time.sleep(15)

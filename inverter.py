@@ -1,18 +1,23 @@
 import asyncio
-import time
 
 import goodwe
-from config import influxConfig, inverterConfig
+from config import generalConfig as c, influxConfig, inverterConfig
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+from wallbox import wallbox
 
-async def store_runtime_data():
+
+async def inverter():
     client = InfluxDBClient(url=influxConfig["url"], token=influxConfig["token"], org=influxConfig["org"])
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     inverter = await goodwe.connect(inverterConfig["ip_address"])
     runtime_data = await inverter.read_runtime_data()
+
+    if c["debug"]: print("\n\n\n---WALLBOX START---")
+    await wallbox(runtime_data)
+    if c["debug"]: print("---WALLBOX END---\n\n\n")
 
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("string", "1").field("power", runtime_data["ppv1"]))
     write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").tag("string", "2").field("power", runtime_data["ppv2"]))
@@ -54,9 +59,11 @@ async def store_runtime_data():
     if (len(diag) != 0):
         write_api.write(bucket=influxConfig["bucket"], record= Point("FVE").field("diag", diag))
 
-#    for sensor in inverter.sensors():
-#        if sensor.id_ in runtime_data:
-#            print(f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}")
+    if (c["debug"]):
+        print("\n\n\n---INVERTER START---")
+        for sensor in inverter.sensors():
+            if sensor.id_ in runtime_data:
+                print(f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}")
+        print("---INVERTER END---\n\n\n")
 
-asyncio.run(store_runtime_data())
-    # time.sleep(15)
+asyncio.run(inverter())
