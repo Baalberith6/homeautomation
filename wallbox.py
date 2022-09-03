@@ -43,7 +43,7 @@ def calculate_current(inverter, actual_charging_current):
     max_possible_current = min(max_i1, max_i2, max_i3)
     available_current = min(max_possible_current,
                             (inverter["ppv"] / 690 - inverter["house_consumption"] / 690))  # 230 * 3
-    allowable_current = actual_charging_current + available_current - 0.2  # 345W min. reserve
+    allowable_current = actual_charging_current + available_current - 0.4  # 0.4A min. reserve + loss
     allowable_current_capped = min(max_amp - 1, max(stop_at, math.floor(allowable_current)))  # step down by 1A
     would_add = (allowable_current - actual_charging_current)
 
