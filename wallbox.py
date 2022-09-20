@@ -1,5 +1,7 @@
 import math
 import json
+from json import JSONDecodeError
+
 import requests as req
 
 from config import generalConfig as c, wallboxConfig
@@ -73,8 +75,13 @@ def calculate_current(inverter, actual_charging_current):
 
 
 async def wallbox(inverter):
-    response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car')
-    res = json.loads(response.text)
+    try:
+        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car')
+        res = json.loads(response.text)
+    except JSONDecodeError:
+        print("Wallbox is OFFLINE")
+        return
+
     if res["car"] in [0, 1, 5]:
         if c["debug"]: print(f"no charge allowed - perhaps car not connected or doesn't want to charge, car state {res['car']}")
         if res["frc"] != 1:
