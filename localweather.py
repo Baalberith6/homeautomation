@@ -11,7 +11,7 @@ api = Flask(__name__)
 def get_weather():
     temp = round((request.args.get('tempf', type=float) - 32) / 2)  # F -> C
     windchill = round((request.args.get('windchillf', type=float) - 32) / 2)  # F -> C
-    humidity = request.args.get('humidity', int)  # %
+    humidity = request.args.get('humidity', type=int)  # %
     windspeed = round(request.args.get('windspeedmph', type=float) * 1.61, 2)  # mph -> kmh
     windgust = round(request.args.get('windgustmph', type=float) * 1.61, 2)  # mph -> kmh
     rain = round(request.args.get('rainin', type=float) * 25.4, 2)  # in -> cm
