@@ -12,8 +12,8 @@ def get_weather():
     temp = round((request.args.get('tempf', type=float) - 32) / 2)  # F -> C
     windchill = round((request.args.get('windchillf', type=float) - 32) / 2)  # F -> C
     humidity = request.args.get('humidity', type=int)  # %
-    windspeed = round(request.args.get('windspeedmph', type=int) * 1.61)  # mph -> kmh
-    windgust = round(request.args.get('windgustmph', type=int) * 1.61)  # mph -> kmh
+    windspeed = round(round(request.args.get('windspeedmph', type=float) * 1.61))  # mph -> kmh
+    windgust = round(round(request.args.get('windgustmph', type=float) * 1.61))  # mph -> kmh
     rain = round(request.args.get('rainin', type=float) * 25.4, 2)  # in -> cm
     dailyrain = round(request.args.get('dailyrainin', type=float) * 25.4, 2)  # in -> cm
     solarradiation = request.args.get('solarradiation', type=float)
