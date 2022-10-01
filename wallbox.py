@@ -50,11 +50,15 @@ def calculate_current(inverter, actual_charging_current):
     would_add = (allowable_current - actual_charging_current)
 
     if was_charging:
-        should_charge = allowable_current >= stop_at or inverter["battery_soc"] >= 75
+        should_charge = allowable_current >= stop_at or \
+                        inverter["battery_soc"] >= wallboxConfig["stop_at_soc"] or \
+                        inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5
+        if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps
+            allowable_current_capped = actual_charging_current
         if c["debug"]: print(f"if charging, would charge: {should_charge}, {allowable_current_capped} A")
 
     if not was_charging:
-        should_charge = allowable_current >= start_at and inverter["battery_soc"] > 85
+        should_charge = allowable_current >= start_at and inverter["battery_soc"] > wallboxConfig["start_at_soc"]
         if c["debug"]: print(f"if NOT charging, would charge: {should_charge}, {allowable_current_capped} A")
 
     if c["debug"]: print(f"P1 avail {max_i1} A")
@@ -88,7 +92,7 @@ async def wallbox(inverter):
             if c["debug"]: print("setting force state to disabled")
             req.get(wallboxConfig["address"] + 'api/set?frc=1')
         return  # no charge allowed - perhaps car not connected, doesn't want to charge or disabled in app?
-    previous_charging_curr = res["amp"] if res["frc"] == 0 and res["car"] != 4 else 0 # if charging allowed and already charging
+    previous_charging_curr = res["amp"] if res["frc"] == 0 and res["car"] != 4 else 0  # if charging allowed and already charging
 
     charging_curr = calculate_current(inverter, previous_charging_curr)
 
@@ -113,17 +117,18 @@ async def wallbox(inverter):
 
 
 test_data = {
-    "ppv": 7641,
-    "load_p1": 6.5,
-    "load_p2": 6.1,
-    "load_p3": 6.1,
+    "ppv": 1641,
+    "house_consumption": 1000,
+    "load_p1": 1.5,
+    "load_p2": 1.1,
+    "load_p3": 1.1,
     "backup_i1": 0.1,
     "backup_i2": 0.1,
     "backup_i3": 0.1,
     "active_power": 0 * 690 + 0,  # 6.5 * 690 = 4485W min to start, stops at 4485W <97%SoC
-    "battery_soc": 98
+    "battery_soc": 50
 }
-# calculate_current(test_data, 6)
+# calculate_current(test_data, 10)
 # inv = await goodwe.connect(inverterConfig["ip_address"])
 # runtime_data = await inv.read_runtime_data()
 # asyncio.run(wallbox(runtime_data))
