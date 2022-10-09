@@ -27,7 +27,7 @@ from config import generalConfig as c, wallboxConfig
 # curl "http://1.2.3.4/api/status?filter=amp,psm"
 
 # keep at least 1A diff
-def calculate_current(inverter, actual_charging_current):
+def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     # kanvica do bat - 1900 pgrid2, 1900 backup_p2
     # bat na 1.9 - pgrid 3x 1000 + 3000 active p
     # traktor a bat - load_p1 1450, 1650 active, 1900 bat, 5700 tot, total_inverter_power = 3491 W
@@ -35,56 +35,85 @@ def calculate_current(inverter, actual_charging_current):
 
     stop_at = 6  # Amp
     start_at = 6
-    max_amp = 14.5
+    max_amp = 15
     should_charge = True
     was_charging = actual_charging_current != 0
 
-    max_i1 = max_amp - (inverter["load_p1"] / 230 + inverter["backup_i1"])
-    max_i2 = max_amp - (inverter["load_p2"] / 230 + inverter["backup_i2"])
-    max_i3 = max_amp - (inverter["load_p3"] / 230 + inverter["backup_i3"])
-    max_possible_current = min(max_i1, max_i2, max_i3)
-    available_current = min(max_possible_current,
-                            (inverter["ppv"] / 690 - inverter["house_consumption"] / 690))  # 230 * 3
-    allowable_current = actual_charging_current + available_current  # no min. reserve, because car charges 0.5A below + loss
-    allowable_current_capped = min(max_amp - 1, max(stop_at, math.floor(allowable_current)))  # step down by 1A
-    would_add = (allowable_current - actual_charging_current)
+    # max_i1 = max_amp - (inverter["load_p1"] / 230 + inverter["backup_i1"])
+    # max_i2 = max_amp - (inverter["load_p2"] / 230 + inverter["backup_i2"])
+    # max_i3 = max_amp - (inverter["load_p3"] / 230 + inverter["backup_i3"])
+    # max_possible_current = min(max_i1, max_i2, max_i3)
+    # available_current = min(max_possible_current,
+    #                         (inverter["ppv"] / 690 - inverter["house_consumption"] / 690))  # 230 * 3
+    # allowable_current = actual_charging_current + available_current - 0.2  # 0.2A min. reserve due to inverter loses, car charges 0.5A below
+    # allowable_current_capped = math.floor(min(max_amp - 1, max(stop_at, allowable_current)))  # step down by 1A
+    # would_add = (allowable_current - actual_charging_current)
+
+    # 2-phase check
+    # while allowable_current_capped >= stop_at and ((allowable_current_capped * car_phases * 230) + ((math.floor(max_amp) - allowable_current_capped) * 690)) < inverter["ppv"]:
+    #     allowable_current_capped = allowable_current_capped - 1
+    #     if allowable_current_capped < stop_at and inverter["battery_soc"] < 100:  # if ppv over 8200W and battery is 100, we would hit limit
+    #         allowable_current_capped = stop_at
+    #         break
+
+    # current consumption without car charging
+    i1 = inverter["load_p1"] / 230 + inverter["backup_i1"]
+    i2 = inverter["load_p2"] / 230 + inverter["backup_i2"]
+    i3 = inverter["load_p3"] / 230 + inverter["backup_i3"]
+    allowable_current = actual_charging_current
+    remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230
+
+# increase, until we use all PV
+    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) < max_amp and remaining_ppv > car_phases * 230:
+        remaining_ppv -= car_phases * 230
+        allowable_current += 1
+        if c["debug"]: print(f"added, ppv: {remaining_ppv}, allowable: {allowable_current}")
+
+# decrease, if negative PV
+    while allowable_current > 0 and remaining_ppv < 0:
+        remaining_ppv += car_phases * 230
+        allowable_current -= 1
+        if c["debug"]: print(f"substracted, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
     if was_charging:
-        should_charge = allowable_current >= stop_at or \
-                        inverter["battery_soc"] >= wallboxConfig["stop_at_soc"] or \
+        should_charge = allowable_current >= stop_at and car_phases == 3 or \
+                        (inverter["battery_soc"] >= wallboxConfig["stop_at_soc"] and car_phases == 3) or \
+                        (wallboxConfig["stop_at_soc"] <= inverter["battery_soc"] < 100 and car_phases == 1) or \
                         inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5
-        if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps
-            allowable_current_capped = actual_charging_current
-        if c["debug"]: print(f"if charging, would charge: {should_charge}, {allowable_current_capped} A")
+        if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps if 5 below limit soc
+            allowable_current = actual_charging_current
+        elif allowable_current < stop_at:
+            allowable_current = stop_at  # we want to continue with the slowest speed possible
+        if c["debug"]: print(f"if charging, would charge: {should_charge}, {allowable_current} A")
 
     if not was_charging:
         should_charge = allowable_current >= start_at and inverter["battery_soc"] > wallboxConfig["start_at_soc"]
-        if c["debug"]: print(f"if NOT charging, would charge: {should_charge}, {allowable_current_capped} A")
+        if c["debug"]: print(f"if NOT charging, would charge: {should_charge}, {allowable_current} A")
 
-    if c["debug"]: print(f"P1 avail {max_i1} A")
-    if c["debug"]: print(f"P2 avail {max_i2} A")
-    if c["debug"]: print(f"P3 avail {max_i3} A")
-    if c["debug"]: print(f"PPV {inverter['ppv']} W")
-    if c["debug"]: print(f"max {max_possible_current} A")
-    if c["debug"]: print(f"avail {available_current} A")
-    if c["debug"]: print(f"allowable {allowable_current} A")
+    if c["debug"]: print(f"P1 curr {i1} A")
+    if c["debug"]: print(f"P2 curr {i2} A")
+    if c["debug"]: print(f"P3 curr {i3} A")
     if c["debug"]: print(f"actual charging current {actual_charging_current} A")
-
-    # print(f"would add {would_add} A")
+    if c["debug"]: print(f"PPV {inverter['ppv']} W")
+    if c["debug"]: print(f"allowable {allowable_current} A")
 
     if not should_charge:
         return 0
     else:
-        return allowable_current_capped
+        return allowable_current
 
 
 async def wallbox(inverter):
     try:
-        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car')
+        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,pha')
         res = json.loads(response.text)
     except JSONDecodeError:
-        print("Wallbox is OFFLINE")
+        if c["debug"]: print("Wallbox is OFFLINE")
         return
+
+    phases = res["pha"].count(True) - 3
+    if phases != 4: phases = 3  # we don't know the number of connected phases before starting, also safe-default to 3 except when 1
+    if c["debug"]: print(f"phases: {phases}")
 
     if res["car"] in [0, 1, 5]:
         if c["debug"]: print(f"no charge allowed - perhaps car not connected or doesn't want to charge, car state {res['car']}")
@@ -94,7 +123,7 @@ async def wallbox(inverter):
         return  # no charge allowed - perhaps car not connected, doesn't want to charge or disabled in app?
     previous_charging_curr = res["amp"] if res["frc"] == 0 and res["car"] != 4 else 0  # if charging allowed and already charging
 
-    charging_curr = calculate_current(inverter, previous_charging_curr)
+    charging_curr = calculate_current(inverter, previous_charging_curr, phases)
 
     if res["frc"] == 1 and charging_curr > 0:  # stopped, but should start
         if c["debug"]: print(f"stopped, but should start, {charging_curr}A")
@@ -114,22 +143,3 @@ async def wallbox(inverter):
     if res["frc"] == 0 and charging_curr == 0:  # started, should stop
         if c["debug"]: print(f"started, should stop, {charging_curr}A")
         req.get(wallboxConfig["address"] + 'api/set?frc=1')
-
-
-test_data = {
-    "ppv": 1641,
-    "house_consumption": 1000,
-    "load_p1": 1.5,
-    "load_p2": 1.1,
-    "load_p3": 1.1,
-    "backup_i1": 0.1,
-    "backup_i2": 0.1,
-    "backup_i3": 0.1,
-    "active_power": 0 * 690 + 0,  # 6.5 * 690 = 4485W min to start, stops at 4485W <97%SoC
-    "battery_soc": 50
-}
-# calculate_current(test_data, 10)
-# inv = await goodwe.connect(inverterConfig["ip_address"])
-# runtime_data = await inv.read_runtime_data()
-# asyncio.run(wallbox(runtime_data))
-# time.sleep(15)
