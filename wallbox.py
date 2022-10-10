@@ -105,14 +105,17 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
 
 async def wallbox(inverter):
     try:
-        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,pha')
+        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg')
         res = json.loads(response.text)
     except JSONDecodeError:
         if c["debug"]: print("Wallbox is OFFLINE")
         return
 
-    phases = res["pha"].count(True) - 3
-    if phases != 4: phases = 3  # we don't know the number of connected phases before starting, also safe-default to 3 except when 1
+    phases = 0
+    if res["nrg"][4] > 1: phases += 1
+    if res["nrg"][5] > 1: phases += 1
+    if res["nrg"][6] > 1: phases += 1
+    if phases != 1: phases = 3  # we don't know the number of connected phases before starting, also safe-default to 3 except when 1
     if c["debug"]: print(f"phases: {phases}")
 
     if res["car"] in [0, 1, 5]:
