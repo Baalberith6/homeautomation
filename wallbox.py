@@ -64,7 +64,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230
 
 # increase, until we use all PV
-    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) < max_amp and remaining_ppv > car_phases * 230:
+    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) < max_amp and remaining_ppv > car_phases * 230 and allowable_current < max_amp:
         remaining_ppv -= car_phases * 230
         allowable_current += 1
         if c["debug"]: print(f"added, ppv: {remaining_ppv}, allowable: {allowable_current}")
