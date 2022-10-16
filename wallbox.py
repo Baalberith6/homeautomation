@@ -87,7 +87,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         if c["debug"]: print(f"if charging, would charge: {should_charge}, {allowable_current} A")
 
     if not was_charging:
-        should_charge = allowable_current >= start_at and inverter["battery_soc"] > wallboxConfig["start_at_soc"]
+        should_charge = allowable_current >= start_at and wallboxConfig["start_at_soc"] < inverter["battery_soc"] < 100
         if c["debug"]: print(f"if NOT charging, would charge: {should_charge}, {allowable_current} A")
 
     if c["debug"]: print(f"P1 curr {i1} A")
@@ -105,7 +105,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
 
 async def wallbox(inverter):
     try:
-        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg')
+        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelstatus')
         res = json.loads(response.text)
     except JSONDecodeError:
         if c["debug"]: print("Wallbox is OFFLINE")
@@ -124,6 +124,9 @@ async def wallbox(inverter):
             if c["debug"]: print("setting force state to disabled")
             req.get(wallboxConfig["address"] + 'api/set?frc=1')
         return  # no charge allowed - perhaps car not connected, doesn't want to charge or disabled in app?
+    if res["modelStatus"] == 22:
+        if c["debug"]: print("NotChargingBecauseSimulateUnplugging")
+        return  # NotChargingBecauseSimulateUnplugging
     previous_charging_curr = res["amp"] if res["frc"] == 0 and res["car"] != 4 else 0  # if charging allowed and already charging
 
     charging_curr = calculate_current(inverter, previous_charging_curr, phases)

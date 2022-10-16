@@ -44,6 +44,19 @@ class TestWallbox3Phase(unittest.TestCase):
         }
         self.assertEqual(11, calculate_current(test_data, 0, 3))
 
+    def test_no_load_8k_power_off_100p_should_off(self):
+        test_data = {
+            "ppv": 8000,
+            "load_p1": 0,
+            "load_p2": 0,
+            "load_p3": 0,
+            "backup_i1": 0,
+            "backup_i2": 0,
+            "backup_i3": 0,
+            "battery_soc": 100
+        }
+        self.assertEqual(0, calculate_current(test_data, 0, 3))
+
     def test_4k_load_no_power_on_89p_should_on(self):
         test_data = {
             "ppv": 0,
