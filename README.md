@@ -25,7 +25,7 @@
   [[inputs.mqtt_consumer.topic_parsing]]
     topic = "home/weather/forecast/yr/+"
     measurement = "_/measurement/_/_/_"
-    tags = "_/_/_/_/field"
+    tags = "_/_/_/service/field"
     [[processors.pivot]]
       tag_key = "field"
       value_key = "value"

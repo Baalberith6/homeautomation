@@ -21,8 +21,8 @@ async def main():
             for instrument in connection.vehicles[0].dashboard(mutable=False).instruments:
                 if instrument.attr == "battery_level":
                     client.publish("home/Car/battery_level", instrument.state)
-                if instrument.attr == "charging_time_left":
-                    client.publish("home/Car/charging_time_left", instrument.state)
+                # if instrument.attr == "charging_time_left":
+                #    client.publish("home/Car/charging_time_left", instrument.state)
                 if instrument.attr == "electric_range":
                     client.publish("home/Car/electric_range", instrument.state)
                 if instrument.attr == "charging_power":
