@@ -23,9 +23,9 @@
   ## Enable extracting tag values from MQTT topics
   ## _ denotes an ignored entry in the topic path
   [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/weather/forecast/yr/+"
-    measurement = "_/measurement/_/_/_"
-    tags = "_/_/_/service/field"
+    topic = "home/weatherforecast/yr/+"
+    measurement = "_/measurement/_/_"
+    tags = "_/_/service/field"
     [[processors.pivot]]
       tag_key = "field"
       value_key = "value"
