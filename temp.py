@@ -4,21 +4,19 @@ import seeed_dht
 
 import asyncio
 
-from config import influxConfig
+from common import connect_mqtt
 
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
 
 async def store_runtime_data():
     sensor = seeed_dht.DHT("11", 12)
-    client = InfluxDBClient(url=influxConfig["url"], token=influxConfig["token"], org=influxConfig["org"])
-    write_api = client.write_api(write_options=SYNCHRONOUS)
+    client = connect_mqtt("temp")
+    client.loop_start()
 
     while True:
         humi, temp = sensor.read()
 
-        write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("temperature_in", temp))
-        write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("humidity_in", humi))
+        client.publish("home/weather/sensors/temperature_in", temp)
+        client.publish("home/weather/sensors/humidity_in", humi)
 
         time.sleep(30)
 

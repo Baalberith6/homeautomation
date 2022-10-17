@@ -1,8 +1,7 @@
 from flask import Flask, request
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
 
-from config import generalConfig as c, influxConfig
+from config import generalConfig as c
+from common import connect_mqtt
 
 api = Flask(__name__)
 
@@ -28,17 +27,17 @@ def get_weather():
         print(f"dailyrain: {dailyrain} mm")
         print(f"solarradiation: {solarradiation} *")
 
-    client = InfluxDBClient(url=influxConfig["url"], token=influxConfig["token"], org=influxConfig["org"])
-    write_api = client.write_api(write_options=SYNCHRONOUS)
+    client = connect_mqtt("localweather")
+    client.loop_start()
 
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("humidity", humidity))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("temperature", temp))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("windChill", windchill))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("windSpeed", windspeed))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("windGust", windgust))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("precipRate", rain))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("precipTotal", dailyrain))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("Weather").field("solarRadiation", solarradiation))
+    client.publish("home/weather/local/humidity", humidity)
+    client.publish("home/weather/local/temperature", temp)
+    client.publish("home/weather/local/windChill", windchill)
+    client.publish("home/weather/local/windSpeed", windspeed)
+    client.publish("home/weather/local/windGust", windgust)
+    client.publish("home/weather/local/precipRate", rain)
+    client.publish("home/weather/local/precipTotal", dailyrain)
+    client.publish("home/weather/local/solarRadiation", solarradiation)
 
     return 'OK'
 

@@ -9,6 +9,8 @@ from config import azrouterConfig, influxConfig
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+from secret import influxToken
+
 
 def _request(path: tuple):
     """Forward a raw request to Weather Underground APIs"""
@@ -21,7 +23,7 @@ async def store_runtime_data():
 
     # pprint(r)
 
-    client = InfluxDBClient(url=influxConfig["url"], token=influxConfig["token"], org=influxConfig["org"])
+    client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     write_api.write(bucket=influxConfig["bucket"], record=Point("FVE").tag("sum", "today").field("saved_energy", r["output"]["energy"][4]["value"]))

@@ -1,12 +1,12 @@
 influxConfig = {
     "url": "http://localhost:8086",
-    "token": "TODO",
     "org": "Home",
-    "bucket": "default"
+    "bucket": "default",
 }
 
 inverterConfig = {
-    "ip_address": "192.168.1.77"
+    "ip_address": "192.168.1.77",
+    "wait": 5
 }
 
 wallboxConfig = {
@@ -16,17 +16,17 @@ wallboxConfig = {
 }
 
 azrouterConfig = {
-    "ip_address": "http://192.168.1.167/"
+    "ip_address": "http://192.168.1.167/",
 }
 
 wundergroundConfig = {
-    "apiKey": "TODO",
-    "stationId": "ISTRMI1"
+    "stationId": "ISTRMI1",
+    "wait": 30
 }
 
-skodaConfig = {
-    "username": "TODO",
-    "password": "TODO"
+mqttConfig = {
+    "broker": "localhost",
+    "port": 1883
 }
 
 generalConfig = {

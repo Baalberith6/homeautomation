@@ -3,9 +3,9 @@ import json
 from json import JSONDecodeError
 
 import requests as req
+from paho.mqtt import client as mqtt_client
 
 from config import generalConfig as c, wallboxConfig
-
 
 # adjust amps
 # curl "http://1.2.3.4/api/set?amp=16"
@@ -27,6 +27,9 @@ from config import generalConfig as c, wallboxConfig
 # curl "http://1.2.3.4/api/status?filter=amp,psm"
 
 # keep at least 1A diff
+from common import connect_mqtt
+
+
 def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     # kanvica do bat - 1900 pgrid2, 1900 backup_p2
     # bat na 1.9 - pgrid 3x 1000 + 3000 active p
@@ -63,13 +66,13 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     allowable_current = actual_charging_current
     remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230
 
-# increase, until we use all PV
+    # increase, until we use all PV
     while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) < max_amp and remaining_ppv > car_phases * 230 and allowable_current < max_amp:
         remaining_ppv -= car_phases * 230
         allowable_current += 1
         if c["debug"]: print(f"added, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
-# decrease, if negative PV
+    # decrease, if negative PV
     while allowable_current > 0 and remaining_ppv < 0:
         remaining_ppv += car_phases * 230
         allowable_current -= 1
@@ -103,9 +106,9 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         return allowable_current
 
 
-async def wallbox(inverter):
+def wallbox(inverter):
     try:
-        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelstatus')
+        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelStatus')
         res = json.loads(response.text)
     except JSONDecodeError:
         if c["debug"]: print("Wallbox is OFFLINE")
@@ -149,3 +152,22 @@ async def wallbox(inverter):
     if res["frc"] == 0 and charging_curr == 0:  # started, should stop
         if c["debug"]: print(f"started, should stop, {charging_curr}A")
         req.get(wallboxConfig["address"] + 'api/set?frc=1')
+
+
+def subscribe(client: mqtt_client, topic: str):
+    def on_message(client, userdata, msg):
+        if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+        wallbox(json.loads(msg.payload))
+
+    client.subscribe(topic)
+    client.on_message = on_message
+
+
+def run():
+    client = connect_mqtt("wallbox")
+    subscribe(client, "wallbox/inverter")
+    client.loop_forever()
+
+
+if __name__ == '__main__':
+    run()
