@@ -4,7 +4,7 @@ import time
 from aiohttp import ClientSession
 from skodaconnect import Connection
 
-from common import connect_mqtt
+from common import connect_mqtt, publishProperties
 from secret import skodaMail, skodaPassword
 
 
@@ -20,13 +20,14 @@ async def main():
             await connection.update_all()
             for instrument in connection.vehicles[0].dashboard(mutable=False).instruments:
                 if instrument.attr == "battery_level":
-                    client.publish("home/Car/battery_level", instrument.state)
-                # if instrument.attr == "charging_time_left":
-                #    client.publish("home/Car/charging_time_left", instrument.state)
+                    client.publish("home/Car/battery_level", instrument.state, qos=2, properties=publishProperties)
+                if instrument.attr == "charging_time_left":
+                    hour, min = instrument.state.split(":")
+                    client.publish("home/Car/charging_time_left", float(hour) * 60 + float(min), qos=2, properties=publishProperties)
                 if instrument.attr == "electric_range":
-                    client.publish("home/Car/electric_range", instrument.state)
+                    client.publish("home/Car/electric_range", instrument.state, qos=2, properties=publishProperties)
                 if instrument.attr == "charging_power":
-                    client.publish("home/Car/charging_power", instrument.state)
+                    client.publish("home/Car/charging_power", instrument.state, qos=2, properties=publishProperties)
 
             time.sleep(60)
 

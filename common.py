@@ -1,7 +1,13 @@
 from paho.mqtt import client as mqtt_client
+from paho.mqtt.packettypes import PacketTypes
+from paho.mqtt.properties import Properties
+
 from config import mqttConfig
 from secret import mqttUsername, mqttPassword
 from config import generalConfig as c
+
+publishProperties=Properties(PacketTypes.PUBLISH)
+publishProperties.MessageExpiryInterval = 86400  # in seconds
 
 
 def connect_mqtt(client_id):

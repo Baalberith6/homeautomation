@@ -1,7 +1,7 @@
 from flask import Flask, request
 
 from config import generalConfig as c
-from common import connect_mqtt
+from common import connect_mqtt, publishProperties
 
 api = Flask(__name__)
 
@@ -29,14 +29,14 @@ def get_weather():
         print(f"dailyrain: {dailyrain} mm")
         print(f"solarradiation: {solarradiation} *")
 
-    client.publish("home/weather/local/humidity", humidity)
-    client.publish("home/weather/local/temperature", temp)
-    client.publish("home/weather/local/windChill", windchill)
-    client.publish("home/weather/local/windSpeed", windspeed)
-    client.publish("home/weather/local/windGust", windgust)
-    client.publish("home/weather/local/precipRate", rain)
-    client.publish("home/weather/local/precipTotal", dailyrain)
-    client.publish("home/weather/local/solarRadiation", solarradiation)
+    client.publish("home/weather/local/humidity", humidity, qos=2, properties=publishProperties)
+    client.publish("home/weather/local/temperature", temp, qos=2, properties=publishProperties)
+    client.publish("home/weather/local/windChill", windchill, qos=2, properties=publishProperties)
+    client.publish("home/weather/local/windSpeed", windspeed, qos=2, properties=publishProperties)
+    client.publish("home/weather/local/windGust", windgust, qos=2, properties=publishProperties)
+    client.publish("home/weather/local/precipRate", rain, qos=2, properties=publishProperties)
+    client.publish("home/weather/local/precipTotal", dailyrain, qos=2, properties=publishProperties)
+    client.publish("home/weather/local/solarRadiation", solarradiation, qos=2, properties=publishProperties)
 
     return 'OK'
 

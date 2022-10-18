@@ -4,7 +4,7 @@ import seeed_dht
 
 import asyncio
 
-from common import connect_mqtt
+from common import connect_mqtt, publishProperties
 
 
 async def store_runtime_data():
@@ -15,8 +15,8 @@ async def store_runtime_data():
     while True:
         humi, temp = sensor.read()
 
-        client.publish("home/weather/sensors/temperature_in", temp)
-        client.publish("home/weather/sensors/humidity_in", humi)
+        client.publish("home/weather/sensors/temperature_in", temp, qos=2, properties=publishProperties)
+        client.publish("home/weather/sensors/humidity_in", humi, qos=2, properties=publishProperties)
 
         time.sleep(30)
 
