@@ -30,5 +30,5 @@ mqttConfig = {
 }
 
 generalConfig = {
-    "debug": True
+    "debug": False
 }
