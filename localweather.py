@@ -5,6 +5,8 @@ from common import connect_mqtt
 
 api = Flask(__name__)
 
+client = connect_mqtt("localweather")
+
 
 @api.route('/weather', methods=['GET'])
 def get_weather():
@@ -27,9 +29,6 @@ def get_weather():
         print(f"dailyrain: {dailyrain} mm")
         print(f"solarradiation: {solarradiation} *")
 
-    client = connect_mqtt("localweather")
-    client.loop_start()
-
     client.publish("home/weather/local/humidity", humidity)
     client.publish("home/weather/local/temperature", temp)
     client.publish("home/weather/local/windChill", windchill)
@@ -43,4 +42,5 @@ def get_weather():
 
 
 if __name__ == '__main__':
+    client.loop_start()
     api.run(host="0.0.0.0", port=5005)
