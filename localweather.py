@@ -11,6 +11,8 @@ client = connect_mqtt("localweather")
 @api.route('/weather', methods=['GET'])
 def get_weather():
     temp = round((request.args.get('tempf', type=float) - 32) / 2, 2)  # F -> C
+    in_temp = round((request.args.get('indoortempf', type=float) - 32) / 2, 2)  # F -> C
+    in_humi = request.args.get('indoorhumidity', type=int)  # %
     windchill = round((request.args.get('windchillf', type=float) - 32) / 2)  # F -> C
     humidity = request.args.get('humidity', type=int)  # %
     windspeed = round(round(request.args.get('windspeedmph', type=float) * 1.61))  # mph -> kmh
@@ -21,6 +23,7 @@ def get_weather():
 
     if c["debug"]:
         print(f"temp: {temp} C")
+        print(f"intemp: {in_temp} C")
         print(f"windchill: {windchill} C")
         print(f"humidity: {humidity} %")
         print(f"windspeed: {windspeed} km/h")
@@ -37,6 +40,8 @@ def get_weather():
     client.publish("home/weather/local/precipRate", rain, qos=2, properties=publishProperties)
     client.publish("home/weather/local/precipTotal", dailyrain, qos=2, properties=publishProperties)
     client.publish("home/weather/local/solarRadiation", solarradiation, qos=2, properties=publishProperties)
+    client.publish("home/weather/sensors/temperature_upstairs_in", in_temp, qos=2, properties=publishProperties)
+    client.publish("home/weather/sensors/humidity_upstairs_in", in_humi, qos=2, properties=publishProperties)
 
     return 'OK'
 
