@@ -1,8 +1,9 @@
 import math
 import json
+import time
 from json import JSONDecodeError
 
-import requests as req
+import requests
 from paho.mqtt import client as mqtt_client
 
 from config import generalConfig as c, wallboxConfig
@@ -29,6 +30,14 @@ from config import generalConfig as c, wallboxConfig
 # keep at least 1A diff
 from common import connect_mqtt
 
+amp = -1
+alw = -1
+frc = -1
+car = -1
+nrg = [0, 0, 0, 0, 0, 0]
+modelStatus = -1
+updatedAt = -1
+
 
 def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     # kanvica do bat - 1900 pgrid2, 1900 backup_p2
@@ -41,23 +50,6 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     max_amp = 15
     should_charge = True
     was_charging = actual_charging_current != 0
-
-    # max_i1 = max_amp - (inverter["load_p1"] / 230 + inverter["backup_i1"])
-    # max_i2 = max_amp - (inverter["load_p2"] / 230 + inverter["backup_i2"])
-    # max_i3 = max_amp - (inverter["load_p3"] / 230 + inverter["backup_i3"])
-    # max_possible_current = min(max_i1, max_i2, max_i3)
-    # available_current = min(max_possible_current,
-    #                         (inverter["ppv"] / 690 - inverter["house_consumption"] / 690))  # 230 * 3
-    # allowable_current = actual_charging_current + available_current - 0.2  # 0.2A min. reserve due to inverter loses, car charges 0.5A below
-    # allowable_current_capped = math.floor(min(max_amp - 1, max(stop_at, allowable_current)))  # step down by 1A
-    # would_add = (allowable_current - actual_charging_current)
-
-    # 2-phase check
-    # while allowable_current_capped >= stop_at and ((allowable_current_capped * car_phases * 230) + ((math.floor(max_amp) - allowable_current_capped) * 690)) < inverter["ppv"]:
-    #     allowable_current_capped = allowable_current_capped - 1
-    #     if allowable_current_capped < stop_at and inverter["battery_soc"] < 100:  # if ppv over 8200W and battery is 100, we would hit limit
-    #         allowable_current_capped = stop_at
-    #         break
 
     # current consumption without car charging
     i1 = inverter["load_p1"] / 230 + inverter["backup_i1"]
@@ -106,66 +98,98 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         return allowable_current
 
 
-def wallbox(inverter):
-    try:
-        response = req.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelStatus')
-        res = json.loads(response.text)
-    except JSONDecodeError:
+def wallbox(inverter, client):
+    if updatedAt < (time.time() - 10):  # 10 sec timeout
         if c["debug"]: print("Wallbox is OFFLINE")
         return
 
     phases = 0
-    if res["nrg"][4] > 1: phases += 1
-    if res["nrg"][5] > 1: phases += 1
-    if res["nrg"][6] > 1: phases += 1
+    if nrg[4] > 1: phases += 1
+    if nrg[5] > 1: phases += 1
+    if nrg[6] > 1: phases += 1
     if phases != 1: phases = 3  # we don't know the number of connected phases before starting, also safe-default to 3 except when 1
     if c["debug"]: print(f"phases: {phases}")
 
-    if res["car"] in [0, 1, 5]:
-        if c["debug"]: print(f"no charge allowed - perhaps car not connected or doesn't want to charge, car state {res['car']}")
-        if res["frc"] != 1:
+    if car in [0, 1, 5]:
+        if c["debug"]: print(f"no charge allowed - perhaps car not connected or doesn't want to charge, car state {car}")
+        if frc != 1:
             if c["debug"]: print("setting force state to disabled")
-            req.get(wallboxConfig["address"] + 'api/set?frc=1')
+            client.publish("go-eCharger/201630/frc/set", 1)
+            # req.get(wallboxConfig["address"] + 'api/set?frc=1')
         return  # no charge allowed - perhaps car not connected, doesn't want to charge or disabled in app?
-    if res["modelStatus"] == 22:
+    if modelStatus == 22:
         if c["debug"]: print("NotChargingBecauseSimulateUnplugging")
         return  # NotChargingBecauseSimulateUnplugging
-    previous_charging_curr = res["amp"] if res["frc"] == 0 and res["car"] != 4 else 0  # if charging allowed and already charging
+    previous_charging_curr = amp if frc == 0 and car != 4 else 0  # if charging allowed and already charging
 
     charging_curr = calculate_current(inverter, previous_charging_curr, phases)
 
-    if res["frc"] == 1 and charging_curr > 0:  # stopped, but should start
+    if frc == 1 and charging_curr > 0:  # stopped, but should start
         if c["debug"]: print(f"stopped, but should start, {charging_curr}A")
-        req.get(wallboxConfig["address"] + 'api/set?amp={charging_curr}&frc=0')
-    if res["frc"] == 0 and charging_curr > 0:  # started, just change amp
-        if res["amp"] == charging_curr:
+        client.publish("go-eCharger/201630/amp/set", charging_curr)
+        client.publish("go-eCharger/201630/frc/set", 0)
+        # req.get(wallboxConfig["address"] + 'api/set?amp={charging_curr}&frc=0')
+    if frc == 0 and charging_curr > 0:  # started, just change amp
+        if amp == charging_curr:
             if c["debug"]: print(f"started, do nothing, {charging_curr}A")
             return
         #       do nothing
         else:
             if c["debug"]: print(f"started, just change amp, {charging_curr}A")
-            req.get(f'{wallboxConfig["address"]}api/set?amp={charging_curr}')
-    if res["frc"] == 1 and charging_curr == 0:  # stopped, shouldn't start
+            client.publish("go-eCharger/201630/amp/set", charging_curr)
+            # req.get(f'{wallboxConfig["address"]}api/set?amp={charging_curr}')
+    if frc == 1 and charging_curr == 0:  # stopped, shouldn't start
         if c["debug"]: print(f"stopped, shouldn't start, {charging_curr}A")
         return
         # do nothing
-    if res["frc"] == 0 and charging_curr == 0:  # started, should stop
+    if frc == 0 and charging_curr == 0:  # started, should stop
         if c["debug"]: print(f"started, should stop, {charging_curr}A")
-        req.get(wallboxConfig["address"] + 'api/set?frc=1')
+        client.publish("go-eCharger/201630/frc/set", 1)
+        # req.get(wallboxConfig["address"] + 'api/set?frc=1')
 
 
-def subscribe(client: mqtt_client, topic: str):
+def subscribe(client: mqtt_client, topics: [str]):
     def on_message(client, userdata, msg):
-        if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-        wallbox(json.loads(msg.payload))
+        # if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+        topicParts = msg.topic.split("/")
+        if topicParts[0] == "go-eCharger" and topicParts[-1] in ["amp", "alw", "frc", "car", "nrg", "modelStatus"]:
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            global amp, alw, frc, car, nrg, modelStatus, updatedAt
+            if topicParts[-1] == "amp": amp = int(msg.payload.decode())
+            if topicParts[-1] == "alw": alw = bool(msg.payload.decode())
+            if topicParts[-1] == "frc": frc = int(msg.payload.decode())
+            if topicParts[-1] == "car": car = int(msg.payload.decode())
+            if topicParts[-1] == "nrg":
+                nrg = list(map(float, msg.payload.decode().strip('][').split(',')))
+                client.publish("home/Car/charging_wallbox_power", nrg[11])
+            if topicParts[-1] == "modelStatus": modelStatus = int(msg.payload.decode())
+            updatedAt = time.time()
+        elif topicParts[0] == "wallbox":
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            wallbox(json.loads(msg.payload), client)
 
-    client.subscribe(topic)
+    for topic in topics:
+        client.subscribe(topic)
     client.on_message = on_message
 
 
 def run():
+    try:
+        response = requests.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelStatus')
+        res = json.loads(response.text)
+        global amp, alw, frc, car, nrg, modelStatus, updatedAt
+        amp = res["amp"]
+        alw = res["alw"]
+        frc = res["frc"]
+        car = res["car"]
+        nrg = res["nrg"]
+        modelStatus = res["modelStatus"]
+        updatedAt = time.time()
+    except JSONDecodeError:
+        print("error connecting to Wallbox")
+        return
     client = connect_mqtt("wallbox")
-    subscribe(client, "wallbox/inverter")
+    subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#"])
     client.loop_forever()
 
 
