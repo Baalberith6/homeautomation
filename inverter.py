@@ -24,7 +24,7 @@ async def publish(client):
         client.publish("home/FVE/apparent_power", runtime_data["apparent_power"], qos=2, properties=publishProperties)
         client.publish("home/FVE/reactive_power", runtime_data["reactive_power"], qos=2, properties=publishProperties)
         client.publish("home/FVE/active_power", runtime_data["active_power"], qos=2, properties=publishProperties)
-        client.publish("home/FVE/meter_active_power_total", runtime_data["meter_power"], qos=2, properties=publishProperties)
+        client.publish("home/FVE/meter_power", runtime_data["meter_active_power_total"], qos=2, properties=publishProperties)
         client.publish("home/FVE/total_inverter_power", runtime_data["total_inverter_power"], qos=2, properties=publishProperties)
         client.publish("home/FVE/inverter_temp_air", runtime_data["temperature_air"], qos=2, properties=publishProperties)
         client.publish("home/FVE/inverter_temp_rad", runtime_data["temperature"], qos=2, properties=publishProperties)
