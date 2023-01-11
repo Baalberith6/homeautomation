@@ -30,6 +30,7 @@ def store_runtime_data(r):
             if c["debug"]:
                 print(day, r["result"]["watt_hours_period"][key])
             write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("hourly", r["result"]["watt_hours_period"][key]).time(day))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("hourly_cummulative", r["result"]["watt_hours"][key]).time(day))
 
     for key in r["result"]["watt_hours_day"].keys():
         day = local_tz.localize(parse(key))
