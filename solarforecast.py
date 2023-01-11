@@ -29,13 +29,13 @@ def store_runtime_data(r):
         if day.date() == datetime.today().date():
             if c["debug"]:
                 print(day, r["result"]["watt_hours_period"][key])
-            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("hrly", r["result"]["watt_hours_period"][key]).time(day))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("hourly", r["result"]["watt_hours_period"][key]).time(day))
 
     for key in r["result"]["watt_hours_day"].keys():
         day = local_tz.localize(parse(key))
         if c["debug"]:
             print(parse(key), r["result"]["watt_hours_day"][key])
-        write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("dly", r["result"]["watt_hours_day"][key]).time(day))
+        write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("daily", r["result"]["watt_hours_day"][key]).time(day))
         break
 
 
