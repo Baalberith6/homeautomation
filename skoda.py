@@ -20,14 +20,14 @@ async def main():
             await connection.update_all()
             for instrument in connection.vehicles[0].dashboard(mutable=False).instruments:
                 if instrument.attr == "battery_level":
-                    client.publish("home/Car/battery_level", instrument.state, qos=2, properties=publishProperties)
+                    client.publish("home/Car/battery_level", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
                 if instrument.attr == "charging_time_left":
                     hour, min = instrument.state.split(":")
-                    client.publish("home/Car/charging_time_left", float(hour) * 60 + float(min), qos=2, properties=publishProperties)
+                    client.publish("home/Car/charging_time_left", float(hour) * 60 + float(min), qos=2, properties=publishProperties).wait_for_publish()
                 if instrument.attr == "electric_range":
-                    client.publish("home/Car/electric_range", instrument.state, qos=2, properties=publishProperties)
+                    client.publish("home/Car/electric_range", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
                 if instrument.attr == "charging_power":
-                    client.publish("home/Car/charging_power", instrument.state, qos=2, properties=publishProperties)
+                    client.publish("home/Car/charging_power", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
 
             time.sleep(60)
 
