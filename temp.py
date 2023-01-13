@@ -15,8 +15,8 @@ async def store_runtime_data():
     while True:
         humi, temp = sensor.read()
 
-        client.publish("home/weather/sensors/temperature_in", temp, qos=2, properties=publishProperties)
-        client.publish("home/weather/sensors/humidity_in", humi, qos=2, properties=publishProperties)
+        client.publish("home/weather/sensors/temperature_in", temp, qos=2, properties=publishProperties).wait_for_publish()
+        client.publish("home/weather/sensors/humidity_in", humi, qos=2, properties=publishProperties).wait_for_publish()
 
         time.sleep(30)
 
