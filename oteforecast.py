@@ -330,9 +330,9 @@ def run():
         "zoom": true
     }
 }
-        '''), client, local_tz.localize(datetime.now() + timedelta(days=1)))
+        '''), client, local_tz.localize((datetime.now() + timedelta(days=1)).replace(minute=0, second=0)))
     else:
-        d = local_tz.localize(datetime.now() + timedelta(days=1))
+        d = local_tz.localize((datetime.now() + timedelta(days=1)).replace(minute=0, second=0))
         send_to_mqtt(_request(d), client, d)
 
 
