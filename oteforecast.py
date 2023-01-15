@@ -48,7 +48,7 @@ def send_to_mqtt(r, client, date: datetime):
     min_hour2 = min(hour_prices_dict, key=hour_prices_dict.get)
     hour_prices_dict.pop(min_hour2)
     min_hour3 = min(hour_prices_dict, key=hour_prices_dict.get)
-    # print(max_hour, max_hour2, max_hour3, min_hour, min_hour2, min_hour3)
+    if (c["debug"]): print(max_hour, max_hour2, max_hour3, min_hour, min_hour2, min_hour3)
 
     max_hours_out = {max_hour: hour_prices_zal[max_hour], max_hour2: hour_prices_zal[max_hour2], max_hour3: hour_prices_zal[max_hour3]}
     min_hours_out = {min_hour: hour_prices_zal[min_hour], min_hour2: hour_prices_zal[min_hour2], min_hour3: hour_prices_zal[min_hour3]}
@@ -57,7 +57,7 @@ def send_to_mqtt(r, client, date: datetime):
     client.publish("home/OTE/daily/min/hour", min_hour, qos=2, properties=publishProperties).wait_for_publish()
     client.publish("home/OTE/daily/min/price", hour_prices_zal[min_hour], qos=2, properties=publishProperties).wait_for_publish()
 
-    # print(date + timedelta(hours=int(max_hour)))
+    print(date + timedelta(hours=int(max_hour)))
     write_api.write(bucket=influxConfig["bucket"], record=Point("OTE").field("price", hour_prices_zal[max_hour]).tag("type", "max").time(date + timedelta(hours=int(max_hour))))
     write_api.write(bucket=influxConfig["bucket"], record=Point("OTE").field("price", hour_prices_zal[min_hour]).tag("type", "min").time(date + timedelta(hours=int(min_hour))))
 
@@ -81,7 +81,7 @@ def send_to_mqtt(r, client, date: datetime):
 def run():
     client = connect_mqtt("ote")
     client.loop_start()
-    if (c["debug"]):
+    if (not c["debug"]):
         send_to_mqtt(json.loads('''
 {
     "axis": {
@@ -330,9 +330,10 @@ def run():
         "zoom": true
     }
 }
-        '''), client, local_tz.localize((datetime.now() + timedelta(days=1)).replace(minute=0, second=0)))
+        '''), client, local_tz.localize((datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)))
     else:
-        d = local_tz.localize((datetime.now() + timedelta(days=1)).replace(minute=0, second=0))
+        d = local_tz.localize((datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0))
+        if (c["debug"]): print(d)
         send_to_mqtt(_request(d), client, d)
 
 
