@@ -81,7 +81,7 @@ def send_to_mqtt(r, client, date: datetime):
 def run():
     client = connect_mqtt("ote")
     client.loop_start()
-    if (not c["debug"]):
+    if (c["debug"]):
         send_to_mqtt(json.loads('''
 {
     "axis": {
