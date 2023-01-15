@@ -57,7 +57,7 @@ def send_to_mqtt(r, client, date: datetime):
     client.publish("home/OTE/daily/min/hour", min_hour, qos=2, properties=publishProperties).wait_for_publish()
     client.publish("home/OTE/daily/min/price", hour_prices_zal[min_hour], qos=2, properties=publishProperties).wait_for_publish()
 
-    print(date + timedelta(hours=int(max_hour)))
+    # print(date + timedelta(hours=int(max_hour)))
     write_api.write(bucket=influxConfig["bucket"], record=Point("OTE").field("price", hour_prices_zal[max_hour]).tag("type", "max").time(date + timedelta(hours=int(max_hour))))
     write_api.write(bucket=influxConfig["bucket"], record=Point("OTE").field("price", hour_prices_zal[min_hour]).tag("type", "min").time(date + timedelta(hours=int(min_hour))))
 
