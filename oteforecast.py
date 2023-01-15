@@ -15,17 +15,14 @@ from secret import influxToken
 local_tz = pytz.timezone('Europe/Prague')
 
 
-def _request():
-    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data')
+def _request(date: datetime):
+    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d"))
     return r.json()
 
 
-def send_to_mqtt(r, client):
+def send_to_mqtt(r, client, date: datetime):
     influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
     write_api = influx_client.write_api(write_options=SYNCHRONOUS)
-
-    date_str = r["graph"]["title"][-10:]
-    date = local_tz.localize(datetime.strptime(date_str, "%d.%m.%Y"))
 
     data = r["data"]["dataLine"]
     hour_prices = data[next(index for index, element in enumerate(data)
@@ -333,9 +330,10 @@ def run():
         "zoom": true
     }
 }
-        '''), client)
+        '''), client, local_tz.localize(datetime.now() + timedelta(days=1)))
     else:
-        send_to_mqtt(_request(), client)
+        d = local_tz.localize(datetime.now() + timedelta(days=1))
+        send_to_mqtt(_request(d), client, d)
 
 
 if __name__ == '__main__':
