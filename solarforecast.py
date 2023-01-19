@@ -16,7 +16,7 @@ local_tz = pytz.timezone('Europe/Prague')
 
 
 def _request():
-    r = requests.get('https://api.forecast.solar/estimate/49.1503508/15.2338656/25/19/9.9')
+    r = requests.get('https://api.forecast.solar/estimate/49.1503508/15.2338656/25/0/9.9')
     return r.json()
 
 
