@@ -79,6 +79,7 @@ base_consumptions = {
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
 
+
 def subscribe(client: mqtt_client, topics: [str]):
     def on_message(client, userdata, msg):
         # if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
@@ -91,8 +92,8 @@ def subscribe(client: mqtt_client, topics: [str]):
                 if cop_curr[0] > float(temp[1]):
                     cop = cop_curr[1]
                     break
-            total_tc = base_consumption + (((14 - temp[1]) * heat_lost) / cop) + tc_base
-            total_primotop = base_consumption + ((14 - temp[1]) * heat_lost)
+            total_tc = max(0, base_consumption + (((14 - temp[1]) * heat_lost) / cop) + tc_base)
+            total_primotop = max(0, base_consumption + ((14 - temp[1]) * heat_lost))
             total_tc_cummulative += total_tc
             total_primotop_cummulative += total_primotop
             if c["debug"]:
