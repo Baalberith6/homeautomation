@@ -22,10 +22,10 @@ def store_runtime_data(r):
     client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
-    daily_sum = 0
-    daily_sum_p10 = 0
-    daily_sum_p90 = 0
     for estimate in r["forecasts"]:
+        daily_sum = 0
+        daily_sum_p10 = 0
+        daily_sum_p90 = 0
         timestamp = parser.parse(estimate["period_end"])
         if timestamp.date() == datetime.today().date():
             daily_sum += estimate["pv_estimate"]
