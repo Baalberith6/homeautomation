@@ -15,7 +15,6 @@ from config import generalConfig as c
 
 def _request():
     r = requests.get('https://api.solcast.com.au/rooftop_sites/9a34-5411-4c58-3c98/forecasts?format=json&api_key=' + solcastKey)
-    pprint (r.json())
     return r.json()
 
 
