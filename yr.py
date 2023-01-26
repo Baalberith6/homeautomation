@@ -41,7 +41,7 @@ def publish(client):
 
 
 def run():
-    client = connect_mqtt("yr2")
+    client = connect_mqtt("yr")
     client.loop_start()
     publish(client)
 
