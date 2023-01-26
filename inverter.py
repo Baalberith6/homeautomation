@@ -52,7 +52,7 @@ async def publish(client):
         while diag.startswith(" ") or diag.startswith(",") or diag.endswith(" ") or diag.endswith(","):
             diag = diag.strip(", ")
         if (len(diag) != 0):
-            client.publish("home/FVE/diag", diag, qos=2, properties=publishProperties)
+            client.publish("diag/FVE", diag, qos=2, properties=publishProperties)
 
         if (c["debug"]):
             print("\n\n\n---INVERTER START---")
