@@ -28,14 +28,14 @@ def store_runtime_data(r):
         daily_sum_p90 = 0
         timestamp = parser.parse(estimate["period_end"])
         if timestamp.date() == datetime.today().date():
-            daily_sum += estimate["pv_estimate"]
-            daily_sum_p10 += estimate["pv_estimate10"]
-            daily_sum_p90 += estimate["pv_estimate90"]
+            daily_sum += estimate["pv_estimate"]/2
+            daily_sum_p10 += estimate["pv_estimate10"]/2
+            daily_sum_p90 += estimate["pv_estimate90"]/2
             if c["debug"]:
-                print(timestamp, estimate["pv_estimate"])
-            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_50p", float(estimate["pv_estimate"])).time(timestamp))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_10p", float(estimate["pv_estimate10"])).time(timestamp))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_90p", float(estimate["pv_estimate90"])).time(timestamp))
+                print(timestamp, estimate["pv_estimate"]/2)
+            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_50p", float(estimate["pv_estimate"]/2)).time(timestamp))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_10p", float(estimate["pv_estimate10"]/2)).time(timestamp))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_90p", float(estimate["pv_estimate90"]/2)).time(timestamp))
             write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_50p_cummulative", float(daily_sum)).time(timestamp))
             write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_10p_cummulative", float(daily_sum_p10)).time(timestamp))
             write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_90p_cummulative", float(daily_sum_p90)).time(timestamp))
