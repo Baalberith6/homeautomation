@@ -10,9 +10,9 @@ from config import influxConfig
 from secret import influxToken
 from config import generalConfig as c
 
-heat_lost = 125  # 125 W/K
+heat_lost = 0.125  # 0.125 kW/K
 
-tc_base = 50
+tc_base = 0.05
 
 # nibe COP
 cop_35 = {
@@ -50,30 +50,30 @@ cop_35 = {
 }
 
 base_consumptions = {
-    0: 250,
-    1: 250,
-    2: 250,
-    3: 250,
-    4: 250,
-    5: 250,
-    6: 250,
-    7: 350,
-    8: 500,
-    9: 550,
-    10: 500,
-    11: 500,
-    12: 300,
-    13: 300,
-    14: 300,
-    15: 500,
-    16: 500,
-    17: 500,
-    18: 300,
-    19: 300,
-    20: 300,
-    21: 300,
-    22: 300,
-    23: 250,
+    0: 0.250,
+    1: 0.250,
+    2: 0.250,
+    3: 0.250,
+    4: 0.250,
+    5: 0.250,
+    6: 0.250,
+    7: 0.350,
+    8: 0.500,
+    9: 0.550,
+    10: 0.500,
+    11: 0.500,
+    12: 0.300,
+    13: 0.300,
+    14: 0.300,
+    15: 0.500,
+    16: 0.500,
+    17: 0.500,
+    18: 0.300,
+    19: 0.300,
+    20: 0.300,
+    21: 0.300,
+    22: 0.300,
+    23: 0.250,
 }
 
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
