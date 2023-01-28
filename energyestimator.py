@@ -10,9 +10,9 @@ from config import influxConfig
 from secret import influxToken
 from config import generalConfig as c
 
-heat_lost = 0.140  # 0.125 kW/K
+heat_lost = 0.140  # 0.140 kW/K
 
-tc_base = 0.1 # 100W
+tc_base = 0.1  # 100W
 
 # nibe COP
 cop_35 = {
@@ -49,6 +49,8 @@ cop_35 = {
     100: 5.8
 }
 
+cop_tuv_coeff = 1.25  # 25% lower cop for 45C
+
 base_consumptions = {
     0: 0.250,
     1: 0.250,
@@ -76,6 +78,33 @@ base_consumptions = {
     23: 0.250,
 }
 
+tuv_consumptions = {
+    0: 0,
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0,
+    6: 0,
+    7: 0,
+    8: 0,
+    9: 0,
+    10: 0,
+    11: 0,
+    12: 4,
+    13: 2,
+    14: 0,
+    15: 0,
+    16: 0,
+    17: 0,
+    18: 0,
+    19: 0,
+    20: 0,
+    21: 0,
+    22: 0,
+    23: 0,
+}
+
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
 
@@ -86,18 +115,19 @@ def subscribe(client: mqtt_client, topics: [str]):
         temps = json.loads(msg.payload.decode())
         total_tc_cummulative = 0
         total_primotop_cummulative = 0
-        for temp, base_consumption in zip(temps.items(), base_consumptions.values()):
+        for temp, base_consumption, tuv_consumption in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values()):
             cop = 100
             for cop_curr in cop_35.items():
                 if cop_curr[0] > float(temp[1]):
                     cop = cop_curr[1]
                     break
-            total_tc = max(0, base_consumption + (((14 - temp[1]) * heat_lost) / cop) + tc_base)
-            total_primotop = max(0, base_consumption + ((14 - temp[1]) * heat_lost))
+            cop_tuv = cop / cop_tuv_coeff
+            total_tc = max(0, base_consumption + (((14 - temp[1]) * heat_lost) / cop) + tc_base + (tuv_consumption / cop_tuv))
+            total_primotop = max(0, base_consumption + ((14 - temp[1]) * heat_lost) + tuv_consumption)
             total_tc_cummulative += total_tc
             total_primotop_cummulative += total_primotop
             if c["debug"]:
-                print(datetime.fromtimestamp(float(temp[0])), ": ", temp[1], "C : ", cop, ": ", base_consumption, "W : ", (14 - temp[1]) * heat_lost, "W: ", total_tc, "W: ", total_primotop, "W")
+                print(datetime.fromtimestamp(float(temp[0])), ": ", temp[1], "C : ", cop, ": ", base_consumption, "kW : ", (14 - temp[1]) * heat_lost, "kW: ", total_tc, "kW: ", total_primotop, "kW")
             write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop", float(total_primotop)).time(datetime.fromtimestamp(float(temp[0]))))
             write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc", float(total_tc)).time(datetime.fromtimestamp(float(temp[0]))))
             write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop_cummulative", float(total_primotop_cummulative)).time(datetime.fromtimestamp(float(temp[0]))))
