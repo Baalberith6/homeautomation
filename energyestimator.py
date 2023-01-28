@@ -12,7 +12,7 @@ from config import generalConfig as c
 
 heat_lost = 0.140  # 0.125 kW/K
 
-tc_base = 0.05
+tc_base = 0.1 # 100W
 
 # nibe COP
 cop_35 = {
