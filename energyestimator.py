@@ -61,14 +61,14 @@ base_consumptions = {
     6: 0.250,
     7: 0.350,
     8: 0.500,
-    9: 0.550,
-    10: 0.500,
-    11: 0.500,
-    12: 0.300,
+    9: 0.650,
+    10: 0.800,
+    11: 1.000,
+    12: 0.500,
     13: 0.300,
-    14: 0.300,
-    15: 0.500,
-    16: 0.500,
+    14: 0.500,
+    15: 0.800,
+    16: 0.800,
     17: 0.500,
     18: 0.300,
     19: 0.300,
@@ -119,7 +119,7 @@ def subscribe(client: mqtt_client, topics: [str]):
             cop = 100
             for cop_curr in cop_35.items():
                 if cop_curr[0] > float(temp[1]):
-                    cop = cop_curr[1]
+                    cop = cop_curr[1] - 0.2  # const za radiatory
                     break
             cop_tuv = cop / cop_tuv_coeff
             total_tc = max(0, base_consumption + (((14 - temp[1]) * heat_lost) / cop) + tc_base + (tuv_consumption / cop_tuv))
