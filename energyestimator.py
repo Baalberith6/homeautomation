@@ -51,6 +51,33 @@ cop_35 = {
 
 cop_tuv_coeff = 1.25  # 25% lower cop for 45C
 
+temperatures_inside = {
+    0: 18,
+    1: 18,
+    2: 18,
+    3: 18,
+    4: 18,
+    5: 18,
+    6: 19,
+    7: 20,
+    8: 20.5,
+    9: 20.5,
+    10: 20.5,
+    11: 20.5,
+    12: 20.5,
+    13: 20.5,
+    14: 20.5,
+    15: 20.5,
+    16: 20.5,
+    17: 20.5,
+    18: 20.5,
+    19: 20.5,
+    20: 20,
+    21: 19,
+    22: 18,
+    23: 18,
+}
+
 base_consumptions = {
     0: 0.250,
     1: 0.250,
@@ -115,23 +142,27 @@ def subscribe(client: mqtt_client, topics: [str]):
         temps = json.loads(msg.payload.decode())
         total_tc_cummulative = 0
         total_primotop_cummulative = 0
-        for temp, base_consumption, tuv_consumption in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values()):
+        for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
             cop = 100
+            temp_in -= 5  # 5C diff base load + 4 ludia + pes
             for cop_curr in cop_35.items():
                 if cop_curr[0] > float(temp[1]):
                     cop = cop_curr[1] - 0.2  # const za radiatory
                     break
             cop_tuv = cop / cop_tuv_coeff
-            total_tc = max(0, base_consumption + (((14 - temp[1]) * heat_lost) / cop) + tc_base + (tuv_consumption / cop_tuv))
-            total_primotop = max(0, base_consumption + ((14 - temp[1]) * heat_lost) + tuv_consumption)
+            total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop_tuv)
+            total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost)) + tuv_consumption
             total_tc_cummulative += total_tc
             total_primotop_cummulative += total_primotop
-            if c["debug"]:
-                print(datetime.fromtimestamp(float(temp[0])), ": ", temp[1], "C : ", cop, ": ", base_consumption, "kW : ", (14 - temp[1]) * heat_lost, "kW: ", total_tc, "kW: ", total_primotop, "kW")
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop", float(total_primotop)).time(datetime.fromtimestamp(float(temp[0]))))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc", float(total_tc)).time(datetime.fromtimestamp(float(temp[0]))))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop_cummulative", float(total_primotop_cummulative)).time(datetime.fromtimestamp(float(temp[0]))))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc_cummulative", float(total_tc_cummulative)).time(datetime.fromtimestamp(float(temp[0]))))
+            if c["debug"]: # -600s, because otherwise it was taken into next hour
+                print(datetime.fromtimestamp(float(temp[0]) - 600.0), ": ", temp[1], "C : COP: ", cop, ": ")
+                print("    base: ", base_consumption, "kW")
+                print("    heat lost:", (14 - temp[1]) * heat_lost, "kW")
+                print("    tc: ", total_tc, "kW/", total_tc_cummulative, "kW, primotop: ", total_primotop, "kW/", total_primotop_cummulative, "kW")
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop", float(total_primotop)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc", float(total_tc)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop_cummulative", float(total_primotop_cummulative)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc_cummulative", float(total_tc_cummulative)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
 
     for topic in topics:
         client.subscribe(topic)
