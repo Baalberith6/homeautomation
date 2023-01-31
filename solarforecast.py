@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timedelta
 from pprint import pprint
 
 from dateutil import parser
@@ -26,7 +26,7 @@ def store_runtime_data(r):
     daily_sum_p10 = 0
     daily_sum_p90 = 0
     for estimate in r["forecasts"]:
-        timestamp = parser.parse(estimate["period_end"])
+        timestamp = parser.parse(estimate["period_end"]) - timedelta(minutes=5) # so it is not counted towards next interval
         if timestamp.date() == datetime.today().date():
             daily_sum += estimate["pv_estimate"]/2
             daily_sum_p10 += estimate["pv_estimate10"]/2
