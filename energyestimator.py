@@ -10,7 +10,7 @@ from config import influxConfig
 from secret import influxToken
 from config import generalConfig as c
 
-heat_lost = 0.140  # 0.140 kW/K
+heat_lost = 0.150  # 0.150 kW/K
 
 tc_base = 0.1  # 100W
 
@@ -151,7 +151,7 @@ def subscribe(client: mqtt_client, topics: [str]):
                     break
             cop_tuv = cop / cop_tuv_coeff
             total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop_tuv)
-            total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost)) + tuv_consumption
+            total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost))  # no TUV as we don't have it in "inside" house consumption
             total_tc_cummulative += total_tc
             total_primotop_cummulative += total_primotop
             if c["debug"]: # -600s, because otherwise it was taken into next hour
