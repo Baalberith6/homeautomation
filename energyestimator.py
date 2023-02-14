@@ -10,7 +10,7 @@ from config import influxConfig
 from secret import influxToken
 from config import generalConfig as c
 
-heat_lost = 0.150  # 0.150 kW/K
+heat_lost = 0.143  # 0.143 kW/K
 
 tc_base = 0.1  # 100W
 
