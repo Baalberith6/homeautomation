@@ -47,7 +47,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
 
     stop_at = 6  # Amp
     start_at = 6
-    max_amp = 15
+    max_amp = 16
     should_charge = True
     was_charging = actual_charging_current != 0
 
