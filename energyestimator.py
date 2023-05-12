@@ -14,41 +14,39 @@ heat_lost = 0.143  # 0.143 kW/K
 
 tc_base = 0.1  # 100W
 
-# Hitachi 4kW COP
-cop_35 = {
-    -20: 1.55,
-    -18: 1.6,
+# Hitachi 8kW COP 45C as the output temp (due to TUV)
+cop_45 = {
+    -20: 1.5,
+    -18: 1.6, # 5.3kW - PEAK
     -16: 1.7,
-    -14: 1.7,
-    -13: 1.8,
-    -12: 1.9,
-    -10: 1.95,
-    -9: 2.0,
-    -7: 2.1,
-    -6: 2.1,
-    -5: 2.2,
-    -4: 2.3,
-    -3: 2.3, # cop_45 from here up COP 2.36
-    -1: 2.9,
-    0: 3.0,
-    1: 3.1,
-    2: 3.15,
-    3: 3.3,
-    4: 3.5,
-    5: 3.7,
-    6: 3.9,
-    7: 4.1,
-    8: 4.2,
-    9: 4.3,
-    10: 4.4,
-    11: 4.5,
-    12: 4.6,
-    13: 4.5,
-    14: 4.7,
-    100: 4.7 # cop_35 from here up
+    -14: 1.8,
+    -13: 1.9,
+    -12: 2.0,
+    -10: 2.1,
+    -9: 2.2,
+    -7: 2.3, # 5.6kW
+    -6: 2.4,
+    -5: 2.5,
+    -4: 2.6,
+    -3: 2.8,
+    -1: 3,
+    0: 3.2,
+    1: 3.5,
+    2: 3.8, # 3.3kW
+    3: 4.2,
+    4: 4.4,
+    5: 4.9,
+    6: 5.5,
+    7: 6, # 2.6kW
+    8: 6.3,
+    9: 6.6,
+    10: 7,
+    11: 7.5,
+    12: 8, # 2.9kW
+    13: 8.5,
+    14: 9,
+    100: 10
 }
-
-cop_tuv_coeff = 1.25  # 25% lower cop for 45C
 
 temperatures_inside = {
     0: 16,
@@ -144,12 +142,11 @@ def subscribe(client: mqtt_client, topics: [str]):
         for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
             cop = 100
             temp_in -= 5  # 5C diff base load + 4 ludia + pes
-            for cop_curr in cop_35.items():
+            for cop_curr in cop_45.items():
                 if cop_curr[0] > float(temp[1]):
                     cop = cop_curr[1] - 0.2  # const za radiatory
                     break
-            cop_tuv = cop / cop_tuv_coeff
-            total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop_tuv)
+            total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption)
             total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost))  # no TUV as we don't have it in "inside" house consumption
             total_tc_cummulative += total_tc
             total_primotop_cummulative += total_primotop
