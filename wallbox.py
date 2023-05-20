@@ -37,6 +37,7 @@ car = -1
 nrg = [0, 0, 0, 0, 0, 0]
 modelStatus = -1
 updatedAt = -1
+amp_reserve = 3
 
 
 def calculate_current(inverter, actual_charging_current: int, car_phases: int):
@@ -59,13 +60,13 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230
 
     # increase, until we use all PV
-    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) < max_amp and remaining_ppv > car_phases * 230 and allowable_current < max_amp:
+    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) - amp_reserve < max_amp and remaining_ppv > car_phases * 230 and allowable_current < max_amp:
         remaining_ppv -= car_phases * 230
         allowable_current += 1
         if c["debug"]: print(f"added, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
     # decrease, if negative PV
-    while allowable_current > 0 and remaining_ppv < 0:
+    while allowable_current > 0 and remaining_ppv - amp_reserve < 0 :
         remaining_ppv += car_phases * 230
         allowable_current -= 1
         if c["debug"]: print(f"substracted, ppv: {remaining_ppv}, allowable: {allowable_current}")
@@ -81,7 +82,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         if c["debug"]: print(f"if charging, would charge: {should_charge}, {allowable_current} A")
 
     if not was_charging:
-        should_charge = allowable_current >= start_at and wallboxConfig["start_at_soc"] < inverter["battery_soc"] < 100
+        should_charge = allowable_current >= start_at and wallboxConfig["start_at_soc"] < inverter["battery_soc"]
         if c["debug"]: print(f"if NOT charging, would charge: {should_charge}, {allowable_current} A")
 
     if c["debug"]: print(f"P1 curr {i1} A")
