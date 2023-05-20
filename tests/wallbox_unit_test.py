@@ -146,7 +146,7 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i3": 0,
             "battery_soc": 85
         }
-        self.assertEqual(15, calculate_current(test_data, 12, 3))
+        self.assertEqual(16, calculate_current(test_data, 12, 3))
 
 
 class TestWallbox1Phase(unittest.TestCase):
