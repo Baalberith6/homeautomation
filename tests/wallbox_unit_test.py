@@ -44,7 +44,7 @@ class TestWallbox3Phase(unittest.TestCase):
         }
         self.assertEqual(11, calculate_current(test_data, 0, 3))
 
-    def test_no_load_8k_power_off_100p_should_off(self):
+    def test_no_load_8k_power_off_100p_should_on(self):
         test_data = {
             "ppv": 8000,
             "load_p1": 0,
@@ -55,7 +55,7 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i3": 0,
             "battery_soc": 100
         }
-        self.assertEqual(0, calculate_current(test_data, 0, 3))
+        self.assertEqual(11, calculate_current(test_data, 0, 3))
 
     def test_4k_load_no_power_on_89p_should_on(self):
         test_data = {
@@ -83,7 +83,7 @@ class TestWallbox3Phase(unittest.TestCase):
         }
         self.assertEqual(0, calculate_current(test_data, 6, 3))
 
-    def test_manual_8k_load_no_power_on_50p_should_on(self):
+    def test_manual_8k_load_no_power_on_66p_should_on(self):
         test_data = {
             "ppv": 0,
             "load_p1": 2760,
@@ -92,9 +92,9 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i1": 0,
             "backup_i2": 0,
             "backup_i3": 0,
-            "battery_soc": 50
+            "battery_soc": 66
         }
-        self.assertEqual(12, calculate_current(test_data, 12, 3))
+        self.assertEqual(6, calculate_current(test_data, 12, 3))
 
     def test_manual_8k_load_10k_power_on_50p_should_stay(self):
         test_data = {
@@ -161,7 +161,7 @@ class TestWallbox1Phase(unittest.TestCase):
             "backup_i3": 0.1,
             "battery_soc": 95
         }
-        self.assertEqual(14, calculate_current(test_data, 0, 1))
+        self.assertEqual(15, calculate_current(test_data, 0, 1))
 
     def test_no_load_4k_power_on_95p_should_increase(self):
         test_data = {
@@ -174,7 +174,7 @@ class TestWallbox1Phase(unittest.TestCase):
             "backup_i3": 0.1,
             "battery_soc": 95
         }
-        self.assertEqual(14, calculate_current(test_data, 6, 1))
+        self.assertEqual(15, calculate_current(test_data, 6, 1))
 
     def test_no_load_just_started_7k_power_on_95p_should_max(self):  # just started
         test_data = {
@@ -187,7 +187,7 @@ class TestWallbox1Phase(unittest.TestCase):
             "backup_i3": 0.1,
             "battery_soc": 95
         }
-        self.assertEqual(15, calculate_current(test_data, 6, 1))
+        self.assertEqual(16, calculate_current(test_data, 6, 1))
 
     def test_1k_load_2k_power_off_95p_should_off(self):
         test_data = {
@@ -202,7 +202,7 @@ class TestWallbox1Phase(unittest.TestCase):
         }
         self.assertEqual(0, calculate_current(test_data, 0, 1))
 
-    def test_2k_load_10k_power_on_100p_should_off(self):
+    def test_2k_load_10k_power_on_100p_should_on(self):
         test_data = {
             "ppv": 10000,
             "load_p1": 2000,
@@ -213,7 +213,7 @@ class TestWallbox1Phase(unittest.TestCase):
             "backup_i3": 0.1,
             "battery_soc": 100
         }
-        self.assertEqual(0, calculate_current(test_data, 10, 1))
+        self.assertEqual(16, calculate_current(test_data, 10, 1))
 
     def test_3kk_load_no_power_on_64p_should_off(self):
         test_data = {
