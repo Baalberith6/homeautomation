@@ -142,11 +142,7 @@ def subscribe(client: mqtt_client, topics: [str]):
         for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
             cop = 100
             temp_in -= 5  # 5C diff base load + 4 ludia + pes
-            for cop_curr in cop_45.items():
-                if cop_curr[0] > float(temp[1]):
-                    cop = cop_curr[1] - 0.2  # const za radiatory
-                    break
-            total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption)
+            total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop)
             total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost))  # no TUV as we don't have it in "inside" house consumption
             total_tc_cummulative += total_tc
             total_primotop_cummulative += total_primotop
