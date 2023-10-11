@@ -143,7 +143,7 @@ def subscribe(client: mqtt_client, topics: [str]):
             cop = 100
             temp_in -= 5  # 5C diff base load + 4 ludia + pes
             total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop)
-            total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost))  # no TUV as we don't have it in "inside" house consumption
+            total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost) + tuv_consumption)
             total_tc_cummulative += total_tc
             total_primotop_cummulative += total_primotop
             if c["debug"]: # -600s, because otherwise it was taken into next hour
