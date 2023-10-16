@@ -37,7 +37,7 @@ car = -1
 nrg = [0, 0, 0, 0, 0, 0]
 modelStatus = -1
 updatedAt = -1
-amp_reserve = 3
+amp_reserve = -1.5
 
 
 def calculate_current(inverter, actual_charging_current: int, car_phases: int):
@@ -57,7 +57,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     i2 = inverter["load_p2"] / 230 + inverter["backup_i2"]
     i3 = inverter["load_p3"] / 230 + inverter["backup_i3"]
     allowable_current = actual_charging_current
-    remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230
+    remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230 - amp_reserve * car_phases * 230
 
     # increase, until we use all PV
     while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) - amp_reserve < max_amp and remaining_ppv > car_phases * 230 and allowable_current < max_amp:
@@ -187,7 +187,7 @@ def run():
     except JSONDecodeError:
         print("error connecting to Wallbox")
         return
-    client = connect_mqtt("wallbox2")
+    client = connect_mqtt("wallbox")
     subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#"])
     client.loop_forever()
 
