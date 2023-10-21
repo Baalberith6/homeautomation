@@ -72,7 +72,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         if c["debug"]: print(f"substracted, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
     if was_charging:
-        should_charge = allowable_current >= stop_at and car_phases == 3 or \
+        should_charge = allowable_current >= stop_at or \
                         inverter["battery_soc"] >= wallboxConfig["stop_at_soc"]
         if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps if 5 below limit soc
             allowable_current = actual_charging_current
