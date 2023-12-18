@@ -24,6 +24,12 @@ wundergroundConfig = {
     "wait": 30
 }
 
+netatmoConfig = {
+    "home_id": "65805d35c3db644204070181",
+    "room_id": "2965583580",
+    "thermostat_id": "04:00:00:ae:79:6c",
+}
+
 mqttConfig = {
     "broker": "localhost",
     "port": 1883
