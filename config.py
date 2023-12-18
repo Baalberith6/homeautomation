@@ -11,7 +11,7 @@ inverterConfig = {
 
 wallboxConfig = {
     "address": "http://192.168.1.200/",
-    "stop_at_soc": 65,
+    "stop_at_soc": 40,
     "start_at_soc": 75,
 }
 
@@ -20,7 +20,7 @@ azrouterConfig = {
 }
 
 wundergroundConfig = {
-    "stationId": "ISTRMI1",
+    "stationId": "ISTRMI2",
     "wait": 30
 }
 
