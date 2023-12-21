@@ -30,6 +30,13 @@ netatmoConfig = {
     "thermostat_id": "04:00:00:ae:79:6c",
 }
 
+estiaConfig = {
+    "consumer_id": "de7cb3cc-7895-4e7b-bafb-bb0550e124d8",
+    "group_id": "f9982076-0cfe-4ee0-8e60-ef8a94e19e12",
+    "device_id": "99daa6c3-687a-454b-b2a1-fd576686cb55",
+    "device_unique_id": "11bc7715-82ea-49c4-9c19-c3fc8833de4e",
+}
+
 mqttConfig = {
     "broker": "localhost",
     "port": 1883
