@@ -28,7 +28,7 @@ async def main():
                 if instrument.attr == "charging_power":
                     client.publish("home/Car/charging_power", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
 
-            time.sleep(60)
+            time.sleep(120)
 
 
 if __name__ == "__main__":
