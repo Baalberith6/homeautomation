@@ -12,7 +12,7 @@ def hex_to_number(hex_code):
     num = int(hex_code, 16)
     return (num - 72) / 2 + 20
 
-def hex_to_guess_number(hex_code):
+def hex_to_number_2(hex_code):
     num = int(hex_code, 16)
     return (num - 56) / 2 + 4
 
@@ -23,6 +23,8 @@ async def main():
     api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
     await api.connect()
     await api.get_devices()
+    previous_in_temp = 0
+    previous_out_temp = 0
     while True:
         sensors = await api.get_device_detail(estiaConfig["device_unique_id"])
         if (c["debug"]): print(sensors)
@@ -47,8 +49,12 @@ async def main():
             "3334": s[32:34],
         }
         if (c["debug"]): print(data)
-        in_temp = hex_to_guess_number(sensors["TWI_Temp"])
-        out_temp = hex_to_guess_number(sensors["TWO_Temp"])
+        if (s[4:6] != "01" and s[6:8] != "01"):
+            in_temp = hex_to_number_2(sensors["TWI_Temp"])
+            out_temp = hex_to_number_2(sensors["TWO_Temp"])
+        else:
+            in_temp = previous_in_temp
+            out_temp = previous_out_temp
         target_temp = data["autoHeatingTemp"]
         compressor_active = data["waterActiveCompressor"] or data["heatingActiveCompressor"]
 
@@ -57,6 +63,8 @@ async def main():
         client.publish("home/estia/target_temp", target_temp, qos=2, properties=publishProperties).wait_for_publish()
         client.publish("bool/estia/compressor_active", compressor_active, qos=2, properties=publishProperties).wait_for_publish()
 
+        previous_in_temp = in_temp
+        previous_out_temp = out_temp
         time.sleep(60)
 
 if __name__ == "__main__":
