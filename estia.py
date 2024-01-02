@@ -50,7 +50,7 @@ async def main():
             "3334": s[32:34],
         }
         if (c["debug"]): print(data)
-        if s[4:6] != "01" and s[6:8] != "01" and abs(hex_to_number_2(sensors["TWI_Temp"]) - previous_in_temp) < 15: # TUV heat is OFF and diff < 15
+        if s[4:6] != "01" and s[6:8] != "01" and (previous_in_temp == 0 or abs(hex_to_number_2(sensors["TWI_Temp"]) - previous_in_temp) < 15): # TUV heat is OFF and diff < 15
             in_temp = hex_to_number_2(sensors["TWI_Temp"])
             out_temp = hex_to_number_2(sensors["TWO_Temp"])
         else:
