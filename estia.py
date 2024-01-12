@@ -26,15 +26,20 @@ async def main():
     await api.get_devices()
     previous_in_temp = 0
     previous_out_temp = 0
+    tuv_active_latest = 999
     while True:
         sensors = await api.get_device_detail(estiaConfig["device_unique_id"])
         if (c["debug"]): print(sensors)
         s = sensors["ACStateData"]
+        tuv_compressor_active = s[4:6] == "01"
+        tuv_coil_active = s[6:8] == "01"
+        tuv_active = tuv_compressor_active or tuv_coil_active
+        tuv_active_latest = 0 if tuv_active else tuv_active_latest + 1
         data = {
             "waterActive": s[:2] == "0c",
             "waterTemp": hex_to_number(s[2:4]),
-            "waterActiveCompressor": s[4:6] == "01",
-            "waterActiveCoil": s[6:8] == "01",
+            "waterActiveCompressor": tuv_compressor_active,
+            "waterActiveCoil": tuv_coil_active,
             "heatingActive": s[8:10] == "03",
             "1112": s[10:12],
             "manualHeatingTemp": hex_to_number(s[12:14]),
@@ -50,7 +55,7 @@ async def main():
             "3334": s[32:34],
         }
         if (c["debug"]): print(data)
-        if s[4:6] != "01" and s[6:8] != "01" and (previous_in_temp == 0 or abs(hex_to_number_2(sensors["TWI_Temp"]) - previous_in_temp) < 15): # TUV heat is OFF and diff < 15
+        if not tuv_compressor_active and not tuv_coil_active and tuv_active_latest > 10: # TUV not active for 10 minutes
             in_temp = hex_to_number_2(sensors["TWI_Temp"])
             out_temp = hex_to_number_2(sensors["TWO_Temp"])
         else:
