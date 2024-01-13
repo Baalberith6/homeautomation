@@ -15,7 +15,8 @@ def hex_to_number(hex_code):
 
 def hex_to_number_2(hex_code):
     num = int(hex_code, 16)
-    return (num - 56) / 2 + 4
+    return (num - 52) / 2 + 4
+# a4 -> 60
 
 async def main():
     client = connect_mqtt("toshiba-estia")
