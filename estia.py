@@ -62,7 +62,7 @@ async def main():
             "3334": s[32:34],
         }
         if (c["debug"]): print(data)
-        if not tuv_compressor_active and not tuv_coil_active and tuv_active_latest > 10: # TUV not active for 10 minutes
+        if not tuv_compressor_active and not tuv_coil_active and tuv_active_latest > 20: # TUV not active for 20 minutes
             in_temp = hex_to_number_2(sensors["TWI_Temp"])
             out_temp = hex_to_number_2(sensors["TWO_Temp"])
         else:
