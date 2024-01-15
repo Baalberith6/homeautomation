@@ -11,12 +11,18 @@ from config import generalConfig as c, estiaConfig
 
 def hex_to_number(hex_code):
     num = int(hex_code, 16)
-    return (num - 72) / 2 + 20
+    return num - 32
 
 def hex_to_number_2(hex_code):
     num = int(hex_code, 16)
-    return (num - 52) / 2 + 4
+    return num - 48 + (0 if num < 100 else 2) # no idea why
 # a4 -> 60
+# a6 -> 62
+# a7 -> 63 // 62,5?
+# 86 -> 43
+# 74 -> 34
+# 6c -> 29.5
+# 64 -> 26
 
 async def main():
     client = connect_mqtt("toshiba-estia")
@@ -41,7 +47,7 @@ async def main():
             "waterTemp": hex_to_number(s[2:4]),
             "waterActiveCompressor": tuv_compressor_active,
             "waterActiveCoil": tuv_coil_active,
-            "heatingActive": s[8:10] == "03",
+            "heatingActive": s[8:10] == "03", # maybe pump?
             "1112": s[10:12],
             "manualHeatingTemp": hex_to_number(s[12:14]),
             "autoHeatingTemp": hex_to_number(s[14:16]),
