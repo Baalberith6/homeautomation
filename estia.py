@@ -25,7 +25,7 @@ def hex_to_number_2(hex_code):
 # 64 -> 26
 
 async def main():
-    client = connect_mqtt("toshiba-estia2")
+    client = connect_mqtt("toshiba-estia")
     client.loop_start()
 
     api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
