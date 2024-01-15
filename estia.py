@@ -15,7 +15,7 @@ def hex_to_number(hex_code):
 
 def hex_to_number_2(hex_code):
     num = int(hex_code, 16)
-    return (num - 48) / 2 + (0 if num < 100 else 2) # no idea why
+    return (num - 48) / 2 + (0 if num < 150 else 2) # no idea why
 # a4 -> 60
 # a6 -> 62
 # a7 -> 63 // 62,5?
