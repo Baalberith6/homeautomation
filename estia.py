@@ -11,11 +11,11 @@ from config import generalConfig as c, estiaConfig
 
 def hex_to_number(hex_code):
     num = int(hex_code, 16)
-    return num - 32
+    return (num - 32) / 2
 
 def hex_to_number_2(hex_code):
     num = int(hex_code, 16)
-    return num - 48 + (0 if num < 100 else 2) # no idea why
+    return (num - 48) / 2 + (0 if num < 100 else 2) # no idea why
 # a4 -> 60
 # a6 -> 62
 # a7 -> 63 // 62,5?
@@ -25,7 +25,7 @@ def hex_to_number_2(hex_code):
 # 64 -> 26
 
 async def main():
-    client = connect_mqtt("toshiba-estia")
+    client = connect_mqtt("toshiba-estia2")
     client.loop_start()
 
     api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
