@@ -140,7 +140,7 @@ def subscribe(client: mqtt_client, topics: [str]):
         total_tc_cummulative = 0
         total_primotop_cummulative = 0
         for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
-            cop = 100
+            cop = find_closest_cop(cop_45, temp[1])
             temp_in -= 5  # 5C diff base load + 4 ludia + pes
             total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop)
             total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost) + tuv_consumption)
@@ -169,3 +169,7 @@ def run():
 
 if __name__ == '__main__':
     run()
+
+def find_closest_cop(temperature_dict, input_temperature):
+    closest_temp = min(temperature_dict.keys(), key=lambda x: abs(x - input_temperature))
+    return temperature_dict[closest_temp]
