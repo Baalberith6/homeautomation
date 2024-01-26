@@ -57,18 +57,18 @@ temperatures_inside = {
     5: 21,
     6: 21,
     7: 21,
-    8: 22,
-    9: 22,
-    10: 22,
-    11: 22,
-    12: 22,
-    13: 22,
-    14: 22,
-    15: 22,
-    16: 22,
-    17: 22,
-    18: 22,
-    19: 22,
+    8: 21,
+    9: 21,
+    10: 21,
+    11: 21,
+    12: 21,
+    13: 21,
+    14: 21,
+    15: 21,
+    16: 21,
+    17: 21,
+    18: 21,
+    19: 21,
     20: 21,
     21: 21,
     22: 21,
@@ -140,8 +140,8 @@ def calculate(temps):
     for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
         time = datetime.fromtimestamp(float(temp[0]) - 600.0)
         cop = find_closest_cop(cop_30, temp[1])
-        temp_in -= 5  # 5C diff base load + 4 ludia + pes
-        total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop)
+        temp_in -= 3  # 5C diff base load + 4 ludia + pes
+        total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / (cop / 1.5))
         total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost) + tuv_consumption)
         total_tc_cummulative += total_tc
         total_primotop_cummulative += total_primotop
