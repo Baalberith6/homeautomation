@@ -14,8 +14,8 @@ heat_lost = 0.143  # 0.143 kW/K
 
 tc_base = 0.1  # 100W
 
-# Toshiba 8kW COP 35C as the output temp until -7C
-cop_45 = {
+# Toshiba 8kW COP 30C as the output temp until -7C
+cop_30 = {
     -20: 1.5,
     -18: 1.6,
     -16: 1.7,
@@ -133,28 +133,37 @@ influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=i
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
 
 
+def calculate(temps):
+    total_tc_cummulative = 0
+    total_primotop_cummulative = 0
+    res = {}
+    for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
+        time = datetime.fromtimestamp(float(temp[0]) - 600.0)
+        cop = find_closest_cop(cop_30, temp[1])
+        temp_in -= 5  # 5C diff base load + 4 ludia + pes
+        total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop)
+        total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost) + tuv_consumption)
+        total_tc_cummulative += total_tc
+        total_primotop_cummulative += total_primotop
+        if c["debug"]:  # -600s, because otherwise it was taken into next hour
+            print(time, ": ", temp[1], "C : COP: ", cop, ": ")
+            print("    base: ", base_consumption, "kW")
+            print("    heat lost:", (14 - temp[1]) * heat_lost, "kW")
+            print("    tc: ", total_tc, "kW/", total_tc_cummulative, "kW, primotop: ", total_primotop, "kW/", total_primotop_cummulative, "kW")
+        res[time] = {"total_tc": total_tc, "total_primotop": total_primotop, "total_tc_cummulative": total_tc_cummulative, "total_primotop_cummulative": total_primotop_cummulative}
+    return res
+
+
 def subscribe(client: mqtt_client, topics: [str]):
     def on_message(client, userdata, msg):
-        # if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-        temps = json.loads(msg.payload.decode())
-        total_tc_cummulative = 0
-        total_primotop_cummulative = 0
-        for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
-            cop = find_closest_cop(cop_45, temp[1])
-            temp_in -= 5  # 5C diff base load + 4 ludia + pes
-            total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / cop)
-            total_primotop = base_consumption + max(0, ((temp_in - temp[1]) * heat_lost) + tuv_consumption)
-            total_tc_cummulative += total_tc
-            total_primotop_cummulative += total_primotop
-            if c["debug"]: # -600s, because otherwise it was taken into next hour
-                print(datetime.fromtimestamp(float(temp[0]) - 600.0), ": ", temp[1], "C : COP: ", cop, ": ")
-                print("    base: ", base_consumption, "kW")
-                print("    heat lost:", (14 - temp[1]) * heat_lost, "kW")
-                print("    tc: ", total_tc, "kW/", total_tc_cummulative, "kW, primotop: ", total_primotop, "kW/", total_primotop_cummulative, "kW")
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop", float(total_primotop)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc", float(total_tc)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop_cummulative", float(total_primotop_cummulative)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc_cummulative", float(total_tc_cummulative)).time(datetime.fromtimestamp(float(temp[0]) - 600.0)))
+        if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+        results = calculate(msg.payload.decode())
+
+        for key in results:
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop", float(results[key]["total_primotop"])).time(key))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc", float(results[key]["total_tc"])).time(key))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop_cummulative", float(results[key]["total_primotop_cummulative"])).time(key))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("tc_cummulative", float(results[key]["total_tc_cummulative"])).time(key))
 
     for topic in topics:
         client.subscribe(topic)
