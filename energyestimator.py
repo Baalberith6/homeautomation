@@ -174,7 +174,7 @@ def subscribe(client: mqtt_client, topics: [str]):
 
 
 def run():
-    client = connect_mqtt("estimator2")
+    client = connect_mqtt("estimator")
     subscribe(client, ["jsons/weatherforecast/yr/tomorrow"])
     client.loop_forever()
 
