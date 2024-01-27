@@ -1,6 +1,7 @@
 import logging
 import typing as t
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 import aiohttp
 
@@ -38,7 +39,7 @@ class ToshibaAcHttpApi:
     REGISTER_PATH = "/api/Consumer/RegisterMobileDevice"
     AC_MAPPING_PATH = "/api/Estia/GetConsumerEstiaMapping"
     AC_STATE_PATH = "/api/Estia/GetCurrentEstiaStateByUniqueDeviceId"
-    AC_ENERGY_CONSUMPTION_PATH = "/api/Estia/GetGroupEstiaEnergyConsumption"
+    AC_ENERGY_CONSUMPTION_PATH = "/api/AC/GetGroupACEnergyConsumption"
 
     def __init__(self, username: str, password: str) -> None:
         self.username = username
@@ -135,3 +136,15 @@ class ToshibaAcHttpApi:
         }
 
         return await self.request_api(self.AC_STATE_PATH, get=get)
+
+    async def get_hourly_consumption(self, ac_unique_id: str, day: datetime) -> str:
+        post = {
+            "ACDeviceUniqueIdList": [ac_unique_id],
+            "Timezone": "UTC", # seems like it doesn't matter
+            "Type": "EnergyDay",
+            "FromUtcTime": (day - timedelta(days=1)).strftime("%Y-%m-%d"),
+            "ToUtcTime": day.strftime("%Y-%m-%d"),
+            "IsEstia": True,
+        }
+
+        return await self.request_api(self.AC_ENERGY_CONSUMPTION_PATH, post=post)
