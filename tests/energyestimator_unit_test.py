@@ -6,7 +6,7 @@ from energyestimator import calculate
 
 class TestEnergyEstimator(unittest.TestCase):
 
-    def test_no_load_no_power_off_should_off(self):
+    def test(self):
         expected = {datetime.datetime(2024, 1, 26, 23, 50): {'total_tc': 1.0163, 'total_primotop': 2.6752, 'total_tc_cummulative': 1.0163, 'total_primotop_cummulative': 2.6752},
                     datetime.datetime(2024, 1, 27, 0, 50): {'total_tc': 1.05205, 'total_primotop': 2.8181999999999996, 'total_tc_cummulative': 2.0683499999999997, 'total_primotop_cummulative': 5.493399999999999},
                     datetime.datetime(2024, 1, 27, 1, 50): {'total_tc': 1.099842105263158, 'total_primotop': 2.8754, 'total_tc_cummulative': 3.1681921052631576, 'total_primotop_cummulative': 8.3688},

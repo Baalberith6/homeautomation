@@ -132,6 +132,9 @@ tuv_consumptions = {
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
 
+def find_closest_cop(temperature_dict, input_temperature):
+    closest_temp = min(temperature_dict.keys(), key=lambda x: abs(x - input_temperature))
+    return temperature_dict[closest_temp]
 
 def calculate(temps):
     total_tc_cummulative = 0
@@ -157,7 +160,7 @@ def calculate(temps):
 def subscribe(client: mqtt_client, topics: [str]):
     def on_message(client, userdata, msg):
         if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-        results = calculate(msg.payload.decode())
+        results = calculate(json.loads(msg.payload.decode()))
 
         for key in results:
             write_api.write(bucket=influxConfig["bucket"], record=Point("EnergyForecast").field("primotop", float(results[key]["total_primotop"])).time(key))
@@ -171,14 +174,10 @@ def subscribe(client: mqtt_client, topics: [str]):
 
 
 def run():
-    client = connect_mqtt("estimator")
+    client = connect_mqtt("estimator2")
     subscribe(client, ["jsons/weatherforecast/yr/tomorrow"])
     client.loop_forever()
 
 
 if __name__ == '__main__':
     run()
-
-def find_closest_cop(temperature_dict, input_temperature):
-    closest_temp = min(temperature_dict.keys(), key=lambda x: abs(x - input_temperature))
-    return temperature_dict[closest_temp]
