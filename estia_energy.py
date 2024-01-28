@@ -27,18 +27,20 @@ def calculate_cop(today_usages: list, today_temp_avgs: list):
     if c["debug"]: print(f"today consumption: {today_usages},\ntemps: {today_temp_avgs}")
 
     cop = 0
+    previous_cop = 0
     total_consumption = 0
 
     for hourly_temp, hourly_consumption in zip(today_temp_avgs, today_usages):
         if hourly_temp > 17 or hourly_consumption == 0:
             continue
+        previous_cop = cop
         new_cop = (heat_loss * (18 - hourly_temp)) / hourly_consumption
         cop = (total_consumption * cop + hourly_consumption * new_cop) / (hourly_consumption + total_consumption)
         if c["debug"]: print(f"HOURLY: {hourly_temp}C   {hourly_consumption}Wh  -> COP {cop}")
         total_consumption += hourly_consumption
 
     if c["debug"]: print(f"COP: {cop}")
-    return cop
+    return previous_cop
 
 async def calc():
     global connected, api
@@ -47,7 +49,7 @@ async def calc():
     await api.get_devices()
 
     while True:
-        await asyncio.sleep(30)
+        await asyncio.sleep(300)
         hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
         if hourly_usage is not None: # polnoc
             energy_values = [item["Energy"] for item in hourly_usage]
