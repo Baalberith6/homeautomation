@@ -30,9 +30,21 @@ def calculate_cop(today_usages: list, today_temp_avgs: list):
     previous_cop = 0
     total_consumption = 0
 
+    # fix for TUV:
+    if 11 < len(today_usages):
+        today_usages[11] -= (1500 / (2 + 0.1 * (today_temp_avgs[11] / 3)))
+        today_usages[11] = max(0, today_usages[11])
+    if 12 < len(today_usages):
+        today_usages[12] -= (1500 / (2 + 0.1 * (today_temp_avgs[12] / 3)))
+        today_usages[12] = max(0, today_usages[12])
+    if 18 < len(today_usages):
+        today_usages[18] -= (2500 / (2 + 0.1 * (today_temp_avgs[18] / 3)))
+        today_usages[18] = max(0, today_usages[18])
+
     for hourly_temp, hourly_consumption in zip(today_temp_avgs, today_usages):
         if hourly_temp > 17 or hourly_consumption == 0:
             continue
+
         previous_cop = cop
         new_cop = (heat_loss * (18 - hourly_temp)) / hourly_consumption
         cop = (total_consumption * cop + hourly_consumption * new_cop) / (hourly_consumption + total_consumption)
