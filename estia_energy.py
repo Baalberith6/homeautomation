@@ -30,7 +30,7 @@ def calculate_cop(today_usages: list, today_temp_avgs: list):
     total_consumption = 0
 
     for hourly_temp, hourly_consumption in zip(today_temp_avgs, today_usages):
-        if hourly_temp > 17 or hourly_consumption is 0:
+        if hourly_temp > 17 or hourly_consumption == 0:
             continue
         new_cop = (heat_loss * (18 - hourly_temp)) / hourly_consumption
         cop = (total_consumption * cop + hourly_consumption * new_cop) / (hourly_consumption + total_consumption)
