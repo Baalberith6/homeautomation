@@ -54,7 +54,7 @@ async def calc():
         if hourly_usage is not None: # polnoc
             energy_values = [item["Energy"] for item in hourly_usage]
             cop = calculate_cop(energy_values, temps)
-            write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop", cop))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop", float(cop)))
 
 def start_async_loop():
     loop = asyncio.new_event_loop()
