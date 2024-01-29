@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from flask import Flask, request
@@ -36,7 +37,7 @@ def get_weather():
         print(f"dailyrain: {dailyrain} mm")
         print(f"solarradiation: {solarradiation} *")
 
-    client.publish("jsons/weather/local/temps_24h", temps_24h, qos=2, properties=publishProperties)
+    client.publish("jsons/weather/local/temps_24h", json.dumps(temps_24h), qos=2, properties=publishProperties)
     client.publish("home/weather/local/humidity", humidity, qos=2, properties=publishProperties)
     client.publish("home/weather/local/temperature", temp, qos=2, properties=publishProperties)
     client.publish("home/weather/local/windChill", windchill, qos=2, properties=publishProperties)
