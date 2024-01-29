@@ -10,6 +10,9 @@ client = connect_mqtt("localweather")
 
 @api.route('/weather', methods=['GET'])
 def get_weather():
+    if (c["debug"]):
+        print(request.args)
+
     temp = round((request.args.get('tempf', type=float) - 32) / 1.8, 2)  # F -> C
     in_temp = round((request.args.get('indoortempf', type=float) - 32) / 1.8, 2)  # F -> C
     in_humi = request.args.get('indoorhumidity', type=int)  # %
