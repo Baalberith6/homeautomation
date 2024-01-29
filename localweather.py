@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from flask import Flask, request
 
 from config import generalConfig as c
@@ -7,13 +9,12 @@ api = Flask(__name__)
 
 client = connect_mqtt("localweather")
 
+temps_24h = [0.0] * 24
 
 @api.route('/weather', methods=['GET'])
 def get_weather():
-    if (c["debug"]):
-        print(request.args)
-
     temp = round((request.args.get('tempf', type=float) - 32) / 1.8, 2)  # F -> C
+    temps_24h[datetime.now().hour] = temp
     in_temp = round((request.args.get('indoortempf', type=float) - 32) / 1.8, 2)  # F -> C
     in_humi = request.args.get('indoorhumidity', type=int)  # %
     windchill = round((request.args.get('windchillf', type=float) - 32) / 1.8)  # F -> C
@@ -35,6 +36,7 @@ def get_weather():
         print(f"dailyrain: {dailyrain} mm")
         print(f"solarradiation: {solarradiation} *")
 
+    client.publish("jsons/weather/local/temps_24h", temps_24h, qos=2, properties=publishProperties)
     client.publish("home/weather/local/humidity", humidity, qos=2, properties=publishProperties)
     client.publish("home/weather/local/temperature", temp, qos=2, properties=publishProperties)
     client.publish("home/weather/local/windChill", windchill, qos=2, properties=publishProperties)
