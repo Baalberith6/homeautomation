@@ -87,6 +87,7 @@ async def calc():
     while True:
         if datetime.now().minute != 10: # wait for 10 past
             await asyncio.sleep(60)
+            continue
         hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
         hourly_usage_yesterday = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
         hourly_usage_merged = merge_arrays([item["Energy"] for item in hourly_usage], [item["Energy"] for item in hourly_usage_yesterday])
