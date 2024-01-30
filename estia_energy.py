@@ -57,10 +57,10 @@ def calculate_cop(consumption_24h: list, temp_avgs_24h: list):
 
     # fix for TUV:
     if 11 < len(consumption_24h):
-        consumption_24h[11] -= (5000 / (2 + 0.1 * (temp_avgs_24h[11] / 3)))
+        consumption_24h[11] -= (5000 / (2 + 0.1 * (temp_avgs_24h[11] / 2)))
         consumption_24h[11] = max(0, consumption_24h[11])
     if 18 < len(consumption_24h):
-        consumption_24h[18] -= (2000 / (2 + 0.1 * (temp_avgs_24h[18] / 3)))
+        consumption_24h[18] -= (2000 / (2 + 0.1 * (temp_avgs_24h[18] / 2)))
         consumption_24h[18] = max(0, consumption_24h[18])
 
     for hourly_temp, hourly_consumption in zip(temp_avgs_24h, consumption_24h):
