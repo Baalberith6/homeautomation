@@ -85,7 +85,7 @@ async def calc():
     await api.get_devices()
 
     while True:
-        if datetime.now().minute != 10: # wait for 10 past
+        if datetime.now().minute != 15: # wait for 15 past
             await asyncio.sleep(60)
             continue
         hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
