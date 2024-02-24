@@ -56,12 +56,12 @@ def calculate_cop(consumption_24h: list, temp_avgs_24h: list):
     total_consumption = 0
 
     # fix for TUV:
-    if 11 < len(consumption_24h):
-        consumption_24h[11] -= (5000 / (2 + 0.1 * (temp_avgs_24h[11] / 2)))
-        consumption_24h[11] = max(0, consumption_24h[11])
-    if 18 < len(consumption_24h):
-        consumption_24h[18] -= (2000 / (2 + 0.1 * (temp_avgs_24h[18] / 2)))
-        consumption_24h[18] = max(0, consumption_24h[18])
+    if 10 < len(consumption_24h):
+        consumption_24h[10] -= (5000 / (2 + 0.1 * (temp_avgs_24h[10] / 2)))
+        consumption_24h[10] = max(0, consumption_24h[10])
+    if 16 < len(consumption_24h):
+        consumption_24h[16] -= (2000 / (2 + 0.1 * (temp_avgs_24h[16] / 2)))
+        consumption_24h[16] = max(0, consumption_24h[16])
 
     for hourly_temp, hourly_consumption in zip(temp_avgs_24h, consumption_24h):
         if hourly_temp > 17:
@@ -85,7 +85,7 @@ async def calc():
     await api.get_devices()
 
     while True:
-        if datetime.now().minute != 15: # wait for 15 past
+        if datetime.now().minute != 22: # wait for 15 past
             await asyncio.sleep(60)
             continue
         hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
@@ -114,7 +114,7 @@ def subscribe(client: mqtt_client, topics: [str]):
     client.on_message = on_message
 
 def run():
-    client = connect_mqtt("estia_energy3")
+    client = connect_mqtt("estia_energy")
     subscribe(client, ["jsons/weather/local/temps_24h"])
     threading.Thread(target=start_async_loop, daemon=True).start()
     client.loop_forever()
