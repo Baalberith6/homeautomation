@@ -49,6 +49,26 @@ def merge_arrays(arr1, arr2):
 
     return merged_array
 
+
+def replace_two_highest_with(numbers, replacement):
+    highest = second_highest = float('-inf')
+    highest_index = second_highest_index = -1
+
+    for i, number in enumerate(numbers):
+        if number > highest:
+            second_highest, second_highest_index = highest, highest_index
+            highest, highest_index = number, i
+        elif number > second_highest:
+            second_highest, second_highest_index = number, i
+
+    # Replace the two highest values with 200, maintaining the original order
+    if highest_index != -1:
+        numbers[highest_index] = replacement
+    if second_highest_index != -1:
+        numbers[second_highest_index] = replacement
+
+    return numbers
+
 def calculate_cop(consumption_24h: list, temp_avgs_24h: list):
     if c["debug"]: print(f"today consumption: {consumption_24h},\ntemps: {temp_avgs_24h}")
 
@@ -56,12 +76,7 @@ def calculate_cop(consumption_24h: list, temp_avgs_24h: list):
     total_consumption = 0
 
     # fix for TUV:
-    if 10 < len(consumption_24h):
-        consumption_24h[10] = 200
-        # consumption_24h[10] = max(0, consumption_24h[10])
-    if 16 < len(consumption_24h):
-        consumption_24h[16] = 200
-        # consumption_24h[16] = max(0, consumption_24h[16])
+    replace_two_highest_with(consumption_24h, 200)
 
     for hourly_temp, hourly_consumption in zip(temp_avgs_24h, consumption_24h):
         if hourly_temp > 17:
