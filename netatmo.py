@@ -9,7 +9,7 @@ from secret import netatmoClientId, netatmoClientSecret
 from config import netatmoConfig
 from config import generalConfig as c
 
-logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
+# logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
 
 def save_string_to_file(content):
