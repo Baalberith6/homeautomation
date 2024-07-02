@@ -4,9 +4,37 @@ import asyncio
 import time
 
 from common import connect_mqtt, publishProperties
-from secret import netatmoClientId, netatmoClientSecret, netatmoRefreshToken
+from secret import netatmoClientId, netatmoClientSecret
 from config import netatmoConfig
 from config import generalConfig as c
+
+def save_string_to_file(content):
+    """
+    Save a string into an existing file, overwriting the content.
+
+    :param content: The string content to be written to the file.
+    """
+    try:
+        with open(file_path, 'w') as file:
+            file.write(content['refresh_token'])
+    except Exception as e:
+        print(f"An error occurred while writing to the file: {e}")
+
+def read_string_from_file():
+    """
+    Read the string content from a file.
+
+    :return: The string content read from the file.
+    """
+    try:
+        with open(file_path, 'r') as file:
+            content = file.read()
+        return content
+    except Exception as e:
+        print(f"An error occurred while reading the file: {e}")
+        return None
+
+file_path = 'netatmo.token'
 
 async def main():
     client = connect_mqtt("netatmo")
@@ -18,7 +46,8 @@ async def main():
         scope="read_thermostat"
     )
 
-    auth.extra["refresh_token"] = netatmoRefreshToken
+    auth.extra["refresh_token"] = read_string_from_file()
+    auth.token_updater = save_string_to_file
     auth.refresh_tokens()
     tokenRefresher = 0
 
@@ -26,6 +55,7 @@ async def main():
 
     while True:
         if tokenRefresher > 120:
+            auth.extra["refresh_token"] = read_string_from_file()
             auth.refresh_tokens()
             tokenRefresher = 0
 
