@@ -1,4 +1,5 @@
 import pyatmo
+import logging
 
 import asyncio
 import time
@@ -7,6 +8,9 @@ from common import connect_mqtt, publishProperties
 from secret import netatmoClientId, netatmoClientSecret
 from config import netatmoConfig
 from config import generalConfig as c
+
+logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
+LOG = logging.getLogger(__name__)
 
 def save_string_to_file(content):
     """
@@ -17,6 +21,7 @@ def save_string_to_file(content):
     try:
         with open(file_path, 'w') as file:
             file.write(content['refresh_token'])
+            LOG.debug("WRITING '%s'", content['refresh_token'])
     except Exception as e:
         print(f"An error occurred while writing to the file: {e}")
 
@@ -29,6 +34,7 @@ def read_string_from_file():
     try:
         with open(file_path, 'r') as file:
             content = file.read()
+            LOG.debug("READ '%s'", content)
         return content
     except Exception as e:
         print(f"An error occurred while reading the file: {e}")
