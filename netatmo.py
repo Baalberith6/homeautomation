@@ -33,7 +33,7 @@ def read_string_from_file():
     """
     try:
         with open(file_path, 'r') as file:
-            content = file.read()
+            content = file.read().strip()
             LOG.debug("READ '%s'", content)
         return content
     except Exception as e:
