@@ -37,7 +37,8 @@ car = -1
 nrg = [0, 0, 0, 0, 0, 0]
 modelStatus = -1
 updatedAt = -1
-amp_reserve = -1.5
+amp_reserve = -1.5 # <-1 - faster than PV can provide
+maxSocWhileCharging = 0 # if below x constant, then stop charging
 
 
 def calculate_current(inverter, actual_charging_current: int, car_phases: int):
@@ -51,6 +52,9 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     max_amp = 16
     should_charge = True
     was_charging = actual_charging_current != 0
+
+    global maxSocWhileCharging # update max SoC achieved during this charging session
+    maxSocWhileCharging = max(inverter["battery_soc"], maxSocWhileCharging)
 
     # current consumption without car charging
     i1 = inverter["load_p1"] / 230 + inverter["backup_i1"]
@@ -73,10 +77,10 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
 
     if was_charging:
         should_charge = allowable_current >= stop_at or \
-                        inverter["battery_soc"] >= wallboxConfig["stop_at_soc"]
-        if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps if 5 below limit soc
-            allowable_current = actual_charging_current
-        elif allowable_current < stop_at:
+                        inverter["battery_soc"] >= maxSocWhileCharging - wallboxConfig["stop_at_soc_diff"]
+#        if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps if 5 below limit soc
+#            allowable_current = actual_charging_current
+        if allowable_current < stop_at:
             allowable_current = stop_at  # we want to continue with the slowest speed possible
         if c["debug"]: print(f"if charging, would charge: {should_charge}, {allowable_current} A")
 
@@ -92,6 +96,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     if c["debug"]: print(f"allowable {allowable_current} A")
 
     if not should_charge:
+        maxSocWhileCharging = 0
         return 0
     else:
         return allowable_current
@@ -194,3 +199,8 @@ def run():
 
 if __name__ == '__main__':
     run()
+
+
+def clean_data():
+    global maxSocWhileCharging
+    maxSocWhileCharging = 0

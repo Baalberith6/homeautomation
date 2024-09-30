@@ -11,8 +11,8 @@ inverterConfig = {
 
 wallboxConfig = {
     "address": "http://192.168.1.200/",
-    "stop_at_soc": 40,
-    "start_at_soc": 75,
+    "stop_at_soc_diff": 3,
+    "start_at_soc": 40,
 }
 
 azrouterConfig = {
@@ -43,5 +43,5 @@ mqttConfig = {
 }
 
 generalConfig = {
-    "debug": False
+    "debug": True
 }

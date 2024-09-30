@@ -1,9 +1,11 @@
 import unittest
 
-from wallbox import calculate_current
+from wallbox import calculate_current, clean_data
 from config import wallboxConfig
 
 class TestWallbox3Phase(unittest.TestCase):
+    def setUp(self):
+        clean_data()
 
     def test_no_load_no_power_off_should_off(self):
         test_data = {
@@ -15,19 +17,6 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i2": 0,
             "backup_i3": 0,
             "battery_soc": 100
-        }
-        self.assertEqual(0, calculate_current(test_data, 0, 3))
-
-    def test_no_load_8k_power_off_68p_should_off(self):
-        test_data = {
-            "ppv": 8000,
-            "load_p1": 0,
-            "load_p2": 0,
-            "load_p3": 0,
-            "backup_i1": 0,
-            "backup_i2": 0,
-            "backup_i3": 0,
-            "battery_soc": 68
         }
         self.assertEqual(0, calculate_current(test_data, 0, 3))
 
@@ -70,7 +59,7 @@ class TestWallbox3Phase(unittest.TestCase):
         }
         self.assertEqual(6, calculate_current(test_data, 6, 3))
 
-    def test_4k_load_no_power_on_64p_should_off(self):
+    def test_4k_load_no_power_on_5p_under_should_off(self):
         test_data = {
             "ppv": 0,
             "load_p1": 1380,
@@ -79,9 +68,44 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i1": 0,
             "backup_i2": 0,
             "backup_i3": 0,
-            "battery_soc": wallboxConfig["stop_at_soc"] - 6
+            "battery_soc": 80
         }
-        self.assertEqual(0, calculate_current(test_data, 6, 3))
+        self.assertEqual(6, calculate_current(test_data, 6, 3))
+        test_data_2 = {
+            "ppv": 0,
+            "load_p1": 1380,
+            "load_p2": 1380,
+            "load_p3": 1380,
+            "backup_i1": 0,
+            "backup_i2": 0,
+            "backup_i3": 0,
+            "battery_soc": 75
+        }
+        self.assertEqual(0, calculate_current(test_data_2, 6, 3))
+
+    def test_4k_load_no_power_on_2p_under_should_on(self):
+        test_data = {
+            "ppv": 0,
+            "load_p1": 1380,
+            "load_p2": 1380,
+            "load_p3": 1380,
+            "backup_i1": 0,
+            "backup_i2": 0,
+            "backup_i3": 0,
+            "battery_soc": 80
+        }
+        self.assertEqual(6, calculate_current(test_data, 6, 3))
+        test_data_2 = {
+            "ppv": 0,
+            "load_p1": 1380,
+            "load_p2": 1380,
+            "load_p3": 1380,
+            "backup_i1": 0,
+            "backup_i2": 0,
+            "backup_i3": 0,
+            "battery_soc": 78
+        }
+        self.assertEqual(6, calculate_current(test_data_2, 6, 3))
 
     def test_manual_8k_load_no_power_on_66p_should_on(self):
         test_data = {
@@ -95,19 +119,6 @@ class TestWallbox3Phase(unittest.TestCase):
             "battery_soc": 66
         }
         self.assertEqual(6, calculate_current(test_data, 12, 3))
-
-    def test_manual_8k_load_10k_power_on_50p_should_stay(self):
-        test_data = {
-            "ppv": 10000,
-            "load_p1": 2760,
-            "load_p2": 2760,
-            "load_p3": 2760,
-            "backup_i1": 0,
-            "backup_i2": 0,
-            "backup_i3": 0,
-            "battery_soc": wallboxConfig["stop_at_soc"] - 25
-        }
-        self.assertEqual(12, calculate_current(test_data, 12, 3))
 
     def test_8k_load_10k_power_on_85p_should_increase(self):
         test_data = {
@@ -150,6 +161,8 @@ class TestWallbox3Phase(unittest.TestCase):
 
 
 class TestWallbox1Phase(unittest.TestCase):
+    def setUp(self):
+        clean_data()
     def test_no_load_4k_power_off_95p_should_on(self):
         test_data = {
             "ppv": 4000,
@@ -215,7 +228,7 @@ class TestWallbox1Phase(unittest.TestCase):
         }
         self.assertEqual(16, calculate_current(test_data, 10, 1))
 
-    def test_3kk_load_no_power_on_64p_should_off(self):
+    def test_3kk_load_no_power_on_5p_under_should_off(self):
         test_data = {
             "ppv": 0,
             "load_p1": 2760,
@@ -224,7 +237,18 @@ class TestWallbox1Phase(unittest.TestCase):
             "backup_i1": 0.1,
             "backup_i2": 0.1,
             "backup_i3": 0.1,
-            "battery_soc": wallboxConfig["stop_at_soc"] - 6
+            "battery_soc": 80
+        }
+        self.assertEqual(6, calculate_current(test_data, 12, 1))
+        test_data = {
+            "ppv": 0,
+            "load_p1": 2760,
+            "load_p2": 0,
+            "load_p3": 0,
+            "backup_i1": 0.1,
+            "backup_i2": 0.1,
+            "backup_i3": 0.1,
+            "battery_soc": 75
         }
         self.assertEqual(0, calculate_current(test_data, 12, 1))
 
