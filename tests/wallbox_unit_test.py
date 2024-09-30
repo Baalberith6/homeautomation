@@ -107,6 +107,42 @@ class TestWallbox3Phase(unittest.TestCase):
         }
         self.assertEqual(6, calculate_current(test_data_2, 6, 3))
 
+    def test_soc_keeps_updating(self):
+        test_data = {
+            "ppv": 0,
+            "load_p1": 1380,
+            "load_p2": 1380,
+            "load_p3": 1380,
+            "backup_i1": 0,
+            "backup_i2": 0,
+            "backup_i3": 0,
+            "battery_soc": 60
+        }
+        self.assertEqual(6, calculate_current(test_data, 6, 3))
+        test_data_2 = {
+            "ppv": 0,
+            "load_p1": 1380,
+            "load_p2": 1380,
+            "load_p3": 1380,
+            "backup_i1": 0,
+            "backup_i2": 0,
+            "backup_i3": 0,
+            "battery_soc": 70
+        }
+        self.assertEqual(6, calculate_current(test_data_2, 6, 3))
+        test_data_3 = {
+            "ppv": 0,
+            "load_p1": 1380,
+            "load_p2": 1380,
+            "load_p3": 1380,
+            "backup_i1": 0,
+            "backup_i2": 0,
+            "backup_i3": 0,
+            "battery_soc": 65
+        }
+        self.assertEqual(0, calculate_current(test_data_3, 6, 3))
+
+
     def test_manual_8k_load_no_power_on_66p_should_on(self):
         test_data = {
             "ppv": 0,
