@@ -55,6 +55,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
 
     global maxSocWhileCharging # update max SoC achieved during this charging session
     maxSocWhileCharging = max(inverter["battery_soc"], maxSocWhileCharging)
+    if c["debug"]: print(f"maxSocWhileCharging `{maxSocWhileCharging}%`")
 
     # current consumption without car charging
     i1 = inverter["load_p1"] / 230 + inverter["backup_i1"]
@@ -146,7 +147,7 @@ def wallbox(inverter, client):
         if c["debug"]: print(f"stopped, shouldn't start, {charging_curr}A")
         return
         # do nothing
-    if frc == 0 and charging_curr == 0:  # started, should stop
+    if frc == 0 and charging_curr == 0 and previous_charging_curr > 0:  # started, should stop
         if c["debug"]: print(f"started, should stop, {charging_curr}A")
         client.publish("go-eCharger/201630/frc/set", 1)
         # req.get(wallboxConfig["address"] + 'api/set?frc=1')
