@@ -37,7 +37,7 @@ car = -1
 nrg = [0, 0, 0, 0, 0, 0]
 modelStatus = -1
 updatedAt = -1
-amp_reserve = -1.5 # <-1 - faster than PV can provide
+amp_reserve = -1 # <-1 - faster than PV can provide
 maxSocWhileCharging = 0 # if below x constant, then stop charging
 
 
