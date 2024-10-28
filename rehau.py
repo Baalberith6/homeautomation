@@ -1,5 +1,3 @@
-from pprint import pprint
-
 from lxml import html
 import requests
 
@@ -28,6 +26,16 @@ async def main():
             if c["debug"]: print(f"{key}: {value}")
             client.publish("home/rehau/" + key, value, qos=2,  properties=publishProperties).wait_for_publish()
 
+        for room_id in [0, 1, 2, 3, 4, 6]:
+            headers = {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+            r = requests.post(url=rehauConfig["ip_address"] + "room-operating.html",headers=headers, data=str(room_id)+"=")
+            tree = html.fromstring(r.text)
+            room_name = tree.xpath('//button[@class="divRooms buttonRooms"]/input[@class="labelLeft pinkR fontArial roomName inputName"]')[0].value
+            temp = tree.xpath('//div[@class="textCenter"]/table/tr/td/input[@class="inputWPlHolder pinkR"]')[0].value
+            if c["debug"]: print(f"SET {room_name}: {temp}")
+            client.publish("home/rehau_set/" + room_name, temp, qos=2,  properties=publishProperties).wait_for_publish()
         time.sleep(60)
 
 
