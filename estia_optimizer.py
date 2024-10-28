@@ -89,7 +89,7 @@ def rehau_set(op:str):
         _request(payload, "room-page.html")
     return
 
-def netatmo_set(op:str, add_time=1200):
+def netatmo_set(op:str, add_time:int):
     timestamp = int("{:.0f}".format(time.time()))
     auth = pyatmo.NetatmoOAuth2(
         client_id=netatmoClientId,
@@ -131,11 +131,11 @@ def decide(last_last_water_temp, last_water_temp, new_water_temp, target_temp):
             netatmo_set(op="start", add_time=900)
         return
 
-    # BUG - down sometimes stops at peak
     trend_down = new_water_temp < last_water_temp < last_last_water_temp
     if trend_down:
         if c["debug"]: print(f"Stopping Rehau because heating stopped")
         rehau_set("stop")
+        return
 
     if c["debug"]: print(f"Doing nothing..")
 
