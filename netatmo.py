@@ -49,7 +49,7 @@ async def main():
     auth = pyatmo.NetatmoOAuth2(
         client_id=netatmoClientId,
         client_secret=netatmoClientSecret,
-        scope="read_thermostat"
+        scope="read_thermostat write_thermostat"
     )
 
     auth.extra["refresh_token"] = read_string_from_file()
