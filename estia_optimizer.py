@@ -36,7 +36,8 @@ rooms = [
     Room(2, "Technicka", rehauConfig["temp_all"]),
     Room(3, "Pracovna", rehauConfig["temp_all"]),
     Room(4, "Obyvacka", rehauConfig["temp_all"]),
-    Room(5, "Kuchyna", rehauConfig["temp_all"]),
+    Room(5, "Obyvacka", rehauConfig["temp_all"]),
+    Room(6, "Kuchyna", rehauConfig["temp_all"]),
 ]
 
 def _request(payload:dict, path: str):
