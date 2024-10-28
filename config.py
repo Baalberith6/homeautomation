@@ -30,6 +30,12 @@ netatmoConfig = {
     "thermostat_id": "04:00:00:ae:79:6c",
 }
 
+rehauConfig = {
+    "ip_address": "http://192.168.0.2/",
+    "temp_hala": 20.0,
+    "temp_all": 21.0
+}
+
 estiaConfig = {
     "consumer_id": "de7cb3cc-7895-4e7b-bafb-bb0550e124d8",
     "group_id": "f9982076-0cfe-4ee0-8e60-ef8a94e19e12",
