@@ -19,7 +19,7 @@ target_temp = 27.0
 hysteresis_above = 1.0 # krb protection
 hysteresis_below = -1.5 # 2 in reality, but start Rehau sooner
 
-file_path = 'netatmo.token'
+file_path = 'netatmo_optimizer.token'
 
 class Room:
     def __init__(self, id, name, normalTemp):
