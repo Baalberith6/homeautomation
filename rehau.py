@@ -8,6 +8,16 @@ from config import generalConfig as c
 from common import connect_mqtt, publishProperties
 from config import rehauConfig
 
+rooms = {
+    0: "Hala",
+    1: "Kupelna",
+    2: "Technicka",
+    3: "Pracovna",
+    4: "Obyvacka-1",
+    5: "Obyvacka-2",
+    6: "Kuchyna",
+}
+
 async def main():
     client = connect_mqtt("rehau")
     client.loop_start()
@@ -22,10 +32,6 @@ async def main():
             value = elements[i + 1]
             result_dict[key] = value
 
-        for(key, value) in result_dict.items():
-            if c["debug"]: print(f"{key}: {value}")
-            client.publish("home/rehau/" + key, value, qos=2,  properties=publishProperties).wait_for_publish()
-
         for room_id in [0, 1, 2, 3, 4, 6]:
             headers = {
                 'Content-Type': 'application/x-www-form-urlencoded'
@@ -33,9 +39,21 @@ async def main():
             r = requests.post(url=rehauConfig["ip_address"] + "room-operating.html",headers=headers, data=str(room_id)+"=")
             tree = html.fromstring(r.text)
             room_name = tree.xpath('//button[@class="divRooms buttonRooms"]/input[@class="labelLeft pinkR fontArial roomName inputName"]')[0].value
-            temp = tree.xpath('//div[@class="textCenter"]/table/tr/td/input[@class="inputWPlHolder pinkR"]')[0].value
-            if c["debug"]: print(f"SET {room_name}: {temp}")
-            client.publish("home/rehau_set/" + room_name, temp, qos=2,  properties=publishProperties).wait_for_publish()
+            temp = tree.xpath('//button[@class="divRooms buttonRooms"]/label/text()')[0]
+            temp_set = tree.xpath('//div[@class="textCenter"]/table/tr/td/input[@class="inputWPlHolder pinkR"]')[0].value
+            humidity = tree.xpath('//span[@class="spanHum"]/label[@class="labelRight greyR fontArial"]/text()')[0]
+            if c["debug"]: print(f"SET {room_name}: {temp_set}, {humidity}")
+            client.publish("home/rehau/" + room_name, temp, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/rehau_set/" + room_name, temp_set, qos=2,  properties=publishProperties).wait_for_publish()
+            client.publish("home/rehau_hum/" + room_name, humidity, qos=2, properties=publishProperties).wait_for_publish()
+
+        r = requests.get(url=rehauConfig["ip_address"] + "installer-inputoutput.html")
+        tree = html.fromstring(r.text)
+        outputs = tree.xpath('//div[@class="textCenter"]/label/text()')[1].split(':')[1].strip()
+        for i, room_val in enumerate(outputs.split(' ')[:7]):
+            room_name = rooms[i]
+            if c["debug"]: print(f"OUTPUT {room_name}: {room_val}")
+            client.publish("home/rehau_output/" + room_name, room_val, qos=2,  properties=publishProperties).wait_for_publish()
         time.sleep(60)
 
 
