@@ -19,7 +19,7 @@ rooms = {
 }
 
 async def main():
-    client = connect_mqtt("rehau")
+    client = connect_mqtt("rehau2")
     client.loop_start()
 
     while True:
@@ -41,11 +41,11 @@ async def main():
             room_name = tree.xpath('//button[@class="divRooms buttonRooms"]/input[@class="labelLeft pinkR fontArial roomName inputName"]')[0].value
             temp = tree.xpath('//button[@class="divRooms buttonRooms"]/label/text()')[0]
             temp_set = tree.xpath('//div[@class="textCenter"]/table/tr/td/input[@class="inputWPlHolder pinkR"]')[0].value
-            humidity = tree.xpath('//span[@class="spanHum"]/label[@class="labelRight greyR fontArial"]/text()')[0]
+            humidity = tree.xpath('//span[@class="spanHum"]/label[@class="labelRight greyR fontArial"]/text()')[0].strip().rstrip('%')
             if c["debug"]: print(f"SET {room_name}: {temp_set}, {humidity}")
             client.publish("home/rehau/" + room_name, temp, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/rehau_set/" + room_name, temp_set, qos=2,  properties=publishProperties).wait_for_publish()
-            client.publish("home/rehau_hum/" + room_name, humidity, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/rehau_hum/" + room_name, int(humidity), qos=2, properties=publishProperties).wait_for_publish()
 
         r = requests.get(url=rehauConfig["ip_address"] + "installer-inputoutput.html")
         tree = html.fromstring(r.text)
