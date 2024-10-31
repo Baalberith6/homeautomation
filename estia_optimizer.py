@@ -111,7 +111,7 @@ def netatmo_set(op:str, add_time:int):
     home_status.update()
     room = home_status.rooms.get(netatmoConfig["room_id"])
     if op == "start":
-        temp = room.get("therm_setpoint_temperature") if room.get("therm_setpoint_mode") == "manual" else room.get("therm_setpoint_temperature") + 1 # 1C above planned temp
+        temp = room.get("therm_setpoint_temperature") if room.get("therm_setpoint_mode") == "manual" else room.get("therm_setpoint_temperature") + 0.5 # 0.5C above planned temp
         end_time = max(timestamp+add_time, room.get("therm_setpoint_end_time", 0))
         if outside_temp > 0:
             if c["debug"]: print(f"Setting manual temp: {temp} with time: {end_time-timestamp}s")
