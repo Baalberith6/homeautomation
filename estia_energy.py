@@ -64,8 +64,9 @@ def replace_two_highest_with(numbers, replacement):
     # Replace the two highest values with 200, maintaining the original order
     if highest_index != -1:
         numbers[highest_index] = replacement
-    if second_highest_index != -1:
-        numbers[second_highest_index] = replacement
+    # As of now, we only heat TUV once a day
+    # if second_highest_index != -1:
+    #    numbers[second_highest_index] = replacement
 
     return numbers
 
