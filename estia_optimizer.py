@@ -78,8 +78,10 @@ def calc_rehau_temp(param):
     return 320 + 18 * param
 
 def rehau_set(op:str):
+    global outside_temp
+    tempAdjustment = 1.0 if outside_temp < 4 else 0.5
     for room in rooms:
-        temp = room.normalTemp if op == "stop" else room.normalTemp + 0.5
+        temp = room.normalTemp if op == "stop" else room.normalTemp + tempAdjustment
         payload = {
             'zone': room.id,
             'RoomName': room.name,
