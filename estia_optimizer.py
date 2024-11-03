@@ -16,6 +16,7 @@ last_water_temp = 100.0
 last_last_water_temp = 100.0
 target_temp = 27.0
 outside_temp = 0.0
+outside_temp_limit = -3.0 # when to stop optimizing
 
 hysteresis_above = 1.0 # krb protection
 
@@ -90,7 +91,7 @@ def rehau_set(op:str):
             'temp': calc_rehau_temp(temp),
             'mode': 'normal'
         }
-        if room.currentTemp != temp and outside_temp > 0:
+        if room.currentTemp != temp and outside_temp > outside_temp_limit:
             if c["debug"]: print(f"Starting Rehau because we are just about to start heating")
             _request(payload, "room-page.html")
         else:
@@ -115,11 +116,11 @@ def netatmo_set(op:str, add_time:int):
     if op == "start":
         temp = room.get("therm_setpoint_temperature") if room.get("therm_setpoint_mode") == "manual" else room.get("therm_setpoint_temperature") + 1 # 1C above planned temp
         end_time = max(timestamp+add_time, room.get("therm_setpoint_end_time", 0))
-        if outside_temp > 0:
+        if outside_temp > outside_temp_limit:
             if c["debug"]: print(f"Setting manual temp: {temp} with time: {end_time-timestamp}s")
             home_status.set_room_thermpoint(mode="manual", temp=temp, room_id=netatmoConfig["room_id"], end_time=end_time)
         else:
-            if c["debug"]: print(f"Netatmo Outside temp < 0C, skipping..")
+            if c["debug"]: print(f"Netatmo Outside temp < -3C, skipping..")
     elif op == "stop":
         if c["debug"]: print(f"Netatmo stop")
         home_status.set_room_thermpoint(mode="home", room_id=netatmoConfig["room_id"])
