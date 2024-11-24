@@ -26,7 +26,13 @@ wundergroundConfig = {
 
 netatmoConfig = {
     "home_id": "65805d35c3db644204070181",
-    "room_id": "2965583580",
+    "room_id_hala": "2965583580",
+    "room_id_chodba": "297596189",
+    "room_id_hostovska": "744850076",
+    "room_id_julinka": "8060066",
+    "room_id_kubo": "802684169",
+    "room_id_kupelna": "1611437767",
+    "room_id_spalna": "1440725479",
     "thermostat_id": "04:00:00:ae:79:6c",
 }
 

@@ -66,14 +66,15 @@ async def main():
             tokenRefresher = 0
 
         home_status.update()
-        room = home_status.rooms.get(netatmoConfig["room_id"])
-        thermostat = home_status.thermostats.get(netatmoConfig["thermostat_id"])
+        for room_name in ["hala", "kupelna", "chodba", "hostovska", "julinka", "kubo", "spalna"]:
+            room = home_status.rooms.get(netatmoConfig["room_id_" + room_name])
+            thermostat = home_status.thermostats.get(netatmoConfig["thermostat_id"])
 
-        client.publish("home/netatmo/temp_curr", room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
-        client.publish("bool/netatmo/on", thermostat["boiler_status"], qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("bool/netatmo/on/"+room_name, thermostat["boiler_status"], qos=2, properties=publishProperties).wait_for_publish()
 
-        if c["debug"]: print(room['therm_measured_temperature'])
-        if c["debug"]: print(thermostat["boiler_status"])
+            if c["debug"]: print(room['therm_measured_temperature'])
+            if c["debug"]: print(thermostat["boiler_status"])
         time.sleep(60)
 
 

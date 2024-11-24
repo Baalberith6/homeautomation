@@ -112,18 +112,19 @@ def netatmo_set(op:str, add_time:int):
 
     home_status = pyatmo.HomeStatus(auth, home_id=netatmoConfig["home_id"])
     home_status.update()
-    room = home_status.rooms.get(netatmoConfig["room_id"])
-    if op == "start":
-        temp = room.get("therm_setpoint_temperature") if room.get("therm_setpoint_mode") == "manual" else room.get("therm_setpoint_temperature") + 1 # 1C above planned temp
-        end_time = max(timestamp+add_time, room.get("therm_setpoint_end_time", 0))
-        if outside_temp > outside_temp_limit:
-            if c["debug"]: print(f"Setting manual temp: {temp} with time: {end_time-timestamp}s")
-            home_status.set_room_thermpoint(mode="manual", temp=temp, room_id=netatmoConfig["room_id"], end_time=end_time)
-        else:
-            if c["debug"]: print(f"Netatmo Outside temp < -3C, skipping..")
-    elif op == "stop":
-        if c["debug"]: print(f"Netatmo stop")
-        home_status.set_room_thermpoint(mode="home", room_id=netatmoConfig["room_id"])
+    for room_name in ["hala", "kupelna", "chodba", "hostovska", "julinka", "kubo", "spalna"]:
+        room = home_status.rooms.get(netatmoConfig["room_id_"+room_name])
+        if op == "start":
+            temp = room.get("therm_setpoint_temperature") if room.get("therm_setpoint_mode") == "manual" else room.get("therm_setpoint_temperature") + 1 # 1C above planned temp
+            end_time = max(timestamp+add_time, room.get("therm_setpoint_end_time", 0))
+            if outside_temp > outside_temp_limit:
+                if c["debug"]: print(f"Setting room {room_name} manual temp: {temp} with time: {end_time-timestamp}s")
+                home_status.set_room_thermpoint(mode="manual", temp=temp, room_id=netatmoConfig["room_id_"+room_name], end_time=end_time)
+            else:
+                if c["debug"]: print(f"Netatmo Outside temp < -3C, skipping..")
+        elif op == "stop":
+            if c["debug"]: print(f"Netatmo stop")
+            home_status.set_room_thermpoint(mode="home", room_id=netatmoConfig["room_id_"+room_name])
 
 
 def decide(last_last_water_temp, last_water_temp, new_water_temp, target_temp):
