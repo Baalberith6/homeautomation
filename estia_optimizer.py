@@ -18,7 +18,7 @@ target_temp = 27.0
 outside_temp = 0.0
 outside_temp_limit = -3.0 # when to stop optimizing
 
-hysteresis_above = 1.0 # krb protection
+hysteresis_above = 3.0 # krb protection
 
 file_path = 'netatmo_optimizer.token'
 
