@@ -71,10 +71,10 @@ async def main():
             thermostat = home_status.thermostats.get(netatmoConfig["thermostat_id"])
 
             client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/netatmo/on/"+room_name, 1 if thermostat["boiler_status"] else 0, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/netatmo/on/"+room_name, float(thermostat["'heating_power_request'"])/100.0, qos=2, properties=publishProperties).wait_for_publish()
 
             if c["debug"]: print(room['therm_measured_temperature'])
-            if c["debug"]: print(thermostat["boiler_status"])
+            if c["debug"]: print(thermostat["'heating_power_request'"])
         time.sleep(60)
 
 
