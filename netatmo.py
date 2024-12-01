@@ -68,13 +68,12 @@ async def main():
         home_status.update()
         for room_name in ["hala", "kupelna", "chodba", "hostovska", "julinka", "kubo", "spalna"]:
             room = home_status.rooms.get(netatmoConfig["room_id_" + room_name])
-            thermostat = home_status.thermostats.get(netatmoConfig["thermostat_id"])
 
             client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/netatmo/on/"+room_name, float(thermostat["'heating_power_request'"])/100.0, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/netatmo/on/"+room_name, float(room['heating_power_request'])/100.0, qos=2, properties=publishProperties).wait_for_publish()
 
             if c["debug"]: print(room['therm_measured_temperature'])
-            if c["debug"]: print(thermostat["'heating_power_request'"])
+            if c["debug"]: print(room['heating_power_request'])
         time.sleep(60)
 
 
