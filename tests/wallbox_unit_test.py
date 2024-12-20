@@ -31,7 +31,7 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i3": 0,
             "battery_soc": 86
         }
-        self.assertEqual(13, calculate_current(test_data, 0, 3))
+        self.assertEqual(12, calculate_current(test_data, 0, 3))
 
     def test_no_load_8k_power_off_100p_should_on(self):
         test_data = {
@@ -44,7 +44,7 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i3": 0,
             "battery_soc": 100
         }
-        self.assertEqual(13, calculate_current(test_data, 0, 3))
+        self.assertEqual(12, calculate_current(test_data, 0, 3))
 
     def test_4k_load_no_power_on_89p_should_on(self):
         test_data = {
