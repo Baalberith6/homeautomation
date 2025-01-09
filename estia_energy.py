@@ -43,10 +43,6 @@ def merge_arrays(arr1, arr2):
                 merged_array.append(val1)
         last_val2 = val2
 
-
-    # Add all elements from the second array
-    merged_array.extend(arr2)
-
     return merged_array
 
 
@@ -107,6 +103,10 @@ async def calc():
         hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
         hourly_usage_yesterday = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
         hourly_usage_merged = merge_arrays([item["Energy"] for item in hourly_usage], [item["Energy"] for item in hourly_usage_yesterday])
+
+        if c["debug"]: print(f"Received Today Hourly usages: `{hourly_usage}` from Toshiba")
+        if c["debug"]: print(f"Received Yesterday Hourly usages: `{hourly_usage_yesterday}` from Toshiba")
+        if c["debug"]: print(f"Merged Hourly usages: `{hourly_usage_merged}` from Toshiba")
 
         cop, total_consumption = calculate_cop(hourly_usage_merged, temps)
         write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop_24h", float(cop)))
