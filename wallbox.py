@@ -30,6 +30,10 @@ from config import generalConfig as c, wallboxConfig
 # keep at least 1A diff
 from common import connect_mqtt
 
+wallboxMode = "Auto"
+wallboxMaxAmp = 16
+wallboxStartSOC = 40
+wallboxStopAtSOCDiff = 3
 amp = -1
 alw = -1
 frc = -1
@@ -49,7 +53,6 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
 
     stop_at = 6  # Amp
     start_at = 6
-    max_amp = 16
     should_charge = True
     was_charging = actual_charging_current != 0
 
@@ -65,7 +68,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230 - amp_reserve * car_phases * 230
 
     # increase, until we use all PV
-    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) - amp_reserve < max_amp and remaining_ppv > car_phases * 230 and allowable_current < max_amp:
+    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) - amp_reserve < wallboxMaxAmp and remaining_ppv > car_phases * 230 and allowable_current < wallboxMaxAmp:
         remaining_ppv -= car_phases * 230
         allowable_current += 1
         if c["debug"]: print(f"added, ppv: {remaining_ppv}, allowable: {allowable_current}")
@@ -76,9 +79,18 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         allowable_current -= 1
         if c["debug"]: print(f"substracted, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
+    if wallboxMode == "Enable":
+        allowable_current = wallboxMaxAmp
+        if c["debug"]: print(f"Overridden current due to Auto mode, allowable: {allowable_current}")
+
+    if wallboxMode == "Auto":
+        allowable_current = min(wallboxMaxAmp, allowable_current)
+        if c["debug"]: print(f"Overridden current, allowable: {allowable_current}")
+
     if was_charging:
-        should_charge = allowable_current >= stop_at or \
-                        inverter["battery_soc"] >= maxSocWhileCharging - wallboxConfig["stop_at_soc_diff"]
+        should_charge = (allowable_current >= stop_at and wallboxMode == "Auto") or \
+                        (inverter["battery_soc"] >= maxSocWhileCharging - wallboxStopAtSOCDiff and wallboxMode == "Auto")  or \
+                        wallboxMode == "Enable"
 #        if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps if 5 below limit soc
 #            allowable_current = actual_charging_current
         if allowable_current < stop_at:
@@ -86,7 +98,8 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         if c["debug"]: print(f"if charging, would charge: {should_charge}, {allowable_current} A")
 
     if not was_charging:
-        should_charge = allowable_current >= start_at and wallboxConfig["start_at_soc"] < inverter["battery_soc"]
+        should_charge = (allowable_current >= start_at and wallboxStartSOC < inverter["battery_soc"] and wallboxMode == "Auto") or \
+                        wallboxMode == "Enable"
         if c["debug"]: print(f"if NOT charging, would charge: {should_charge}, {allowable_current} A")
 
     if c["debug"]: print(f"P1 curr {i1} A")
@@ -169,9 +182,25 @@ def subscribe(client: mqtt_client, topics: [str]):
                 client.publish("home/Car/charging_wallbox_power", nrg[11])
             if topicParts[-1] == "modelStatus": modelStatus = int(msg.payload.decode())
             updatedAt = time.time()
-        elif topicParts[0] == "wallbox":
+        elif topicParts[1] == "inverter":
             if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
             wallbox(json.loads(msg.payload), client)
+        elif topicParts[1] == "WallboxMode":
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            global wallboxMode
+            wallboxMode = msg.payload.decode()
+        elif topicParts[1] == "WallboxAmp":
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            global wallboxMaxAmp
+            wallboxMaxAmp = int(msg.payload.decode())
+        elif topicParts[1] == "WallboxStartSOC":
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            global wallboxStartSOC
+            wallboxStartSOC = int(msg.payload.decode())
+        elif topicParts[1] == "WallboxStopAtSOCDiff":
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            global wallboxStopAtSOCDiff
+            wallboxStopAtSOCDiff = int(msg.payload.decode())
 
     for topic in topics:
         client.subscribe(topic)
@@ -194,7 +223,7 @@ def run():
         print("error connecting to Wallbox")
         return
     client = connect_mqtt("wallbox")
-    subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#"])
+    subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff"])
     client.loop_forever()
 
 
