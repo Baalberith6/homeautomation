@@ -10,9 +10,7 @@ inverterConfig = {
 }
 
 wallboxConfig = {
-    "address": "http://192.168.1.200/",
-    "stop_at_soc_diff": 3,
-    "start_at_soc": 40,
+    "address": "http://192.168.1.200/"
 }
 
 azrouterConfig = {
@@ -37,9 +35,7 @@ netatmoConfig = {
 }
 
 rehauConfig = {
-    "ip_address": "http://192.168.0.2/",
-    "temp_hala": 20.0,
-    "temp_all": 21.0
+    "ip_address": "http://192.168.0.2/"
 }
 
 estiaConfig = {
@@ -52,6 +48,11 @@ estiaConfig = {
 mqttConfig = {
     "broker": "localhost",
     "port": 1883
+}
+
+grafanaConfig = {
+    "ip_address": "http://raspberrypi.local:3000/",
+    "dashboard_id": "q50mEhf7k"
 }
 
 generalConfig = {
