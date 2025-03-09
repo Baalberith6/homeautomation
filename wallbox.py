@@ -201,6 +201,10 @@ def subscribe(client: mqtt_client, topics: [str]):
             if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
             global wallboxStopAtSOCDiff
             wallboxStopAtSOCDiff = int(msg.payload.decode())
+        elif topicParts[1] == "WallboxReserveAmp":
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            global amp_reserve
+            amp_reserve = int(msg.payload.decode())
 
     for topic in topics:
         client.subscribe(topic)
@@ -223,7 +227,7 @@ def run():
         print("error connecting to Wallbox")
         return
     client = connect_mqtt("wallbox")
-    subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff"])
+    subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff", "command/WallboxReserveAmp"])
     client.loop_forever()
 
 
