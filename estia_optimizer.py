@@ -16,6 +16,7 @@ last_water_temp = 100.0
 last_last_water_temp = 100.0
 target_temp = 27.0
 outside_temp = 0.0
+termostat_temp_1np = 21.0
 # outside_temp_limit = -3.0 # when to stop optimizing
 
 hysteresis_above = 3.0 # krb protection
@@ -23,24 +24,22 @@ hysteresis_above = 3.0 # krb protection
 file_path = 'netatmo_optimizer.token'
 
 class Room:
-    def __init__(self, id, name, normalTemp, currentTemp):
+    def __init__(self, id, name, currentTemp):
         self.id = id
         self.name = name
-        self.normalTemp = normalTemp
         self.currentTemp = currentTemp
     id: int
     name: str
-    normalTemp: float
     currentTemp: float
 
 rooms = [
-    Room(0, "Hala", rehauConfig["temp_hala"], 0),
-    Room(1, "Kupelna", rehauConfig["temp_all"], 0),
-    Room(2, "Technicka", rehauConfig["temp_all"], 0),
-    Room(3, "Pracovna", rehauConfig["temp_all"], 0),
-    Room(4, "Obyvacka", rehauConfig["temp_all"], 0),
-    Room(5, "Obyvacka", rehauConfig["temp_all"], 0),
-    Room(6, "Kuchyna", rehauConfig["temp_all"], 0),
+    Room(0, "Hala", 0),
+    Room(1, "Kupelna", 0),
+    Room(2, "Technicka", 0),
+    Room(3, "Pracovna", 0),
+    Room(4, "Obyvacka", 0),
+    Room(5, "Obyvacka", 0),
+    Room(6, "Kuchyna", 0),
 ]
 
 def _request(payload:dict, path: str):
@@ -82,7 +81,7 @@ def rehau_set(op:str):
     global outside_temp
     tempAdjustment = 1.0 if outside_temp < 4.5 else 0.5
     for room in rooms:
-        temp = room.normalTemp if op == "stop" else room.normalTemp + tempAdjustment
+        temp = termostat_temp_1np if op == "stop" else termostat_temp_1np + tempAdjustment
         payload = {
             'zone': room.id,
             'RoomName': room.name,
@@ -182,6 +181,10 @@ def subscribe(client: mqtt_client, topics: [str]):
             for room in rooms:
                 if room.name == topicParts[2]:
                     room.currentTemp = float(msg.payload.decode())
+        elif topicParts[1] == "Termostat1NP":
+            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+            global termostat_temp_1np
+            termostat_temp_1np = float(msg.payload.decode())
 
     for topic in topics:
         client.subscribe(topic)
@@ -189,7 +192,7 @@ def subscribe(client: mqtt_client, topics: [str]):
 
 def init():
     client = connect_mqtt("estia_optimizer")
-    subscribe(client, ["home/estia/target_temp", "krb/status/temperature:101", "home/weather/local/temperature", "home/rehau_set/#"])
+    subscribe(client, ["home/estia/target_temp", "krb/status/temperature:101", "home/weather/local/temperature", "home/rehau_set/#", "command/Termostat1NP"])
     client.loop_forever()
 
 
