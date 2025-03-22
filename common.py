@@ -17,7 +17,7 @@ def connect_mqtt(client_id):
         else:
             if c["debug"]: print("Failed to connect, return code %d\n", rc)
 
-    client = mqtt_client.Client(client_id)
+    client = mqtt_client.Client(client_id=client_id)
     client.username_pw_set(mqttUsername, mqttPassword)
     client.on_connect = on_connect
     client.connect(mqttConfig["broker"], mqttConfig["port"])
