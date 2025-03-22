@@ -22,6 +22,10 @@ wundergroundConfig = {
     "wait": 30
 }
 
+skodaConfig = {
+    "vin": "TMBJC9NY2NF008913"
+}
+
 netatmoConfig = {
     "home_id": "65805d35c3db644204070181",
     "room_id_hala": "2965583580",

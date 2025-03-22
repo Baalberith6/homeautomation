@@ -2,9 +2,10 @@ import asyncio
 import time
 
 from aiohttp import ClientSession
-from skodaconnect import Connection
+from myskoda import MySkoda
 
 from common import connect_mqtt, publishProperties
+from config import skodaConfig
 from secret import skodaMail, skodaPassword
 
 
@@ -12,23 +13,26 @@ async def main():
     client = connect_mqtt("skoda")
     client.loop_start()
 
-    async with ClientSession(headers={'Connection': 'keep-alive'}) as session:
-        connection = Connection(session, skodaMail, skodaPassword, "false")
-        await connection.doLogin()
-        await connection.get_vehicles()
+    try:
+        session = ClientSession()
+        myskoda = MySkoda(session)
+        print('Connecting')
+        await myskoda.connect(skodaMail, skodaPassword)
+
         while True:
-            await connection.update_all()
-            for instrument in connection.vehicles[0].dashboard(mutable=False).instruments:
-                if instrument.attr == "battery_level":
-                    client.publish("home/Car/battery_level", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
-                if instrument.attr == "charging_time_left":
-                    client.publish("home/Car/charging_time_left", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
-                if instrument.attr == "electric_range":
-                    client.publish("home/Car/electric_range", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
-                if instrument.attr == "charging_power":
-                    client.publish("home/Car/charging_power", instrument.state, qos=2, properties=publishProperties).wait_for_publish()
+            charging = await myskoda.get_charging(skodaConfig["vin"])
+            client.publish("home/Car/battery_level", charging.status.battery.state_of_charge_in_percent, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/Car/charging_time_left", charging.status.remaining_time_to_fully_charged_in_minutes, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/Car/electric_range", charging.status.battery.remaining_cruising_range_in_meters/1000, qos=2, properties=publishProperties).wait_for_publish()
 
             time.sleep(120)
+    except:
+        print('Error happened')
+    finally:
+        # Closing connection
+        await myskoda.disconnect()
+        print('Disconnecting')
+        await session.close()
 
 
 if __name__ == "__main__":
