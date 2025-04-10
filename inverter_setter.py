@@ -16,11 +16,11 @@ def charging_curve(x):
         return 15
     elif x <= 60:
         return 10
-    elif x == 70:
+    elif x <= 70:
         return 8
-    elif x == 80:
+    elif x <= 80:
         return 6
-    elif x == 90:
+    elif x <= 90:
         return 4
     elif x >= 95:
         return 2
