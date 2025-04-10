@@ -13,19 +13,23 @@ last_dod_set = -1
 
 def charging_curve(x):
     if x <= 40:
-        return 15
+        return 20
+    elif x <= 50:
+        return 18
     elif x <= 60:
-        return 10
+        return 15
     elif x <= 70:
-        return 8
+        return 13
     elif x <= 80:
-        return 6
+        return 10
+    elif x <= 85:
+        return 8
     elif x <= 90:
-        return 4
+        return 6
     elif x >= 95:
-        return 2
+        return 4
     else:
-        return 10  # or some default if needed
+        return 20  # or some default if needed
 
 
 async def handle_inverter_battery_charge_current():
