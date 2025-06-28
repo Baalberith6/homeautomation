@@ -21,9 +21,9 @@ async def main():
 
         while True:
             charging = await myskoda.get_charging(skodaConfig["vin"])
-            client.publish("home/Car/battery_level", charging.status.battery.state_of_charge_in_percent, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/Car/battery_level_enyaq", charging.status.battery.state_of_charge_in_percent, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/Car/charging_time_left", charging.status.remaining_time_to_fully_charged_in_minutes, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/Car/electric_range", charging.status.battery.remaining_cruising_range_in_meters/1000, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/Car/electric_range_enyaq", charging.status.battery.remaining_cruising_range_in_meters/1000, qos=2, properties=publishProperties).wait_for_publish()
 
             await asyncio.sleep(120)
     except:
