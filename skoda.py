@@ -1,38 +1,61 @@
 import asyncio
-import time
+from datetime import datetime
 
-from aiohttp import ClientSession
-from myskoda import MySkoda
+from carconnectivity import carconnectivity
 
 from common import connect_mqtt, publishProperties
 from config import skodaConfig
-from secret import skodaMail, skodaPassword
+from secret import carConnectivityConfig
+
+
+def calculate_charging_time_remaining(vehicle):
+    """Calculate remaining charging time in minutes from estimated completion date"""
+    if vehicle.charging.power.value > 0:
+        estimated_completion = vehicle.charging.estimated_date_reached.value
+        if estimated_completion:
+            now = datetime.now(estimated_completion.tzinfo)  # Use same timezone
+            return max(0, int((estimated_completion - now).total_seconds() / 60))
+    return None
 
 
 async def main():
     client = connect_mqtt("skoda")
     client.loop_start()
 
+    car_connectivity = None
     try:
-        session = ClientSession()
-        myskoda = MySkoda(session)
+        car_connectivity = carconnectivity.CarConnectivity(config=carConnectivityConfig)
         print('Connecting')
-        await myskoda.connect(skodaMail, skodaPassword)
+        car_connectivity.fetch_all()
+        garage = car_connectivity.get_garage()
 
         while True:
-            charging = await myskoda.get_charging(skodaConfig["vin"])
-            client.publish("home/Car/battery_level_enyaq", charging.status.battery.state_of_charge_in_percent, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/Car/charging_time_left", charging.status.remaining_time_to_fully_charged_in_minutes, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/Car/electric_range_enyaq", charging.status.battery.remaining_cruising_range_in_meters/1000, qos=2, properties=publishProperties).wait_for_publish()
+            for vehicle in garage.list_vehicles():
+                if vehicle.vin.value == skodaConfig["vin_skoda"]:
+                    client.publish("home/Car/battery_level_enyaq", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
+
+                    time_remaining = calculate_charging_time_remaining(vehicle)
+                    if time_remaining is not None:
+                        client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
+
+                    client.publish("home/Car/electric_range_enyaq", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
+                if vehicle.vin.value == skodaConfig["vin_vw"]:
+                    client.publish("home/Car/battery_level_vw", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
+
+                    time_remaining = calculate_charging_time_remaining(vehicle)
+                    if time_remaining is not None:
+                        client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
+
+                    client.publish("home/Car/electric_range_vw", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
 
             await asyncio.sleep(120)
-    except:
-        print('Error happened')
+    except Exception as e:
+        print(f'Error happened: {e}')
     finally:
         # Closing connection
-        await myskoda.disconnect()
+        if car_connectivity:
+            car_connectivity.shutdown()
         print('Disconnecting')
-        await session.close()
 
 
 if __name__ == "__main__":
