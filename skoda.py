@@ -27,9 +27,10 @@ async def main():
         car_connectivity = carconnectivity.CarConnectivity(config=carConnectivityConfig)
         print('Connecting')
         car_connectivity.fetch_all()
-        garage = car_connectivity.get_garage()
 
         while True:
+            car_connectivity.fetch_all()  # Refresh vehicle data
+            garage = car_connectivity.get_garage()
             for vehicle in garage.list_vehicles():
                 if vehicle.vin.value == skodaConfig["vin_skoda"]:
                     client.publish("home/Car/battery_level_enyaq", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
