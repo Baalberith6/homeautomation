@@ -24,7 +24,7 @@ wundergroundConfig = {
 
 skodaConfig = {
     "vin_skoda": "TMBJC9NY2NF008913",
-    "vin_vw": "WVWZZZED3SE048319",
+    "vin_vw": "WVWZZZE11S8005795",
 }
 
 netatmoConfig = {
