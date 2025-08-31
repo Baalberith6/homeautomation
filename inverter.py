@@ -9,7 +9,7 @@ from common import connect_mqtt, publishProperties
 
 
 async def publish(client):
-    inverter = await goodwe.connect(inverterConfig["ip_address"])
+    inverter = await goodwe.connect(host=inverterConfig["ip_address"], retries=10, timeout=5)
     while True:
         runtime_data = await inverter.read_runtime_data()
 
