@@ -34,3 +34,4 @@ carconnectivity~=0.7.2
 carconnectivity-connector-volkswagen~=0.8.2
 carconnectivity-connector-skoda~=0.8
 argparse~=1.4.0
+metno_locationforecast~=1.1.0
