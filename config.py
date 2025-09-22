@@ -47,7 +47,7 @@ estiaConfig = {
 }
 
 mqttConfig = {
-    "broker": "lxc-monitoring",
+    "broker": "lxc-mqtt",
     "port": 1883
 }
 
