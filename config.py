@@ -52,7 +52,7 @@ mqttConfig = {
 }
 
 grafanaConfig = {
-    "ip_address": "http://lxc-monitoring.local:3000/",
+    "ip_address": "http://lxc-monitoring:3000/",
     "dashboard_id": "q50mEhf7k"
 }
 
