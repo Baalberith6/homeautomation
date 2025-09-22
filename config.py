@@ -1,5 +1,5 @@
 influxConfig = {
-    "url": "http://localhost:8086",
+    "url": "http://lxc-monitoring.local:8086",
     "org": "Home",
     "bucket": "default",
 }
@@ -11,10 +11,6 @@ inverterConfig = {
 
 wallboxConfig = {
     "address": "http://192.168.1.200/"
-}
-
-azrouterConfig = {
-    "ip_address": "http://192.168.1.167/",
 }
 
 wundergroundConfig = {
@@ -51,15 +47,16 @@ estiaConfig = {
 }
 
 mqttConfig = {
-    "broker": "localhost",
+    "broker": "lxc-monitoring",
     "port": 1883
 }
 
 grafanaConfig = {
-    "ip_address": "http://raspberrypi.local:3000/",
+    "ip_address": "http://lxc-monitoring.local:3000/",
     "dashboard_id": "q50mEhf7k"
 }
 
 generalConfig = {
     "debug": False
 }
+
