@@ -1,5 +1,5 @@
 influxConfig = {
-    "url": "http://lxc-monitoring.local:8086",
+    "url": "http://lxc-monitoring:8086",
     "org": "Home",
     "bucket": "default",
 }
