@@ -36,7 +36,7 @@ netatmoConfig = {
 }
 
 rehauConfig = {
-    "ip_address": "http://192.168.0.2/"
+    "ip_address": "http://10.10.50.1/"
 }
 
 estiaConfig = {
