@@ -93,25 +93,38 @@ async def calc():
     global connected, api
 
     await asyncio.sleep(60) # wait for temps to arrive
-    await api.connect()
-    await api.get_devices()
+    # Retry logic for initial connect and get_devices
+    while True:
+        try:
+            await api.connect()
+            await api.get_devices()
+            break
+        except Exception as e:
+            if c["debug"]:
+                print(f"Error during api.connect/get_devices: {e}")
+            await asyncio.sleep(60)
 
     while True:
-        if datetime.now().minute != 22: # wait for 15 past
+        try:
+            if datetime.now().minute != 22: # wait for 15 past
+                await asyncio.sleep(60)
+                continue
+            hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
+            hourly_usage_yesterday = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
+            hourly_usage_merged = merge_arrays([item["Energy"] for item in hourly_usage], [item["Energy"] for item in hourly_usage_yesterday])
+
+            if c["debug"]: print(f"Received Today Hourly usages: `{hourly_usage}` from Toshiba")
+            if c["debug"]: print(f"Received Yesterday Hourly usages: `{hourly_usage_yesterday}` from Toshiba")
+            if c["debug"]: print(f"Merged Hourly usages: `{hourly_usage_merged}` from Toshiba")
+
+            cop, total_consumption = calculate_cop(hourly_usage_merged, temps)
+            write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop_24h", float(cop)))
+            write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("consumption_24h", float(total_consumption)))
             await asyncio.sleep(60)
-            continue
-        hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
-        hourly_usage_yesterday = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
-        hourly_usage_merged = merge_arrays([item["Energy"] for item in hourly_usage], [item["Energy"] for item in hourly_usage_yesterday])
-
-        if c["debug"]: print(f"Received Today Hourly usages: `{hourly_usage}` from Toshiba")
-        if c["debug"]: print(f"Received Yesterday Hourly usages: `{hourly_usage_yesterday}` from Toshiba")
-        if c["debug"]: print(f"Merged Hourly usages: `{hourly_usage_merged}` from Toshiba")
-
-        cop, total_consumption = calculate_cop(hourly_usage_merged, temps)
-        write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop_24h", float(cop)))
-        write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("consumption_24h", float(total_consumption)))
-        await asyncio.sleep(60)
+        except Exception as e:
+            if c["debug"]:
+                print(f"Error in calc loop: {e}")
+            await asyncio.sleep(60)
 
 def start_async_loop():
     loop = asyncio.new_event_loop()
