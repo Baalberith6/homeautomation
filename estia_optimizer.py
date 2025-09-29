@@ -79,7 +79,7 @@ def calc_rehau_temp(param):
 
 def rehau_set(op:str):
     global outside_temp
-    tempAdjustment = 1.0 if outside_temp < 4.5 else 0.5
+    tempAdjustment = 1.0  # if outside_temp < 4.5 else 0.5
     for room in rooms:
         temp = termostat_temp_1np if op == "stop" else termostat_temp_1np + tempAdjustment
         payload = {
