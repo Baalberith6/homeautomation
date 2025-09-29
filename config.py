@@ -1,5 +1,5 @@
 influxConfig = {
-    "url": "http://lxc-monitoring:8086",
+    "url": "http://192.168.1.50:8086",
     "org": "Home",
     "bucket": "default",
 }
@@ -47,12 +47,12 @@ estiaConfig = {
 }
 
 mqttConfig = {
-    "broker": "lxc-mqtt",
+    "broker": "192.168.1.52",
     "port": 1883
 }
 
 grafanaConfig = {
-    "ip_address": "http://lxc-monitoring:3000/",
+    "ip_address": "http://192.168.1.50:3000/",
     "dashboard_id": "q50mEhf7k"
 }
 
