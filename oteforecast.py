@@ -26,13 +26,13 @@ def send_to_mqtt(r, client, date: datetime):
 
     data = r["data"]["dataLine"]
     hour_prices = data[next(index for index, element in enumerate(data)
-                            if element["title"].__contains__("EUR"))]["point"]
+                            if element["title"].__contains__("60min"))]["point"]
     if (c["debug"]):
         pprint(hour_prices)
     hour_prices_dict = {}
 
     for hour in hour_prices:
-        hour_prices_dict[hour["x"]] = hour["y"]
+        hour_prices_dict[int(hour["x"])//4] = hour["y"]
 
     client.publish("home/OTE/hourly", json.dumps(hour_prices_dict), qos=2, properties=publishProperties).wait_for_publish()
     hour_prices_zal = hour_prices_dict.copy()
@@ -79,7 +79,7 @@ def send_to_mqtt(r, client, date: datetime):
 
 
 def run():
-    client = connect_mqtt("ote")
+    client = connect_mqtt("ote2")
     client.loop_start()
     if (c["debug"]):
         send_to_mqtt(json.loads('''
