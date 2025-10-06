@@ -1,4 +1,5 @@
 import json
+import logging, re
 from datetime import datetime
 
 from flask import Flask, request
@@ -8,9 +9,21 @@ from common import connect_mqtt, publishProperties
 
 api = Flask(__name__)
 
+
+class SkipWeather200(logging.Filter):
+    _pat = re.compile(r'"[A-Z]+ /weather(?:\?| )')
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        msg = record.getMessage()
+        return not (self._pat.search(msg) and ' 200 ' in msg)
+
+
+logging.getLogger('werkzeug').addFilter(SkipWeather200())
+
 client = connect_mqtt("localweather")
 
 temps_24h = [0.0] * 24
+
 
 @api.route('/weather', methods=['GET'])
 def get_weather():
