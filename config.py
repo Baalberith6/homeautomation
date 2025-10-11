@@ -56,6 +56,16 @@ grafanaConfig = {
     "dashboard_id": "q50mEhf7k"
 }
 
+cursorConfig = {
+    "team_id": "10101757"
+}
+
+moesCo2Config = {
+    "device_id": "bf9e59a6b0884394eflzhf",
+    "api_region": "eu",
+    "update_interval": 30  # seconds
+}
+
 generalConfig = {
     "debug": False
 }
