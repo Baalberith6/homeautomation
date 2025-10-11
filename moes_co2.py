@@ -10,7 +10,6 @@ class MOESCo2Sensor:
     def __init__(self, device_id):
         self.device_id = device_id
         self.client = None
-        self.last_co2 = None
         
     def connect_mqtt(self):
         """Connect to MQTT broker"""
@@ -68,16 +67,14 @@ class MOESCo2Sensor:
             return
             
         # Only publish if value has changed
-        if co2_value != self.last_co2:
-            self.client.publish(
-                "home/weather/sensors/moes_co2", 
-                co2_value, 
-                qos=2, 
-                properties=publishProperties
-            )
-            self.last_co2 = co2_value
-            if c["debug"]:
-                print(f"Published CO2: {co2_value} ppm")
+        self.client.publish(
+            "home/weather/sensors/moes_co2",
+            co2_value,
+            qos=2,
+            properties=publishProperties
+        ).wait_for_publish()
+        if c["debug"]:
+            print(f"Published CO2: {co2_value} ppm")
     
     def run(self):
         """Main loop for the sensor"""
