@@ -10,25 +10,63 @@ class MOESCo2Sensor:
     def __init__(self, device_id):
         self.device_id = device_id
         self.client = None
+        self.device = None
+        self.last_auth_time = None
+        self.auth_timeout = 7200  # 2 hours in seconds (Tuya token expiration)
         
     def connect_mqtt(self):
         """Connect to MQTT broker"""
         self.client = connect_mqtt("moes_co2_sensor")
         self.client.loop_start()
         
-    def get_co2_value(self):
-        """Get CO2 value from MOES sensor using tinytuya"""
+    def initialize_tuya_device(self):
+        """Initialize and authenticate with Tuya device"""
         try:
-            # Create tinytuya device instance
-            device = tinytuya.Cloud(
+            self.device = tinytuya.Cloud(
                 apiRegion=moesCo2Config["api_region"],
                 apiKey=tuyaApiKey,
                 apiSecret=tuyaApiSecret,
                 apiDeviceID=self.device_id
             )
+            self.last_auth_time = time.time()
+            if c["debug"]:
+                print("Tuya device authenticated successfully")
+            return True
+        except Exception as e:
+            if c["debug"]:
+                print(f"Error initializing Tuya device: {e}")
+            return False
+    
+    def needs_reauth(self):
+        """Check if device needs re-authentication"""
+        if self.last_auth_time is None:
+            return True
+        
+        current_time = time.time()
+        time_since_auth = current_time - self.last_auth_time
+        
+        # Re-authenticate 5 minutes before token expires (115 minutes)
+        return time_since_auth > (self.auth_timeout - 300)
+    
+    def ensure_authenticated(self):
+        """Ensure device is authenticated, re-authenticate if needed"""
+        if self.needs_reauth():
+            if c["debug"]:
+                print("Re-authenticating Tuya device...")
+            return self.initialize_tuya_device()
+        return True
+        
+    def get_co2_value(self):
+        """Get CO2 value from MOES sensor using tinytuya"""
+        try:
+            # Ensure device is authenticated before making API call
+            if not self.ensure_authenticated():
+                if c["debug"]:
+                    print("Failed to authenticate device, cannot get CO2 value")
+                return None
             
-            # Get device status
-            status = device.getstatus(self.device_id)
+            # Get device status using the authenticated device
+            status = self.device.getstatus(self.device_id)
             
             if c["debug"]:
                 print(f"Device status: {status}")
@@ -79,6 +117,12 @@ class MOESCo2Sensor:
     def run(self):
         """Main loop for the sensor"""
         self.connect_mqtt()
+        
+        # Initialize Tuya device once at startup
+        if not self.initialize_tuya_device():
+            if c["debug"]:
+                print("Failed to initialize Tuya device, exiting...")
+            return
         
         if c["debug"]:
             print("MOES CO2 Sensor started. Polling for CO2 data...")
