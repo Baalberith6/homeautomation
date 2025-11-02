@@ -128,6 +128,9 @@ def wallbox(inverter, client):
     if phases != 1: phases = 3  # we don't know the number of connected phases before starting, also safe-default to 3 except when 1
     if c["debug"]: print(f"phases: {phases}")
 
+    if wallboxMode == "Disable": # automation OFF
+        return
+
     if car in [0, 1, 5]:  # no 4 as Golf kept starting, but Enyaq wont start then
         if c["debug"]: print(f"no charge allowed - perhaps car not connected or doesn't want to charge, car state {car}")
         if frc != 1:
