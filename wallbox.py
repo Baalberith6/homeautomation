@@ -79,7 +79,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
         allowable_current -= 1
         if c["debug"]: print(f"substracted, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
-    if wallboxMode == "Enable":
+    if wallboxMode == "Start":
         allowable_current = wallboxMaxAmp
         if c["debug"]: print(f"Overridden current due to Auto mode, allowable: {allowable_current}")
 
@@ -90,7 +90,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     if was_charging:
         should_charge = (allowable_current >= stop_at and wallboxMode == "Auto") or \
                         (inverter["battery_soc"] >= maxSocWhileCharging - wallboxStopAtSOCDiff and wallboxMode == "Auto")  or \
-                        wallboxMode == "Enable"
+                        wallboxMode == "Start"
 #        if inverter["battery_soc"] < wallboxConfig["stop_at_soc"] - 5:  # manual start, so keep the manual amps if 5 below limit soc
 #            allowable_current = actual_charging_current
         if allowable_current < stop_at:
@@ -99,7 +99,7 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
 
     if not was_charging:
         should_charge = (allowable_current >= start_at and wallboxStartSOC < inverter["battery_soc"] and wallboxMode == "Auto") or \
-                        wallboxMode == "Enable"
+                        wallboxMode == "Start"
         if c["debug"]: print(f"if NOT charging, would charge: {should_charge}, {allowable_current} A")
 
     if c["debug"]: print(f"P1 curr {i1} A")
