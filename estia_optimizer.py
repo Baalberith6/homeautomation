@@ -79,7 +79,7 @@ def calc_rehau_temp(param):
 
 def rehau_set(op:str):
     global outside_temp
-    tempAdjustment = 1.0  # if outside_temp < 4.5 else 0.5
+    tempAdjustment = 1.5  # if outside_temp < 4.5 else 0.5
     for room in rooms:
         temp = termostat_temp_1np if op == "stop" else termostat_temp_1np + tempAdjustment
         payload = {
@@ -114,7 +114,7 @@ def netatmo_set(op:str, add_time:int):
     for room_name in ["hala", "kupelna", "chodba", "hostovska", "julinka", "kubo", "spalna"]:
         room = home_status.rooms.get(netatmoConfig["room_id_"+room_name])
         if op == "start":
-            temp = room.get("therm_setpoint_temperature") if room.get("therm_setpoint_mode") == "manual" else room.get("therm_setpoint_temperature") + 1 # 1C above planned temp
+            temp = room.get("therm_setpoint_temperature") if room.get("therm_setpoint_mode") == "manual" else room.get("therm_setpoint_temperature") + 1.5 # 1C above planned temp
             end_time = max(timestamp+add_time, room.get("therm_setpoint_end_time", 0))
             #if outside_temp > outside_temp_limit:
             if c["debug"]: print(f"Setting room {room_name} manual temp: {temp} with time: {end_time-timestamp}s")
