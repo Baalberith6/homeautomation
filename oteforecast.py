@@ -16,7 +16,7 @@ local_tz = pytz.timezone('Europe/Prague')
 
 
 def _request(date: datetime):
-    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d"))
+    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d") + '&amp;time_resolution=PT60M')
     return r.json()
 
 
