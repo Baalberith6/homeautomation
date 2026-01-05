@@ -26,7 +26,7 @@ def send_to_mqtt(r, client, date: datetime):
 
     data = r["data"]["dataLine"]
     hour_prices = data[next(index for index, element in enumerate(data)
-                            if element["title"].__contains__("60min"))]["point"]
+                            if element["title"].__contains__("EUR"))]["point"]
     if (c["debug"]):
         pprint(hour_prices)
     hour_prices_dict = {}
