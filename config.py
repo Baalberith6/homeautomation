@@ -63,7 +63,7 @@ cursorConfig = {
 moesCo2Config = {
     "device_id": "bf9e59a6b0884394eflzhf",
     "api_region": "eu",
-    "update_interval": 30  # seconds
+    "update_interval": 60  # seconds
 }
 
 generalConfig = {
