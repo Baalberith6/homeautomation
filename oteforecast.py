@@ -32,7 +32,7 @@ def send_to_mqtt(r, client, date: datetime):
     hour_prices_dict = {}
 
     for hour in hour_prices:
-        hour_prices_dict[int(hour["x"])//4] = hour["y"]
+        hour_prices_dict[int(hour["x"])] = hour["y"]
 
     client.publish("home/OTE/hourly", json.dumps(hour_prices_dict), qos=2, properties=publishProperties).wait_for_publish()
     hour_prices_zal = hour_prices_dict.copy()
