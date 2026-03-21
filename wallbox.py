@@ -199,7 +199,7 @@ def subscribe(client: mqtt_client, topics: [str]):
 
 def run():
     try:
-        response = requests.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelStatus')
+        response = requests.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelStatus', timeout=10)
         res = json.loads(response.text)
         global amp, alw, frc, car, nrg, modelStatus, updatedAt
         amp = res["amp"]
@@ -209,8 +209,8 @@ def run():
         nrg = res["nrg"]
         modelStatus = res["modelStatus"]
         updatedAt = time.time()
-    except JSONDecodeError:
-        print("[wallbox] Error connecting to wallbox")
+    except (JSONDecodeError, requests.exceptions.RequestException) as e:
+        print(f"[wallbox] Error connecting to wallbox: {e}")
         return
     client = connect_mqtt("wallbox3")
     subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff", "command/WallboxReserveAmp"])
