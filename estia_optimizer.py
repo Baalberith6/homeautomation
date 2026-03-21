@@ -184,10 +184,14 @@ def subscribe(client: mqtt_client, topics: [str]):
                 if room.name == topicParts[2]:
                     room.currentTemp = float(msg.payload.decode())
         elif topicParts[1] == "Termostat1NP":
-            if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
             global termostat_temp_1np
-            termostat_temp_1np = float(msg.payload.decode())
-            loop(last_water_temp)
+            new_temp = float(msg.payload.decode())
+            if new_temp != termostat_temp_1np:
+                print(f"[estia_optimizer] Termostat1NP changed: {termostat_temp_1np} -> {new_temp}")
+                termostat_temp_1np = new_temp
+                loop(last_water_temp)
+            elif c["debug"]:
+                print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
 
     for topic in topics:
         client.subscribe(topic)
