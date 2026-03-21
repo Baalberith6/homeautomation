@@ -198,20 +198,26 @@ def subscribe(client: mqtt_client, topics: [str]):
 
 
 def run():
-    try:
-        response = requests.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelStatus', timeout=10)
-        res = json.loads(response.text)
-        global amp, alw, frc, car, nrg, modelStatus, updatedAt
-        amp = res["amp"]
-        alw = res["alw"]
-        frc = res["frc"]
-        car = res["car"]
-        nrg = res["nrg"]
-        modelStatus = res["modelStatus"]
-        updatedAt = time.time()
-    except (JSONDecodeError, requests.exceptions.RequestException) as e:
-        print(f"[wallbox] Error connecting to wallbox: {e}")
-        return
+    global amp, alw, frc, car, nrg, modelStatus, updatedAt
+    for attempt in range(5):
+        try:
+            response = requests.get(wallboxConfig["address"] + 'api/status?filter=amp,alw,frc,car,nrg,modelStatus', timeout=10)
+            res = json.loads(response.text)
+            amp = res["amp"]
+            alw = res["alw"]
+            frc = res["frc"]
+            car = res["car"]
+            nrg = res["nrg"]
+            modelStatus = res["modelStatus"]
+            updatedAt = time.time()
+            break
+        except (JSONDecodeError, requests.exceptions.RequestException) as e:
+            print(f"[wallbox] Error connecting to wallbox (attempt {attempt + 1}/5): {e}")
+            if attempt < 4:
+                time.sleep(10)
+            else:
+                print("[wallbox] Could not reach wallbox after 5 attempts, exiting")
+                return
     client = connect_mqtt("wallbox3")
     subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff", "command/WallboxReserveAmp"])
     print("[wallbox] Started")
