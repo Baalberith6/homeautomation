@@ -21,7 +21,7 @@ termostat_temp_1np = 21.0
 
 hysteresis_above = 3.0 # krb protection
 
-file_path = 'netatmo_optimizer.token'
+file_path = 'netatmo_optimizer.dev.token' if c["debug"] else 'netatmo_optimizer.token'
 
 class Room:
     def __init__(self, id, name, currentTemp):

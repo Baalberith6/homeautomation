@@ -40,10 +40,10 @@ def read_string_from_file():
         print(f"An error occurred while reading the file: {e}")
         return None
 
-file_path = 'netatmo.token'
+file_path = 'netatmo.dev.token' if c["debug"] else 'netatmo.token'
 
 async def main():
-    client = connect_mqtt("netatmo")
+    client = connect_mqtt("netatmo4")
     client.loop_start()
 
     auth = pyatmo.NetatmoOAuth2(
@@ -60,20 +60,23 @@ async def main():
     home_status = pyatmo.HomeStatus(auth, home_id=netatmoConfig["home_id"])
 
     while True:
-        if tokenRefresher > 120:
-            auth.extra["refresh_token"] = read_string_from_file()
-            auth.refresh_tokens()
-            tokenRefresher = 0
+        try:
+            if tokenRefresher > 120:
+                auth.extra["refresh_token"] = read_string_from_file()
+                auth.refresh_tokens()
+                tokenRefresher = 0
 
-        home_status.update()
-        for room_name in ["hala", "kupelna", "chodba", "hostovska", "julinka", "kubo", "spalna"]:
-            room = home_status.rooms.get(netatmoConfig["room_id_" + room_name])
+            home_status.update()
+            for room_name in ["hala", "kupelna", "chodba", "hostovska", "julinka", "kubo", "spalna"]:
+                room = home_status.rooms.get(netatmoConfig["room_id_" + room_name])
 
-            client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/netatmo/on/"+room_name, float(room['heating_power_request'])/100.0, qos=2, properties=publishProperties).wait_for_publish()
+                client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
+                client.publish("home/netatmo/on/"+room_name, float(room['heating_power_request'])/100.0, qos=2, properties=publishProperties).wait_for_publish()
 
-            if c["debug"]: print(room['therm_measured_temperature'])
-            if c["debug"]: print(room['heating_power_request'])
+                if c["debug"]: print(room['therm_measured_temperature'])
+                if c["debug"]: print(room['heating_power_request'])
+        except Exception as e:
+            print(f"Error: {e}")
         time.sleep(60)
 
 

@@ -66,7 +66,9 @@ moesCo2Config = {
     "update_interval": 60  # seconds
 }
 
+import os
+
 generalConfig = {
-    "debug": False
+    "debug": os.environ.get("DEBUG", "").lower() in ("1", "true", "yes")
 }
 

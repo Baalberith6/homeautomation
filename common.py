@@ -17,6 +17,8 @@ def connect_mqtt(client_id):
         else:
             if c["debug"]: print("Failed to connect, return code %d\n", reason_code)
 
+    if c["debug"]:
+        client_id = client_id + "-dev"
     client = mqtt_client.Client(client_id=client_id, protocol=mqtt_client.MQTTv5)
     client.username_pw_set(mqttUsername, mqttPassword)
     client.on_connect = on_connect
