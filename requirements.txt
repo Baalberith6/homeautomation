@@ -30,9 +30,9 @@ pytz~=2022.7
 flask~=3.0.1
 setuptools~=77.0.3
 asyncio~=3.4.3
-carconnectivity~=0.7.2
-carconnectivity-connector-volkswagen~=0.8.2
-carconnectivity-connector-skoda~=0.8
+carconnectivity~=0.9.2
+carconnectivity-connector-volkswagen~=0.9.2a1
+carconnectivity-connector-skoda~=0.9
 argparse~=1.4.0
 metno_locationforecast~=1.1.0
 tinytuya==1.17.4
