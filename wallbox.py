@@ -11,12 +11,6 @@ from config import generalConfig as c, wallboxConfig
 # adjust amps
 # curl "http://1.2.3.4/api/set?amp=16"
 
-# set 1-phase
-# curl "http://1.2.3.4/api/set?psm=1"
-
-# set 3-phase
-# curl "http://1.2.3.4/api/set?psm=2"
-
 # start charging
 # curl "http://1.2.3.4/api/set?frc=0"
 
@@ -45,14 +39,10 @@ amp_reserve = -1 # <-1 - faster than PV can provide
 maxSocWhileCharging = 0 # if below x constant, then stop charging
 
 
-def calculate_current(inverter, actual_charging_current: int, car_phases: int):
-    # kanvica do bat - 1900 pgrid2, 1900 backup_p2
-    # bat na 1.9 - pgrid 3x 1000 + 3000 active p
-    # traktor a bat - load_p1 1450, 1650 active, 1900 bat, 5700 tot, total_inverter_power = 3491 W
-    # max 9000 / 3 per phase
-
+def calculate_current(inverter, actual_charging_current: int):
     stop_at = 6  # Amp
     start_at = 6
+    phases = 3
     should_charge = True
     was_charging = actual_charging_current != 0
 
@@ -65,17 +55,17 @@ def calculate_current(inverter, actual_charging_current: int, car_phases: int):
     i2 = inverter["load_p2"] / 230 + inverter["backup_i2"]
     i3 = inverter["load_p3"] / 230 + inverter["backup_i3"]
     allowable_current = actual_charging_current
-    remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230 - amp_reserve * car_phases * 230
+    remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230 - amp_reserve * phases * 230
 
     # increase, until we use all PV
-    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) - amp_reserve < wallboxMaxAmp and remaining_ppv > car_phases * 230 and allowable_current < wallboxMaxAmp:
-        remaining_ppv -= car_phases * 230
+    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) - amp_reserve < wallboxMaxAmp and remaining_ppv > phases * 230 and allowable_current < wallboxMaxAmp:
+        remaining_ppv -= phases * 230
         allowable_current += 1
         if c["debug"]: print(f"added, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
     # decrease, if negative PV
     while allowable_current > 0 and remaining_ppv - amp_reserve < 0 :
-        remaining_ppv += car_phases * 230
+        remaining_ppv += phases * 230
         allowable_current -= 1
         if c["debug"]: print(f"substracted, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
@@ -121,13 +111,6 @@ def wallbox(inverter, client):
         if c["debug"]: print("Wallbox is OFFLINE")
         return
 
-    phases = 0
-    if nrg[4] > 1: phases += 1
-    if nrg[5] > 1: phases += 1
-    if nrg[6] > 1: phases += 1
-    if phases != 1: phases = 3  # we don't know the number of connected phases before starting, also safe-default to 3 except when 1
-    if c["debug"]: print(f"phases: {phases}")
-
     if wallboxMode == "Disable": # automation OFF
         return
 
@@ -143,7 +126,7 @@ def wallbox(inverter, client):
         return  # NotChargingBecauseSimulateUnplugging
     previous_charging_curr = amp if frc == 0 and car != 4 else 0  # if charging allowed and already charging
 
-    charging_curr = calculate_current(inverter, previous_charging_curr, phases)
+    charging_curr = calculate_current(inverter, previous_charging_curr)
 
     if frc == 1 and charging_curr > 0:  # stopped, but should start
         if c["debug"]: print(f"stopped, but should start, {charging_curr}A")
@@ -229,7 +212,7 @@ def run():
     except JSONDecodeError:
         print("error connecting to Wallbox")
         return
-    client = connect_mqtt("wallbox")
+    client = connect_mqtt("wallbox3")
     subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff", "command/WallboxReserveAmp"])
     client.loop_forever()
 
