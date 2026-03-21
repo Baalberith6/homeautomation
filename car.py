@@ -30,29 +30,28 @@ async def main():
         garage = car_connectivity.get_garage()
 
         while True:
-            for vehicle in garage.list_vehicles():
-                if vehicle.vin.value == skodaConfig["vin_skoda"]:
-                    client.publish("home/Car/battery_level_enyaq", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
+            try:
+                for vehicle in garage.list_vehicles():
+                    if vehicle.vin.value == skodaConfig["vin_skoda"]:
+                        client.publish("home/Car/battery_level_enyaq", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
 
-                    time_remaining = calculate_charging_time_remaining(vehicle)
-                    if time_remaining is not None:
-                        client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
+                        time_remaining = calculate_charging_time_remaining(vehicle)
+                        if time_remaining is not None:
+                            client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
 
-                    client.publish("home/Car/electric_range_enyaq", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
-                if vehicle.vin.value == skodaConfig["vin_vw"]:
-                    client.publish("home/Car/battery_level_vw", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/electric_range_enyaq", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
+                    if vehicle.vin.value == skodaConfig["vin_vw"]:
+                        client.publish("home/Car/battery_level_vw", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
 
-                    time_remaining = calculate_charging_time_remaining(vehicle)
-                    if time_remaining is not None:
-                        client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
+                        time_remaining = calculate_charging_time_remaining(vehicle)
+                        if time_remaining is not None:
+                            client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
 
-                    client.publish("home/Car/electric_range_vw", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
-
+                        client.publish("home/Car/electric_range_vw", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
+            except Exception as e:
+                print(f"Error: {e}")
             await asyncio.sleep(120)
-    except Exception as e:
-        print(f'Error happened: {e}')
     finally:
-        # Closing connection
         if car_connectivity:
             car_connectivity.shutdown()
         print('Disconnecting')

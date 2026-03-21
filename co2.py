@@ -14,12 +14,14 @@ async def store_runtime_data():
     client.loop_start()
 
     while True:
-        data = sgp30.read_measurements()
-        co2_eq_ppm, tvoc_ppb = data.data
+        try:
+            data = sgp30.read_measurements()
+            co2_eq_ppm, tvoc_ppb = data.data
 
-        client.publish("home/weather/sensors/co2", co2_eq_ppm, qos=2, properties=publishProperties)
-        client.publish("home/weather/sensors/voc", tvoc_ppb, qos=2, properties=publishProperties)
-
+            client.publish("home/weather/sensors/co2", co2_eq_ppm, qos=2, properties=publishProperties)
+            client.publish("home/weather/sensors/voc", tvoc_ppb, qos=2, properties=publishProperties)
+        except Exception as e:
+            print(f"Error: {e}")
         time.sleep(5)
 
 
