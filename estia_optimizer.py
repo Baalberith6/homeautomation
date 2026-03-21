@@ -83,68 +83,63 @@ def calc_rehau_temp(param):
     return 320 + 18 * param
 
 
-def apply_thermostats(include_rehau=True):
+def apply_thermostats(include_netatmo=True):
     temp = (termostat_temp_1np + BOOST_OFFSET
             if is_boosting else termostat_temp_1np)
 
     if c["debug"]:
         print(f"[estia_optimizer] apply_thermostats: "
               f"boosting={is_boosting}, temp={temp}, "
-              f"rehau={include_rehau}")
+              f"rehau={include_netatmo}")
 
-    # Rehau zones (only on boost transitions, not on base temp changes)
-    if include_rehau:
-        for room in rooms:
-            payload = {
-                'zone': room.id,
-                'RoomName': room.name,
-                'RSH': temp,
-                'lightH': '0',
-                'temp': calc_rehau_temp(temp),
-                'mode': 'normal'
-            }
-            if room.currentTemp != temp:
-                try:
-                    _request(payload, "room-page.html")
-                except Exception as e:
-                    print(
-                        f"[estia_optimizer] Rehau {room.name} error: {e}"
-                    )
-            elif c["debug"]:
-                print(
-                    f"[estia_optimizer] Rehau {room.name} already at "
-                    f"{temp}"
-                )
+    # Rehau zones
+    for room in rooms:
+        payload = {
+            'zone': room.id,
+            'RoomName': room.name,
+            'RSH': temp,
+            'lightH': '0',
+            'temp': calc_rehau_temp(temp),
+            'mode': 'normal'
+        }
+        if room.currentTemp != temp:
+            try:
+                _request(payload, "room-page.html")
+            except Exception as e:
+                print(f"[estia_optimizer] Rehau {room.name} error: {e}")
+        elif c["debug"]:
+            print(f"[estia_optimizer] Rehau {room.name} already at {temp}")
 
-    # Netatmo rooms — always manual with refreshing timeout
-    try:
-        timestamp = int(time.time())
-        end_time = timestamp + NETATMO_END_TIME_SECONDS
+    # Netatmo rooms (only on boost transitions, not on base temp changes)
+    if include_netatmo:
+        try:
+            timestamp = int(time.time())
+            end_time = timestamp + NETATMO_END_TIME_SECONDS
 
-        auth = pyatmo.NetatmoOAuth2(
-            client_id=netatmoClientId,
-            client_secret=netatmoClientSecret,
-            scope="read_thermostat write_thermostat"
-        )
-        auth.extra["refresh_token"] = read_string_from_file()
-        auth.token_updater = save_string_to_file
-        auth.refresh_tokens()
-
-        home_status = pyatmo.HomeStatus(
-            auth, home_id=netatmoConfig["home_id"]
-        )
-        for room_name in NETATMO_ROOMS:
-            room_id = netatmoConfig["room_id_" + room_name]
-            if c["debug"]:
-                print(f"[estia_optimizer] Netatmo {room_name}: "
-                      f"manual {temp}C, "
-                      f"end_time +{NETATMO_END_TIME_SECONDS}s")
-            home_status.set_room_thermpoint(
-                mode="manual", temp=temp,
-                room_id=room_id, end_time=end_time
+            auth = pyatmo.NetatmoOAuth2(
+                client_id=netatmoClientId,
+                client_secret=netatmoClientSecret,
+                scope="read_thermostat write_thermostat"
             )
-    except Exception as e:
-        print(f"[estia_optimizer] Netatmo error: {e}")
+            auth.extra["refresh_token"] = read_string_from_file()
+            auth.token_updater = save_string_to_file
+            auth.refresh_tokens()
+
+            home_status = pyatmo.HomeStatus(
+                auth, home_id=netatmoConfig["home_id"]
+            )
+            for room_name in NETATMO_ROOMS:
+                room_id = netatmoConfig["room_id_" + room_name]
+                if c["debug"]:
+                    print(f"[estia_optimizer] Netatmo {room_name}: "
+                          f"manual {temp}C, "
+                          f"end_time +{NETATMO_END_TIME_SECONDS}s")
+                home_status.set_room_thermpoint(
+                    mode="manual", temp=temp,
+                    room_id=room_id, end_time=end_time
+                )
+        except Exception as e:
+            print(f"[estia_optimizer] Netatmo error: {e}")
 
     print(f"[estia_optimizer] Thermostats set to {temp}C "
           f"(boosting={is_boosting})")
@@ -234,7 +229,7 @@ def subscribe(client: mqtt_client, topics: [str]):
                 print(f"[estia_optimizer] Termostat1NP changed: "
                       f"{termostat_temp_1np} -> {new_temp}")
                 termostat_temp_1np = new_temp
-                apply_thermostats(include_rehau=False)
+                apply_thermostats(include_netatmo=False)
             elif c["debug"]:
                 print(f"Received `{msg.payload.decode()}` "
                       f"from `{msg.topic}` topic")
