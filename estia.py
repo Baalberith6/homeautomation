@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from math import dist
 
 from estia_api import ToshibaAcHttpApi
@@ -32,6 +33,7 @@ async def main():
     api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
     await api.connect()
     await api.get_devices()
+    print("[estia] Started")
     previous_in_temp = 0
     previous_out_temp = 0
     tuv_active_latest = 999
@@ -82,7 +84,8 @@ async def main():
             previous_in_temp = in_temp
             previous_out_temp = out_temp
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[estia] Error: {e}")
+            traceback.print_exc()
         time.sleep(60)
 
 if __name__ == "__main__":

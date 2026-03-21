@@ -1,4 +1,5 @@
 import time
+import traceback
 
 import seeed_sgp30
 from grove.i2c import Bus
@@ -12,6 +13,7 @@ async def store_runtime_data():
     sgp30 = seeed_sgp30.grove_sgp30(Bus())
     client = connect_mqtt("co2")
     client.loop_start()
+    print("[co2] Started")
 
     while True:
         try:
@@ -21,7 +23,8 @@ async def store_runtime_data():
             client.publish("home/weather/sensors/co2", co2_eq_ppm, qos=2, properties=publishProperties)
             client.publish("home/weather/sensors/voc", tvoc_ppb, qos=2, properties=publishProperties)
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[co2] Error: {e}")
+            traceback.print_exc()
         time.sleep(5)
 
 

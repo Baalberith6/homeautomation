@@ -1,5 +1,6 @@
 import json
 import time as ttime
+import traceback
 from datetime import datetime, time, timedelta
 from pprint import pprint
 
@@ -13,6 +14,7 @@ forecast = Forecast(prdikov, "Matej Pristak/1.0 matej.pristak@gmail.com", "compa
 
 
 def publish(client):
+    print("[yr] Started")
     while True:
         try:
             forecast.update()
@@ -38,7 +40,8 @@ def publish(client):
 
                 client.publish("jsons/weatherforecast/yr/tomorrow", json.dumps(temps), qos=2, properties=publishProperties).wait_for_publish()
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[yr] Error: {e}")
+            traceback.print_exc()
         ttime.sleep(1800)
 
 

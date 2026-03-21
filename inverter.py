@@ -1,5 +1,6 @@
 import asyncio
 import json
+import traceback
 
 import goodwe
 import time
@@ -10,6 +11,7 @@ from common import connect_mqtt, publishProperties
 
 async def publish(client):
     inverter = await goodwe.connect(host=inverterConfig["ip_address"], retries=10, timeout=5)
+    print("[inverter] Started")
     while True:
         try:
             runtime_data = await inverter.read_runtime_data()
@@ -62,7 +64,8 @@ async def publish(client):
                         print(f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}")
                 print("---INVERTER END---\n\n\n")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[inverter] Error: {e}")
+            traceback.print_exc()
         time.sleep(inverterConfig["wait"])
 
 

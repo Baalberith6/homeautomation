@@ -38,10 +38,10 @@ async def handle_inverter_battery_charge_current():
     if val != last_curr_set:
         inverter = await goodwe.connect(inverterConfig["ip_address"])
         last_curr_set = val
-        if c["debug"]: print(f"Setting `{val}` for battery_charge_current")
+        print(f"[inverter_setter] Set battery_charge_current: {val}A (SOC: {soc}%)")
         await inverter.write_setting("battery_charge_current", val)
     else:
-        if c["debug"]: print(f"No change... `{val}` for battery_charge_current")
+        if c["debug"]: print(f"[inverter_setter] No change: {val}A for battery_charge_current")
 
 
 async def handle_inverter_depth_of_discharge(val):
@@ -49,10 +49,10 @@ async def handle_inverter_depth_of_discharge(val):
     if val != last_dod_set:
         last_dod_set = val
         inverter = await goodwe.connect(inverterConfig["ip_address"])
-        if c["debug"]: print(f"Setting `{val}` for dod")
+        print(f"[inverter_setter] Set dod: {val}%")
         await inverter.set_ongrid_battery_dod(val)
     else:
-        if c["debug"]: print(f"No change... `{val}` for dod")
+        if c["debug"]: print(f"[inverter_setter] No change: {val}% for dod")
 
 
 def subscribe(client: mqtt_client, topics: [str]):
@@ -81,6 +81,7 @@ def subscribe(client: mqtt_client, topics: [str]):
 def run():
     client = connect_mqtt("inverter_setter")
     subscribe(client, ["command/InverterDepthOfDischarge", "command/InverterStopChargingAt", "home/FVE/soc"])
+    print("[inverter_setter] Started")
     client.loop_forever()
 
 

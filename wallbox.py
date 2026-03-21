@@ -108,7 +108,7 @@ def calculate_current(inverter, actual_charging_current: int):
 
 def wallbox(inverter, client):
     if updatedAt < (time.time() - 10):  # 10 sec timeout
-        if c["debug"]: print("Wallbox is OFFLINE")
+        print("[wallbox] Wallbox is OFFLINE")
         return
 
     if wallboxMode == "Disable": # automation OFF
@@ -129,17 +129,17 @@ def wallbox(inverter, client):
     charging_curr = calculate_current(inverter, previous_charging_curr)
 
     if frc == 1 and charging_curr > 0:  # stopped, but should start
-        if c["debug"]: print(f"stopped, but should start, {charging_curr}A")
+        print(f"[wallbox] Started charging at {charging_curr}A")
         client.publish("go-eCharger/201630/amp/set", charging_curr)
         client.publish("go-eCharger/201630/frc/set", 0)
         # req.get(wallboxConfig["address"] + 'api/set?amp={charging_curr}&frc=0')
     if frc == 0 and charging_curr > 0:  # started, just change amp
         if amp == charging_curr:
-            if c["debug"]: print(f"started, do nothing, {charging_curr}A")
+            if c["debug"]: print(f"[wallbox] No change, {charging_curr}A")
             return
         #       do nothing
         else:
-            if c["debug"]: print(f"started, just change amp, {charging_curr}A")
+            print(f"[wallbox] Changed amps: {amp}A -> {charging_curr}A")
             client.publish("go-eCharger/201630/amp/set", charging_curr)
             # req.get(f'{wallboxConfig["address"]}api/set?amp={charging_curr}')
     if frc == 1 and charging_curr == 0:  # stopped, shouldn't start
@@ -147,7 +147,7 @@ def wallbox(inverter, client):
         return
         # do nothing
     if frc == 0 and charging_curr == 0 and previous_charging_curr > 0:  # started, should stop
-        if c["debug"]: print(f"started, should stop, {charging_curr}A")
+        print(f"[wallbox] Stopped charging (was {previous_charging_curr}A)")
         client.publish("go-eCharger/201630/frc/set", 1)
         # req.get(wallboxConfig["address"] + 'api/set?frc=1')
 
@@ -210,10 +210,11 @@ def run():
         modelStatus = res["modelStatus"]
         updatedAt = time.time()
     except JSONDecodeError:
-        print("error connecting to Wallbox")
+        print("[wallbox] Error connecting to wallbox")
         return
     client = connect_mqtt("wallbox3")
     subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff", "command/WallboxReserveAmp"])
+    print("[wallbox] Started")
     client.loop_forever()
 
 

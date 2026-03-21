@@ -1,5 +1,6 @@
 from lxml import html
 import requests
+import traceback
 
 import asyncio
 import time
@@ -21,6 +22,7 @@ rooms = {
 async def main():
     client = connect_mqtt("rehau2")
     client.loop_start()
+    print("[rehau] Started")
 
     while True:
         try:
@@ -56,7 +58,8 @@ async def main():
                 if c["debug"]: print(f"OUTPUT {room_name}: {room_val}")
                 client.publish("home/rehau_output/" + room_name, room_val, qos=2,  properties=publishProperties).wait_for_publish()
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[rehau] Error: {e}")
+            traceback.print_exc()
         time.sleep(60)
 
 

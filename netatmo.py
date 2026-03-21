@@ -1,5 +1,6 @@
 import pyatmo
 import logging
+import traceback
 
 import asyncio
 import time
@@ -55,6 +56,7 @@ async def main():
     auth.extra["refresh_token"] = read_string_from_file()
     auth.token_updater = save_string_to_file
     auth.refresh_tokens()
+    print("[netatmo] Started, token refreshed")
     tokenRefresher = 0
 
     home_status = pyatmo.HomeStatus(auth, home_id=netatmoConfig["home_id"])
@@ -64,6 +66,7 @@ async def main():
             if tokenRefresher > 120:
                 auth.extra["refresh_token"] = read_string_from_file()
                 auth.refresh_tokens()
+                print("[netatmo] Token refreshed")
                 tokenRefresher = 0
 
             home_status.update()
@@ -76,7 +79,8 @@ async def main():
                 if c["debug"]: print(room['therm_measured_temperature'])
                 if c["debug"]: print(room['heating_power_request'])
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"[netatmo] Error: {e}")
+            traceback.print_exc()
         time.sleep(60)
 
 

@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from datetime import datetime
 
 from carconnectivity import carconnectivity
@@ -25,9 +26,9 @@ async def main():
     car_connectivity = None
     try:
         car_connectivity = carconnectivity.CarConnectivity(config=carConnectivityConfig)
-        print('Connecting')
         car_connectivity.fetch_all()
         garage = car_connectivity.get_garage()
+        print("[car] Started")
 
         while True:
             try:
@@ -49,12 +50,13 @@ async def main():
 
                         client.publish("home/Car/electric_range_vw", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"[car] Error: {e}")
+                traceback.print_exc()
             await asyncio.sleep(120)
     finally:
         if car_connectivity:
             car_connectivity.shutdown()
-        print('Disconnecting')
+        print('[car] Disconnecting')
 
 
 if __name__ == "__main__":

@@ -131,6 +131,7 @@ def decide(last_last_water_temp, last_water_temp, new_water_temp, target_temp):
 
     trend_up = new_water_temp > last_water_temp > last_last_water_temp
     if trend_up and (new_water_temp < (target_temp + hysteresis_above)):  # while heating up - TC running
+        print(f"[estia_optimizer] Starting heating: water {new_water_temp}C, target {target_temp}C")
         rehau_set("start")
         if new_water_temp < (target_temp + 0.5):
             netatmo_set(op="start", add_time=1800)
@@ -140,11 +141,11 @@ def decide(last_last_water_temp, last_water_temp, new_water_temp, target_temp):
 
     trend_down = new_water_temp < last_water_temp < last_last_water_temp
     if trend_down:
-        if c["debug"]: print(f"Stopping Rehau because heating stopped")
+        print(f"[estia_optimizer] Stopping heating: water {new_water_temp}C (trend down)")
         rehau_set("stop")
         return
 
-    if c["debug"]: print(f"Doing nothing..")
+    if c["debug"]: print(f"[estia_optimizer] No action: water {new_water_temp}C")
 
 def loop(new_water_temp):
     global last_water_temp
@@ -193,6 +194,7 @@ def subscribe(client: mqtt_client, topics: [str]):
 def init():
     client = connect_mqtt("estia_optimizer")
     subscribe(client, ["home/estia/target_temp", "krb/status/temperature:101", "home/weather/local/temperature", "home/rehau_set/#", "command/Termostat1NP"])
+    print("[estia_optimizer] Started")
     client.loop_forever()
 
 
