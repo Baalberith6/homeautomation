@@ -30,25 +30,32 @@ async def main():
 
         while True:
             try:
+                print("[skoda] Fetching vehicle data...")
                 car_connectivity.fetch_all()  # Refresh vehicle data
                 garage = car_connectivity.get_garage()
                 for vehicle in garage.list_vehicles():
                     if vehicle.vin.value == skodaConfig["vin_skoda"]:
-                        client.publish("home/Car/battery_level_enyaq", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
+                        soc = vehicle.drives.drives["primary"].level.value
+                        range_km = vehicle.drives.total_range.value
+                        client.publish("home/Car/battery_level_enyaq", soc, qos=2, properties=publishProperties).wait_for_publish()
 
                         time_remaining = calculate_charging_time_remaining(vehicle)
                         if time_remaining is not None:
                             client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
 
-                        client.publish("home/Car/electric_range_enyaq", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/electric_range_enyaq", range_km, qos=2, properties=publishProperties).wait_for_publish()
+                        print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km")
                     if vehicle.vin.value == skodaConfig["vin_vw"]:
-                        client.publish("home/Car/battery_level_vw", vehicle.drives.drives["primary"].level.value, qos=2, properties=publishProperties).wait_for_publish()
+                        soc = vehicle.drives.drives["primary"].level.value
+                        range_km = vehicle.drives.total_range.value
+                        client.publish("home/Car/battery_level_vw", soc, qos=2, properties=publishProperties).wait_for_publish()
 
                         time_remaining = calculate_charging_time_remaining(vehicle)
                         if time_remaining is not None:
                             client.publish("home/Car/charging_time_left", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
 
-                        client.publish("home/Car/electric_range_vw", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/electric_range_vw", range_km, qos=2, properties=publishProperties).wait_for_publish()
+                        print(f"[skoda] VW: SOC={soc}%, range={range_km}km")
             except Exception as e:
                 error_msg = str(e)[:200]
                 print(f"[skoda] Error: {error_msg}")
