@@ -1,6 +1,9 @@
 import asyncio
+import sys
 import traceback
 from datetime import datetime
+
+sys.stdout.reconfigure(line_buffering=True)
 
 from carconnectivity import carconnectivity
 
