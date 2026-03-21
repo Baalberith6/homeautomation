@@ -58,13 +58,13 @@ def calculate_current(inverter, actual_charging_current: int):
     remaining_ppv = inverter["ppv"] - i1 * 230 - i2 * 230 - i3 * 230 - amp_reserve * phases * 230
 
     # increase, until we use all PV
-    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) - amp_reserve < wallboxMaxAmp and remaining_ppv > phases * 230 and allowable_current < wallboxMaxAmp:
+    while 0 <= allowable_current - actual_charging_current + math.ceil(max(i1, i2, i3)) < wallboxMaxAmp and remaining_ppv > phases * 230 and allowable_current < wallboxMaxAmp:
         remaining_ppv -= phases * 230
         allowable_current += 1
         if c["debug"]: print(f"added, ppv: {remaining_ppv}, allowable: {allowable_current}")
 
     # decrease, if negative PV
-    while allowable_current > 0 and remaining_ppv - amp_reserve < 0 :
+    while allowable_current > 0 and remaining_ppv < 0 :
         remaining_ppv += phases * 230
         allowable_current -= 1
         if c["debug"]: print(f"substracted, ppv: {remaining_ppv}, allowable: {allowable_current}")

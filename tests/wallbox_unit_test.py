@@ -193,7 +193,7 @@ class TestWallbox3Phase(unittest.TestCase):
             "backup_i3": 0,
             "battery_soc": 85
         }
-        self.assertEqual(15, calculate_current(test_data, 12))
+        self.assertEqual(16, calculate_current(test_data, 12))
 
 
 class TestWallboxStartSOCGate(unittest.TestCase):
@@ -343,6 +343,97 @@ class TestWallboxAmpReserve(unittest.TestCase):
         result_reserved = calculate_current(test_data, 0)
         self.assertLess(result_reserved, result_default)
 
+    def test_reserve_reduces_by_expected_amount(self):
+        """With 10kW PV, no load, reserve=0 vs reserve=3 should differ by ~3A
+        (reserve holds back 3A * 3 phases * 230V = 2070W)."""
+        test_data = {
+            "ppv": 10000,
+            "load_p1": 0, "load_p2": 0, "load_p3": 0,
+            "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
+            "battery_soc": 100
+        }
+        wallbox.amp_reserve = 0
+        result_no_reserve = calculate_current(test_data, 0)
+        clean_data()
+        wallbox.amp_reserve = 3
+        result_reserved = calculate_current(test_data, 0)
+        # 3A reserve = 2070W less → should be ~3A less
+        self.assertEqual(result_no_reserve - result_reserved, 3)
+
+    def test_reserve_prevents_starting_when_not_enough_pv(self):
+        """Not charging yet — reserve reduces available PV below start
+        threshold, so charging should not start."""
+        test_data = {
+            "ppv": 5000,  # not enough for 6A charging + 3A reserve
+            "load_p1": 0, "load_p2": 0, "load_p3": 0,
+            "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
+            "battery_soc": 100
+        }
+        wallbox.amp_reserve = 3
+        result = calculate_current(test_data, 0)
+        self.assertEqual(0, result)
+
+    def test_reserve_triggers_decrease_while_charging(self):
+        """While charging at 8A, reserve=4 reduces available PV — current
+        should decrease but not stop; caps at minimum (6A)."""
+        # Charging at 8A → load includes wallbox: 8*230=1840 per phase
+        test_data = {
+            "ppv": 7000,
+            "load_p1": 1840, "load_p2": 1840, "load_p3": 1840,
+            "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
+            "battery_soc": 100
+        }
+        wallbox.amp_reserve = 4
+        result = calculate_current(test_data, 8)
+        self.assertEqual(6, result)
+
+    def test_reserve_does_not_stop_charging(self):
+        """Even with very high reserve and no PV, charging should cap at
+        minimum (6A) instead of stopping."""
+        # Charging at 10A → load includes wallbox: 10*230=2300 per phase
+        test_data = {
+            "ppv": 0,
+            "load_p1": 2300, "load_p2": 2300, "load_p3": 2300,
+            "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
+            "battery_soc": 100
+        }
+        wallbox.amp_reserve = 5
+        result = calculate_current(test_data, 10)
+        self.assertEqual(6, result)
+
+    def test_negative_reserve_increases_allowable(self):
+        """Negative reserve draws from battery to charge faster than PV alone."""
+        test_data = {
+            "ppv": 5000,
+            "load_p1": 0, "load_p2": 0, "load_p3": 0,
+            "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
+            "battery_soc": 100
+        }
+        wallbox.amp_reserve = 0
+        result_no_reserve = calculate_current(test_data, 0)
+        clean_data()
+        wallbox.amp_reserve = -3
+        result_negative = calculate_current(test_data, 0)
+        # -3A reserve adds 3*3*230=2070W headroom → ~3A more
+        self.assertEqual(result_negative - result_no_reserve, 3)
+
+    def test_negative_reserve_starts_charging_below_pv_threshold(self):
+        """With negative reserve, can start charging even when PV alone
+        wouldn't be enough — draws the difference from battery."""
+        test_data = {
+            "ppv": 3000,  # only ~4A worth, below start_at=6
+            "load_p1": 0, "load_p2": 0, "load_p3": 0,
+            "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
+            "battery_soc": 100
+        }
+        wallbox.amp_reserve = 0
+        result_no_reserve = calculate_current(test_data, 0)
+        self.assertEqual(0, result_no_reserve)  # can't start without reserve
+        clean_data()
+        wallbox.amp_reserve = -3  # adds 2070W → 5070W total → 7A
+        result_negative = calculate_current(test_data, 0)
+        self.assertGreaterEqual(result_negative, 6)
+
 
 class TestWallboxStartThreshold(unittest.TestCase):
     """Not enough PV to reach start_at (6A) → should not start"""
@@ -423,8 +514,7 @@ class TestWallboxCustomMaxAmp(unittest.TestCase):
             "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
             "battery_soc": 100
         }
-        # Loop stops at 9 due to amp_reserve headroom in the increase condition
-        self.assertEqual(9, calculate_current(test_data, 0))
+        self.assertEqual(10, calculate_current(test_data, 0))
 
     def test_lower_max_amp_caps_while_charging(self):
         wallbox.wallboxMaxAmp = 8
