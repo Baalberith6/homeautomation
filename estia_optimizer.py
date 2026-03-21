@@ -154,8 +154,9 @@ def loop(new_water_temp):
 
     decide(last_last_water_temp, last_water_temp, new_water_temp, target_temp)
 
-    last_last_water_temp = last_water_temp
-    last_water_temp = new_water_temp
+    if new_water_temp != last_water_temp:
+        last_last_water_temp = last_water_temp
+        last_water_temp = new_water_temp
 
 def subscribe(client: mqtt_client, topics: [str]):
     def on_message(client, userdata, msg):
@@ -186,6 +187,7 @@ def subscribe(client: mqtt_client, topics: [str]):
             if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
             global termostat_temp_1np
             termostat_temp_1np = float(msg.payload.decode())
+            loop(last_water_temp)
 
     for topic in topics:
         client.subscribe(topic)
