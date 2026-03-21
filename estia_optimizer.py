@@ -78,7 +78,6 @@ def calc_rehau_temp(param):
     return 320 + 18 * param
 
 def rehau_set(op:str):
-    global outside_temp
     tempAdjustment = 1.5  # if outside_temp < 4.5 else 0.5
     for room in rooms:
         temp = termostat_temp_1np if op == "stop" else termostat_temp_1np + tempAdjustment
@@ -150,7 +149,6 @@ def decide(last_last_water_temp, last_water_temp, new_water_temp, target_temp):
 def loop(new_water_temp):
     global last_water_temp
     global last_last_water_temp
-    global target_temp
 
     decide(last_last_water_temp, last_water_temp, new_water_temp, target_temp)
 
@@ -179,7 +177,6 @@ def subscribe(client: mqtt_client, topics: [str]):
             outside_temp = float(msg.payload.decode())
         elif topicParts[1] == "rehau_set":
             if c["debug"]: print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
-            global rooms
             for room in rooms:
                 if room.name == topicParts[2]:
                     room.currentTemp = float(msg.payload.decode())

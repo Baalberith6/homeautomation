@@ -90,8 +90,6 @@ def calculate_cop(consumption_24h: list, temp_avgs_24h: list):
     return cop, total_consumption
 
 async def calc():
-    global connected, api
-
     await asyncio.sleep(60) # wait for temps to arrive
     # Retry logic for initial connect and get_devices
     while True:
