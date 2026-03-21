@@ -9,3 +9,4 @@ netatmoClientSecret = ""
 netatmoRefreshToken = ""
 toshibaUsername = ""
 toshibaSecret = ""
+carConnectivityConfig = {}

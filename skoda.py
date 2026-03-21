@@ -1,11 +1,10 @@
 import asyncio
 import sys
-import traceback
 from datetime import datetime
 
 sys.stdout.reconfigure(line_buffering=True)
 
-from carconnectivity import carconnectivity
+from carconnectivity import carconnectivity  # noqa: E402
 
 from common import connect_mqtt, publishProperties
 from config import skodaConfig
