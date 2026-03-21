@@ -26,7 +26,6 @@ async def main():
     car_connectivity = None
     try:
         car_connectivity = carconnectivity.CarConnectivity(config=carConnectivityConfig)
-        car_connectivity.fetch_all()
         print("[skoda] Started")
 
         while True:
@@ -51,8 +50,8 @@ async def main():
 
                         client.publish("home/Car/electric_range_vw", vehicle.drives.total_range.value, qos=2, properties=publishProperties).wait_for_publish()
             except Exception as e:
-                print(f"[skoda] Error: {e}")
-                traceback.print_exc()
+                error_msg = str(e)[:200]
+                print(f"[skoda] Error: {error_msg}")
             await asyncio.sleep(120)
     finally:
         if car_connectivity:
