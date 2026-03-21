@@ -1,89 +1,69 @@
-# homeautomation
+# Home Energy Automation
 
-## Telegraph setup
-`telegraph.conf`
+Home energy automation system built around MQTT and InfluxDB. Independent Python services monitor and control solar inverter, EV charger, heat pump, thermostats, and vehicles — optimizing for PV self-consumption and electricity price.
 
-```
-[[inputs.mqtt_consumer]]
-  servers = ["tcp://127.0.0.1:1883"]
+## Services
 
-  topics = [
-    "home/#",
-  ]
-  
-  topic_tag = "" ## The message topic will be stored in a tag
-  qos = 2 ## 0 = at most once, 1 = at least once, 2 = exactly once
-  persistent_session = true ## To receive messages that arrived while the client is offline, needs QoS and client_id
-  client_id = "telegraph-1"
-  # username = "anonymous"
-  # password = "metricsmetricsmetricsmetrics"
-  data_format = "value" ## https://github.com/influxdata/telegraf/blob/master/docs/DATA_FORMATS_INPUT.md
-  data_type = "float"
+| Service | Role |
+|---------|------|
+| `inverter.py` | Reads GoodWe solar inverter (PV power, battery SOC, grid current) |
+| `inverter_setter.py` | Dynamically adjusts battery charging curves based on SOC |
+| `wallbox.py` | Controls go-eCharger EV charger current from PV surplus |
+| `estia.py` | Reads Toshiba Estia heat pump via HTTP API |
+| `estia_optimizer.py` | Schedules heat pump operation based on OTE electricity prices |
+| `estia_energy.py` | Calculates heat pump COP, writes to InfluxDB |
+| `netatmo.py` | Reads Netatmo thermostats (7 rooms), publishes temps and heating % |
+| `skoda.py` / `car.py` | Reads Skoda/VW vehicle data (SOC, range, charging status) |
+| `oteforecast.py` | Fetches Czech electricity spot prices from OTE |
+| `solarforecast.py` | Fetches Solcast PV generation forecast |
 
-  ## Enable extracting tag values from MQTT topics
-  ## _ denotes an ignored entry in the topic path
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/weatherforecast/yr/+"
-    measurement = "_/measurement/_/_"
-    tags = "_/_/service/field"
-    [[processors.pivot]]
-      tag_key = "field"
-      value_key = "value"
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/weather/local/+"
-    measurement = "_/measurement/_/_"
-    tags = "_/_/_/field"
-    [[processors.pivot]]
-      tag_key = "field"
-      value_key = "value"
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/weather/sensors/+"
-    measurement = "_/measurement/_/_"
-    tags = "_/_/_/field"
-    [[processors.pivot]]
-      tag_key = "field"
-      value_key = "value"
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/Car/+"
-    measurement = "_/measurement/_"
-    tags = "_/_/field"
-    [[processors.pivot]]
-      tag_key = "field"
-      value_key = "value"
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/FVE/power/+"
-    measurement = "_/measurement/_/_"
-    tags = "_/_/power/string"
-    [[processors.pivot]]
-      tag_key = "power"
-      value_key = "value"
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/FVE/curr/+"
-    measurement = "_/measurement/_/_"
-    tags = "_/_/curr/phase"
-    [[processors.pivot]]
-      tag_key = "curr"
-      value_key = "value"
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/FVE/battery/+/+"
-    measurement = "_/measurement/_/_/_"
-    tags = "_/_/_/sum/field"
-    [[processors.pivot]]
-      tag_key = "field"
-      value_key = "value"
-  [[inputs.mqtt_consumer.topic_parsing]]
-    topic = "home/FVE/+"
-    measurement = "_/measurement/_"
-    tags = "_/_/field"
-    [[processors.pivot]]
-      tag_key = "field"
-      value_key = "value"
+## Infrastructure
+
+- **MQTT broker**: `192.168.1.52:1883` — central message bus (`home/`, `bool/`, `command/`, `wallbox/`, `diag/` topics)
+- **InfluxDB**: `192.168.1.50` — time-series storage
+- **Telegraf**: bridges MQTT to InfluxDB (config backed up in `telegraf.conf`)
+- **Grafana**: dashboards via InfluxDB + websocket live push
+
+## Setup
+
+```bash
+pip install -r requirements.txt
+cp secret.py.example secret.py  # fill in API keys and credentials
 ```
 
+`secret.py` holds all API keys and credentials (not committed). See the committed stub for required variables.
+
+`config.py` holds device IPs, MQTT/InfluxDB endpoints, device IDs, and polling intervals.
+
+## Running
+
+```bash
+# Run a service
+python3 inverter.py
+
+# Run locally in debug mode (safe alongside prod)
+DEBUG=1 python3 inverter.py
 ```
-[[outputs.influxdb_v2]]
-  urls = ["http://localhost:8086"]
-  token = "TOKEN FROM Influx UI -> Data -> API Tokens"
-  organization = "Home"
-  bucket = "mqtt"
+
+`DEBUG=1` enables verbose output and appends `-dev` to the MQTT client ID so the local instance doesn't disconnect production. Netatmo token files use a `.dev.token` suffix in debug mode.
+
+**Warning:** Services that control devices (`wallbox.py`, `inverter_setter.py`, `estia_optimizer.py`) send real commands even in debug mode.
+
+## Deployment
+
+Services run as systemd units on `192.168.1.51`. Python file `foo.py` maps to unit `0-foo.service`.
+
+```bash
+./deploy.sh <service>        # git pull, restart unit, tail logs
+./deploy.sh <service> 15     # override wait seconds (default 8)
 ```
+
+## Tests
+
+```bash
+flake8                  # lint
+pytest tests/           # all tests
+pytest tests/file.py    # single file
+```
+
+CI runs on every push (`.github/workflows/test.yaml` — Python 3.9, flake8 + pytest).
