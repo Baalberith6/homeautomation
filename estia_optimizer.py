@@ -83,31 +83,38 @@ def calc_rehau_temp(param):
     return 320 + 18 * param
 
 
-def apply_thermostats():
+def apply_thermostats(include_rehau=True):
     temp = (termostat_temp_1np + BOOST_OFFSET
             if is_boosting else termostat_temp_1np)
 
     if c["debug"]:
         print(f"[estia_optimizer] apply_thermostats: "
-              f"boosting={is_boosting}, temp={temp}")
+              f"boosting={is_boosting}, temp={temp}, "
+              f"rehau={include_rehau}")
 
-    # Rehau zones
-    for room in rooms:
-        payload = {
-            'zone': room.id,
-            'RoomName': room.name,
-            'RSH': temp,
-            'lightH': '0',
-            'temp': calc_rehau_temp(temp),
-            'mode': 'normal'
-        }
-        if room.currentTemp != temp:
-            try:
-                _request(payload, "room-page.html")
-            except Exception as e:
-                print(f"[estia_optimizer] Rehau {room.name} error: {e}")
-        elif c["debug"]:
-            print(f"[estia_optimizer] Rehau {room.name} already at {temp}")
+    # Rehau zones (only on boost transitions, not on base temp changes)
+    if include_rehau:
+        for room in rooms:
+            payload = {
+                'zone': room.id,
+                'RoomName': room.name,
+                'RSH': temp,
+                'lightH': '0',
+                'temp': calc_rehau_temp(temp),
+                'mode': 'normal'
+            }
+            if room.currentTemp != temp:
+                try:
+                    _request(payload, "room-page.html")
+                except Exception as e:
+                    print(
+                        f"[estia_optimizer] Rehau {room.name} error: {e}"
+                    )
+            elif c["debug"]:
+                print(
+                    f"[estia_optimizer] Rehau {room.name} already at "
+                    f"{temp}"
+                )
 
     # Netatmo rooms — always manual with refreshing timeout
     try:
@@ -227,7 +234,7 @@ def subscribe(client: mqtt_client, topics: [str]):
                 print(f"[estia_optimizer] Termostat1NP changed: "
                       f"{termostat_temp_1np} -> {new_temp}")
                 termostat_temp_1np = new_temp
-                apply_thermostats()
+                apply_thermostats(include_rehau=False)
             elif c["debug"]:
                 print(f"Received `{msg.payload.decode()}` "
                       f"from `{msg.topic}` topic")
