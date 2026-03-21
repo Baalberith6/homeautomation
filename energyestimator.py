@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -141,7 +141,8 @@ def calculate(temps):
     total_primotop_cummulative = 0
     res = {}
     for temp, base_consumption, tuv_consumption, temp_in in zip(temps.items(), base_consumptions.values(), tuv_consumptions.values(), temperatures_inside.values()):
-        time = datetime.fromtimestamp(float(temp[0]) - 600.0)
+        CET = timezone(timedelta(hours=1))
+        time = datetime.fromtimestamp(float(temp[0]) - 600.0, tz=CET).replace(tzinfo=None)
         cop = find_closest_cop(cop_30, temp[1])
         temp_in -= 3  # 5C diff base load + 4 ludia + pes
         total_tc = base_consumption + max(0, (((temp_in - temp[1]) * heat_lost) / cop)) + tc_base + (tuv_consumption / (cop / 1.5))
