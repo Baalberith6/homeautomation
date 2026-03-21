@@ -20,7 +20,7 @@ reactivex==4.0.4
 requests>=2.32.3,<3.0
 six==1.16.0
 soupsieve==2.3.2.post1
-typing_extensions==4.3.0
+typing_extensions>=4.3.0
 urllib3==1.26.12
 pyrehau_neasmart==0.0.6
 
