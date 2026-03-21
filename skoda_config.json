@@ -1,0 +1,20 @@
+{
+    "carConnectivity": {
+        "connectors": [
+            {
+                "type": "volkswagen",
+                "config": {
+                    "username": "matej.pristak@gmail.com",
+                    "password": "b"
+                }
+            },
+            {
+                "type": "skoda",
+                "config": {
+                    "username": "matej.pristak@gmail.com",
+                    "password": "a"
+                }
+            }
+        ]
+    }
+}
