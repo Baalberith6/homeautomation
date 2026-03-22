@@ -14,8 +14,20 @@ from config import generalConfig as c
 
 
 def _request():
-    r = requests.get('https://api.solcast.com.au/rooftop_sites/9a34-5411-4c58-3c98/forecasts?format=json&api_key=' + solcastKey)
-    return r.json()
+    url = 'https://api.solcast.com.au/rooftop_sites/9a34-5411-4c58-3c98/forecasts?format=json&api_key=' + solcastKey
+    last_err = None
+    for attempt in range(3):
+        try:
+            r = requests.get(url, timeout=30)
+            r.raise_for_status()
+            return r.json()
+        except (requests.RequestException, ValueError) as e:
+            last_err = e
+            print(f"Solcast API attempt {attempt + 1}/3 failed: {e}")
+            if attempt < 2:
+                import time
+                time.sleep(10 * (attempt + 1))
+    raise last_err
 
 
 def store_runtime_data(r):
