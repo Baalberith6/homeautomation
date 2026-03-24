@@ -19,7 +19,7 @@ outside_temp = 0.0
 termostat_temp_1np = 21.0
 is_boosting = False
 
-BOOST_OFFSET = 1
+BOOST_OFFSET = 1.5
 hysteresis_above = 3.0  # krb protection
 
 file_path = ('netatmo_optimizer.dev.token' if c["debug"]
