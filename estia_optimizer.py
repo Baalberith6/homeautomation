@@ -105,6 +105,7 @@ def apply_thermostats(include_netatmo=True):
         if room.currentTemp != temp:
             try:
                 _request(payload, "room-page.html")
+                room.currentTemp = temp
             except Exception as e:
                 print(f"[estia_optimizer] Rehau {room.name} error: {e}")
         elif c["debug"]:
