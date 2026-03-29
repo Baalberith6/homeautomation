@@ -162,7 +162,9 @@ def subscribe(client: mqtt_client, topics: [str]):
             if topicParts[-1] == "amp": amp = int(msg.payload.decode())
             if topicParts[-1] == "alw": alw = bool(msg.payload.decode())
             if topicParts[-1] == "frc": frc = int(msg.payload.decode())
-            if topicParts[-1] == "car": car = int(msg.payload.decode())
+            if topicParts[-1] == "car":
+                    car = int(msg.payload.decode())
+                    client.publish("bool/wallbox/car_connected", int(car not in [0, 1, 5]))
             if topicParts[-1] == "nrg":
                 nrg = list(map(float, msg.payload.decode().strip('][').split(',')))
                 client.publish("home/Car/charging_wallbox_power", nrg[11])
