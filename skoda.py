@@ -42,8 +42,7 @@ async def main():
                         client.publish("home/Car/battery_level_enyaq", soc, qos=2, properties=publishProperties).wait_for_publish()
 
                         time_remaining = calculate_charging_time_remaining(vehicle)
-                        if time_remaining is not None:
-                            client.publish("home/Car/charging_time_left_enyaq", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/charging_time_left_enyaq", time_remaining or 0, qos=2, properties=publishProperties).wait_for_publish()
 
                         client.publish("home/Car/electric_range_enyaq", range_km, qos=2, properties=publishProperties).wait_for_publish()
                         print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km")
@@ -53,8 +52,7 @@ async def main():
                         client.publish("home/Car/battery_level_vw", soc, qos=2, properties=publishProperties).wait_for_publish()
 
                         time_remaining = calculate_charging_time_remaining(vehicle)
-                        if time_remaining is not None:
-                            client.publish("home/Car/charging_time_left_vw", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/charging_time_left_vw", time_remaining or 0, qos=2, properties=publishProperties).wait_for_publish()
 
                         client.publish("home/Car/electric_range_vw", range_km, qos=2, properties=publishProperties).wait_for_publish()
                         print(f"[skoda] VW: SOC={soc}%, range={range_km}km")
