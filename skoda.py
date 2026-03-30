@@ -20,6 +20,11 @@ def is_charging(vehicle):
     # Car stays online while charging; offline means stale cached state
     if vehicle.connection_state.value == GenericVehicle.ConnectionState.OFFLINE:
         return False
+    # Zero power means not actually charging — manufacturer may report
+    # stale CHARGING state after charging stops
+    power = vehicle.charging.power.value
+    if power is not None and power <= 0:
+        return False
     return True
 
 
@@ -35,7 +40,7 @@ def calculate_charging_time_remaining(vehicle):
 
 
 async def main():
-    client = connect_mqtt("skoda3")
+    client = connect_mqtt("skoda5")
     client.loop_start()
 
     car_connectivity = None
