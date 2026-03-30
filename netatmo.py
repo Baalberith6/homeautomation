@@ -75,6 +75,8 @@ async def main():
 
                 client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
                 client.publish("home/netatmo/on/"+room_name, float(room['heating_power_request'])/100.0, qos=2, properties=publishProperties).wait_for_publish()
+                if 'therm_setpoint_temperature' in room:
+                    client.publish("home/netatmo/temp_target/"+room_name, room['therm_setpoint_temperature'], qos=2, properties=publishProperties).wait_for_publish()
 
                 if c["debug"]: print(room['therm_measured_temperature'])
                 if c["debug"]: print(room['heating_power_request'])
