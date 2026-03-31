@@ -14,6 +14,8 @@ from secret import influxToken
 
 local_tz = pytz.timezone('Europe/Prague')
 
+EUR_CZK = 24
+
 
 def _request(date: datetime):
     r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d") + '&amp;time_resolution=PT60M')
@@ -37,6 +39,14 @@ def send_to_mqtt(r, client, date: datetime):
     client.publish("home/OTE/hourly", json.dumps(hour_prices_dict), qos=2, properties=publishProperties).wait_for_publish()
     hour_prices_zal = hour_prices_dict.copy()
 
+    # Write all 24 hourly prices to InfluxDB (EUR/MWh + CZK/kWh)
+    for hour_str, price_eur in hour_prices_zal.items():
+        write_api.write(bucket=influxConfig["bucket"], record=Point("OTE")
+                        .field("price", price_eur)
+                        .field("price_czk_kwh", price_eur * EUR_CZK / 1000)
+                        .tag("type", "hourly")
+                        .time(date + timedelta(hours=int(hour_str))))
+
     max_hour = max(hour_prices_dict, key=hour_prices_dict.get)
     hour_prices_dict.pop(max_hour)
     max_hour2 = max(hour_prices_dict, key=hour_prices_dict.get)
@@ -58,8 +68,16 @@ def send_to_mqtt(r, client, date: datetime):
     client.publish("home/OTE/daily/min/price", hour_prices_zal[min_hour], qos=2, properties=publishProperties).wait_for_publish()
 
     # print(date + timedelta(hours=int(max_hour)))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("OTE").field("price", hour_prices_zal[max_hour]).tag("type", "max").time(date + timedelta(hours=int(max_hour))))
-    write_api.write(bucket=influxConfig["bucket"], record=Point("OTE").field("price", hour_prices_zal[min_hour]).tag("type", "min").time(date + timedelta(hours=int(min_hour))))
+    write_api.write(bucket=influxConfig["bucket"], record=Point("OTE")
+                    .field("price", hour_prices_zal[max_hour])
+                    .field("price_czk_kwh", hour_prices_zal[max_hour] * EUR_CZK / 1000)  # noqa: E501
+                    .tag("type", "max")
+                    .time(date + timedelta(hours=int(max_hour))))
+    write_api.write(bucket=influxConfig["bucket"], record=Point("OTE")
+                    .field("price", hour_prices_zal[min_hour])
+                    .field("price_czk_kwh", hour_prices_zal[min_hour] * EUR_CZK / 1000)  # noqa: E501
+                    .tag("type", "min")
+                    .time(date + timedelta(hours=int(min_hour))))
 
     # hour_prices
     # for key in r["result"]["watt_hours_period"].keys():
