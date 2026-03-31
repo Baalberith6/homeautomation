@@ -46,6 +46,11 @@ estiaConfig = {
     "device_unique_id": "11bc7715-82ea-49c4-9c19-c3fc8833de4e",
 }
 
+cezConfig = {
+    "supply_point_uid": "0000758050742000836853859182400104557955",
+    "partner_id": "0020834670",
+}
+
 mqttConfig = {
     "broker": "192.168.1.52",
     "port": 1883
