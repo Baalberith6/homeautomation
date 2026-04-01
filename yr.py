@@ -3,6 +3,7 @@ import time as ttime
 import traceback
 from datetime import datetime, time, timedelta, timezone
 from pprint import pprint
+from zoneinfo import ZoneInfo
 
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
@@ -36,21 +37,26 @@ def publish(client):
             client.publish("home/weatherforecast/yr/maxwind", max(forecast.data.intervals_between(d_min, d_max), key=lambda x: x.variables["wind_speed"].value).variables["wind_speed"].value * 3.6, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/weatherforecast/yr/precip", sum(map(lambda x: x.variables["precipitation_amount"].value, forecast.data.intervals_between(d_min, d_max))), qos=2, properties=publishProperties).wait_for_publish()
 
-            # Publish today's hourly forecast (full day, 00:00–23:59)
-            today_start = datetime.combine(d, time.min)
-            today_end = datetime.combine(d, time.max)
+            # Publish today's hourly forecast (full local day)
+            # yr.no returns naive UTC times, so convert local day bounds to UTC
+            tz = ZoneInfo("Europe/Prague")
+            local_start = datetime(d.year, d.month, d.day, tzinfo=tz)
+            local_end = datetime(d.year, d.month, d.day, 23, 59, 59, tzinfo=tz)
+            utc_start = local_start.astimezone(timezone.utc).replace(tzinfo=None)
+            utc_end = local_end.astimezone(timezone.utc).replace(tzinfo=None)
             hourly = {}
-            for interval in forecast.data.intervals_between(today_start, today_end):
-                hour_str = interval.start_time.strftime("%H:%M")
+            for interval in forecast.data.intervals_between(utc_start, utc_end):
+                ts_utc = interval.start_time.replace(tzinfo=timezone.utc)
+                ts_local = ts_utc.astimezone(tz)
+                hour_str = ts_local.strftime("%H:%M")
                 temp_val = round(interval.variables["air_temperature"].value, 1)
                 hourly[hour_str] = temp_val
 
-                # Write each hour to InfluxDB with proper timestamp
-                ts = interval.start_time.replace(tzinfo=timezone.utc)
-                write_api.write(bucket=influxConfig["bucket"], record=Point("TempForecast").field("temperature", float(temp_val)).time(ts))
+                # Write each hour to InfluxDB with UTC timestamp
+                write_api.write(bucket=influxConfig["bucket"], record=Point("TempForecast").field("temperature", float(temp_val)).time(ts_utc))
 
-                # Publish individual hours to MQTT
-                hour_key = interval.start_time.strftime("%H")
+                # Publish individual hours to MQTT (local hour)
+                hour_key = ts_local.strftime("%H")
                 client.publish(f"home/tempforecast/yr/{hour_key}", temp_val, qos=2, properties=publishProperties).wait_for_publish()
 
             # Publish JSON summary for other consumers
@@ -72,7 +78,7 @@ def publish(client):
 
 
 def run():
-    client = connect_mqtt("yr")
+    client = connect_mqtt("yr3")
     client.loop_start()
     publish(client)
 
