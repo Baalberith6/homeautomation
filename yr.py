@@ -45,22 +45,28 @@ def publish(client):
             utc_start = local_start.astimezone(timezone.utc).replace(tzinfo=None)
             utc_end = local_end.astimezone(timezone.utc).replace(tzinfo=None)
             hourly = {}
+            hourly_rain = {}
             for interval in forecast.data.intervals_between(utc_start, utc_end):
                 ts_utc = interval.start_time.replace(tzinfo=timezone.utc)
                 ts_local = ts_utc.astimezone(tz)
                 hour_str = ts_local.strftime("%H:%M")
+                hour_key = ts_local.strftime("%H")
                 temp_val = round(interval.variables["air_temperature"].value, 1)
+                precip_val = round(interval.variables["precipitation_amount"].value, 1)
                 hourly[hour_str] = temp_val
+                hourly_rain[hour_str] = precip_val
 
                 # Write each hour to InfluxDB with UTC timestamp
                 write_api.write(bucket=influxConfig["bucket"], record=Point("TempForecast").field("temperature", float(temp_val)).time(ts_utc))
+                write_api.write(bucket=influxConfig["bucket"], record=Point("RainForecast").field("precipitation", float(precip_val)).time(ts_utc))
 
                 # Publish individual hours to MQTT (local hour)
-                hour_key = ts_local.strftime("%H")
                 client.publish(f"home/tempforecast/yr/{hour_key}", temp_val, qos=2, properties=publishProperties).wait_for_publish()
+                client.publish(f"home/rainforecast/yr/{hour_key}", precip_val, qos=2, properties=publishProperties).wait_for_publish()
 
-            # Publish JSON summary for other consumers
+            # Publish JSON summaries for other consumers
             client.publish("jsons/weatherforecast/yr/hourly", json.dumps(hourly), qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("jsons/weatherforecast/yr/hourly_rain", json.dumps(hourly_rain), qos=2, properties=publishProperties).wait_for_publish()
 
             if datetime.now().hour == 23 and datetime.now().minute > 30:
                 # tomorrow only
