@@ -19,6 +19,10 @@ API_BASE = "https://muj.cez.cz/col-api/prod/1.0"
 def authenticate():
     """Authenticate to muj.cez.cz via OAuth2 PKCE + CAS login."""
     session = requests.Session()
+    session.headers["User-Agent"] = (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    )
 
     # Generate PKCE code verifier and challenge
     raw = base64.urlsafe_b64encode(os.urandom(32)).rstrip(b"=")
