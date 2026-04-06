@@ -14,7 +14,7 @@ from config import generalConfig as c, influxConfig
 from secret import influxToken
 
 prdikov = Place("Malý Jeníkov", 49.15049, 15.23491, 578)
-forecast = Forecast(prdikov, "Matej Pristak/1.0 matej.pristak@gmail.com", "compact")
+forecast = Forecast(prdikov, "Matej Pristak/1.0 matej.pristak@gmail.com", "complete")
 
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
