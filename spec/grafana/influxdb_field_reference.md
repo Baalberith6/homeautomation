@@ -20,6 +20,18 @@
 | mintemp | YR.no forecast low (°C) |
 | precip | Rain forecast (mm) |
 
+## Wind Forecast (measurement: "windforecast", via telegraf; also "WindForecast" direct InfluxDB)
+| Field | Description |
+|-------|-------------|
+| 00–23 | Hourly wind speed forecast (km/h) — telegraf pivoted from MQTT topic hour |
+| wind_speed | Sustained wind speed (km/h) — direct InfluxDB write |
+| wind_gust | Wind gust speed (km/h) — direct InfluxDB write |
+
+## Gust Forecast (measurement: "gustforecast", via telegraf)
+| Field | Description |
+|-------|-------------|
+| 00–23 | Hourly wind gust forecast (km/h) — telegraf pivoted from MQTT topic hour |
+
 ## Indoor - Rehau (measurement: "rehau")
 | Field | Description |
 |-------|-------------|
@@ -42,6 +54,17 @@
 | hala | Poschodie temp (°C) |
 | spalna | Spalna temp (°C) |
 
+## Indoor - Netatmo Setpoints (measurement: "temp_target")
+| Field | Description |
+|-------|-------------|
+| hala | Poschodie target temp (°C) |
+| kupelna | Kupelna target temp (°C) |
+| chodba | Chodba target temp (°C) |
+| hostovska | Hostovska target temp (°C) |
+| julinka | Julinka target temp (°C) |
+| kubo | Kubo target temp (°C) |
+| spalna | Spalna target temp (°C) |
+
 ## Fireplace (measurement: "krb")
 | Field | Description |
 |-------|-------------|
@@ -63,6 +86,7 @@
 | charging_wallbox_power | Wallbox charge power (W) |
 | charging_time_left_enyaq | Enyaq charge time remaining (min) |
 | charging_time_left_vw | ID.3 charge time remaining (min) |
+| car_connected | Car plugged in to wallbox (1 = yes, 0 = no) |
 
 ## Solar/FVE (measurement: "FVE")
 | Field | Tag | Description |
@@ -71,6 +95,7 @@
 | power | string="all" | Current production (W) |
 | soc | | Battery SoC (%) |
 | battery_load | | Battery load (W) |
+| meter_power | | Grid meter power (W) — negative = import, positive = export |
 | consumption_day | | Daily consumption (kWh) |
 | generation_day | | Daily generation (kWh) |
 

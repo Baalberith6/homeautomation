@@ -46,6 +46,8 @@ def publish(client):
             utc_end = local_end.astimezone(timezone.utc).replace(tzinfo=None)
             hourly = {}
             hourly_rain = {}
+            hourly_wind = {}
+            hourly_gust = {}
             for interval in forecast.data.intervals_between(utc_start, utc_end):
                 ts_utc = interval.start_time.replace(tzinfo=timezone.utc)
                 ts_local = ts_utc.astimezone(tz)
@@ -53,20 +55,30 @@ def publish(client):
                 hour_key = ts_local.strftime("%H")
                 temp_val = round(interval.variables["air_temperature"].value, 1)
                 precip_val = round(interval.variables["precipitation_amount"].value, 1)
+                wind_val = round(interval.variables["wind_speed"].value * 3.6, 1)
+                gust_val = round(interval.variables["wind_speed_of_gust"].value * 3.6, 1)
                 hourly[hour_str] = temp_val
                 hourly_rain[hour_str] = precip_val
+                hourly_wind[hour_str] = wind_val
+                hourly_gust[hour_str] = gust_val
 
                 # Write each hour to InfluxDB with UTC timestamp
                 write_api.write(bucket=influxConfig["bucket"], record=Point("TempForecast").field("temperature", float(temp_val)).time(ts_utc))
                 write_api.write(bucket=influxConfig["bucket"], record=Point("RainForecast").field("precipitation", float(precip_val)).time(ts_utc))
+                write_api.write(bucket=influxConfig["bucket"], record=Point("WindForecast").field("wind_speed", float(wind_val)).time(ts_utc))
+                write_api.write(bucket=influxConfig["bucket"], record=Point("WindForecast").field("wind_gust", float(gust_val)).time(ts_utc))
 
                 # Publish individual hours to MQTT (local hour)
                 client.publish(f"home/tempforecast/yr/{hour_key}", temp_val, qos=2, properties=publishProperties).wait_for_publish()
                 client.publish(f"home/rainforecast/yr/{hour_key}", precip_val, qos=2, properties=publishProperties).wait_for_publish()
+                client.publish(f"home/windforecast/yr/{hour_key}", wind_val, qos=2, properties=publishProperties).wait_for_publish()
+                client.publish(f"home/gustforecast/yr/{hour_key}", gust_val, qos=2, properties=publishProperties).wait_for_publish()
 
             # Publish JSON summaries for other consumers
             client.publish("jsons/weatherforecast/yr/hourly", json.dumps(hourly), qos=2, properties=publishProperties).wait_for_publish()
             client.publish("jsons/weatherforecast/yr/hourly_rain", json.dumps(hourly_rain), qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("jsons/weatherforecast/yr/hourly_wind", json.dumps(hourly_wind), qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("jsons/weatherforecast/yr/hourly_gust", json.dumps(hourly_gust), qos=2, properties=publishProperties).wait_for_publish()
 
             if datetime.now().hour == 23 and datetime.now().minute > 30:
                 # tomorrow only
