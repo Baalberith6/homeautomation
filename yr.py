@@ -14,7 +14,7 @@ from config import generalConfig as c, influxConfig
 from secret import influxToken
 
 prdikov = Place("Malý Jeníkov", 49.15049, 15.23491, 578)
-forecast = Forecast(prdikov, "Matej Pristak/1.0 matej.pristak@gmail.com", "complete")
+forecast = Forecast(prdikov, "Matej Pristak/1.0 matej.pristak@gmail.com", "compact")
 
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
@@ -56,29 +56,34 @@ def publish(client):
                 temp_val = round(interval.variables["air_temperature"].value, 1)
                 precip_val = round(interval.variables["precipitation_amount"].value, 1)
                 wind_val = round(interval.variables["wind_speed"].value * 3.6, 1)
-                gust_val = round(interval.variables["wind_speed_of_gust"].value * 3.6, 1)
+                gust_var = interval.variables.get("wind_speed_of_gust")
+                gust_val = round(gust_var.value * 3.6, 1) if gust_var else None
                 hourly[hour_str] = temp_val
                 hourly_rain[hour_str] = precip_val
                 hourly_wind[hour_str] = wind_val
-                hourly_gust[hour_str] = gust_val
+                if gust_val is not None:
+                    hourly_gust[hour_str] = gust_val
 
                 # Write each hour to InfluxDB with UTC timestamp
                 write_api.write(bucket=influxConfig["bucket"], record=Point("TempForecast").field("temperature", float(temp_val)).time(ts_utc))
                 write_api.write(bucket=influxConfig["bucket"], record=Point("RainForecast").field("precipitation", float(precip_val)).time(ts_utc))
                 write_api.write(bucket=influxConfig["bucket"], record=Point("WindForecast").field("wind_speed", float(wind_val)).time(ts_utc))
-                write_api.write(bucket=influxConfig["bucket"], record=Point("WindForecast").field("wind_gust", float(gust_val)).time(ts_utc))
+                if gust_val is not None:
+                    write_api.write(bucket=influxConfig["bucket"], record=Point("WindForecast").field("wind_gust", float(gust_val)).time(ts_utc))
 
                 # Publish individual hours to MQTT (local hour)
                 client.publish(f"home/tempforecast/yr/{hour_key}", temp_val, qos=2, properties=publishProperties).wait_for_publish()
                 client.publish(f"home/rainforecast/yr/{hour_key}", precip_val, qos=2, properties=publishProperties).wait_for_publish()
                 client.publish(f"home/windforecast/yr/{hour_key}", wind_val, qos=2, properties=publishProperties).wait_for_publish()
-                client.publish(f"home/gustforecast/yr/{hour_key}", gust_val, qos=2, properties=publishProperties).wait_for_publish()
+                if gust_val is not None:
+                    client.publish(f"home/gustforecast/yr/{hour_key}", gust_val, qos=2, properties=publishProperties).wait_for_publish()
 
             # Publish JSON summaries for other consumers
             client.publish("jsons/weatherforecast/yr/hourly", json.dumps(hourly), qos=2, properties=publishProperties).wait_for_publish()
             client.publish("jsons/weatherforecast/yr/hourly_rain", json.dumps(hourly_rain), qos=2, properties=publishProperties).wait_for_publish()
             client.publish("jsons/weatherforecast/yr/hourly_wind", json.dumps(hourly_wind), qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("jsons/weatherforecast/yr/hourly_gust", json.dumps(hourly_gust), qos=2, properties=publishProperties).wait_for_publish()
+            if hourly_gust:
+                client.publish("jsons/weatherforecast/yr/hourly_gust", json.dumps(hourly_gust), qos=2, properties=publishProperties).wait_for_publish()
 
             if datetime.now().hour == 23 and datetime.now().minute > 30:
                 # tomorrow only
