@@ -221,46 +221,6 @@ class TestCo2Resilience(unittest.TestCase):
         mock_sleep.assert_called_with(5)
 
 
-class TestCarResilience(unittest.TestCase):
-    @patch('car.asyncio.sleep', new_callable=AsyncMock,
-           side_effect=LoopBreak)
-    @patch('car.carconnectivity.CarConnectivity')
-    @patch('car.connect_mqtt')
-    def test_survives_vehicle_error(self, mock_mqtt, mock_cc_cls,
-                                    mock_sleep):
-        mock_mqtt.return_value = MagicMock()
-        mock_cc = MagicMock()
-        mock_cc_cls.return_value = mock_cc
-        mock_garage = MagicMock()
-        mock_cc.get_garage.return_value = mock_garage
-        mock_garage.list_vehicles.side_effect = Exception("API error")
-
-        import car
-        with self.assertRaises(LoopBreak):
-            asyncio.run(car.main())
-
-        mock_sleep.assert_called_with(120)
-
-    @patch('car.asyncio.sleep', new_callable=AsyncMock,
-           side_effect=LoopBreak)
-    @patch('car.carconnectivity.CarConnectivity')
-    @patch('car.connect_mqtt')
-    def test_cleanup_runs_after_error(self, mock_mqtt, mock_cc_cls,
-                                      mock_sleep):
-        mock_mqtt.return_value = MagicMock()
-        mock_cc = MagicMock()
-        mock_cc_cls.return_value = mock_cc
-        mock_garage = MagicMock()
-        mock_cc.get_garage.return_value = mock_garage
-        mock_garage.list_vehicles.side_effect = Exception("API error")
-
-        import car
-        with self.assertRaises(LoopBreak):
-            asyncio.run(car.main())
-
-        mock_cc.shutdown.assert_called_once()
-
-
 class TestSkodaResilience(unittest.TestCase):
     @patch('skoda.asyncio.sleep', new_callable=AsyncMock,
            side_effect=LoopBreak)
