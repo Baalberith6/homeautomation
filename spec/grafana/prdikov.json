@@ -1,0 +1,2191 @@
+{
+  "meta": {
+    "type": "db",
+    "canSave": true,
+    "canEdit": true,
+    "canAdmin": true,
+    "canStar": true,
+    "canDelete": true,
+    "slug": "prdikov",
+    "url": "/d/q50mEhf7k/prdikov",
+    "expires": "0001-01-01T00:00:00Z",
+    "created": "2025-09-21T21:04:48+02:00",
+    "updated": "2026-04-07T17:56:31+02:00",
+    "updatedBy": "admin",
+    "createdBy": "admin",
+    "version": 364,
+    "hasAcl": false,
+    "isFolder": false,
+    "apiVersion": "v0alpha1",
+    "folderId": 0,
+    "folderUid": "",
+    "folderTitle": "General",
+    "folderUrl": "",
+    "provisioned": false,
+    "provisionedExternalId": "",
+    "annotationsPermissions": {
+      "dashboard": {
+        "canAdd": true,
+        "canEdit": true,
+        "canDelete": true
+      },
+      "organization": {
+        "canAdd": true,
+        "canEdit": true,
+        "canDelete": true
+      }
+    }
+  },
+  "dashboard": {
+    "annotations": {
+      "list": [
+        {
+          "builtIn": 1,
+          "datasource": {
+            "type": "datasource",
+            "uid": "grafana"
+          },
+          "enable": true,
+          "hide": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "name": "Annotations & Alerts",
+          "target": {
+            "limit": 100,
+            "matchAny": false,
+            "tags": [],
+            "type": "dashboard"
+          },
+          "type": "dashboard"
+        }
+      ]
+    },
+    "editable": true,
+    "fiscalYearStartMonth": 0,
+    "graphTooltip": 2,
+    "id": 2,
+    "links": [],
+    "panels": [
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 14,
+          "x": 0,
+          "y": 0
+        },
+        "id": 70,
+        "options": {
+          "afterRender": "var root=document.getElementById(\"ww-root\");\nif(!root)return;\nvar container=document.getElementById(\"ww-spark\");\nif(!container)return;\nvar rr=parseFloat(root.dataset.rainRate)||0;\n\n// Live clock\nvar clockEl=document.getElementById(\"ww-clock\");\nif(clockEl){\n  function updClock(){\n    var n=new Date();\n    var pad=function(x){return String(x).padStart(2,\"0\")};\n    clockEl.innerHTML='<span class=\"ww-clock-time\">'+pad(n.getHours())+':'+pad(n.getMinutes())+':'+pad(n.getSeconds())+'</span><span class=\"ww-clock-date\">'+pad(n.getDate())+'.'+pad(n.getMonth()+1)+'.'+String(n.getFullYear()).slice(2)+'</span>';\n  }\n  updClock();\n  if(window.__wwClockId)clearInterval(window.__wwClockId);\n  window.__wwClockId=setInterval(updClock,1000);\n}\n\nvar temp=parseFloat(root.dataset.temp)||0;\n\nvar iconEl=document.getElementById(\"ww-icon\");\nif(iconEl){\n  var svg=\"\";\n  if(rr>1){\n    svg='<svg width=\"36\" height=\"36\" viewBox=\"0 0 48 48\" fill=\"none\"><path d=\"M10 28a6 6 0 0 1 6-6h1a8 8 0 0 1 15.3-1.8A6 6 0 0 1 38 26v0a6 6 0 0 1-6 6H16a6 6 0 0 1-6-4z\" fill=\"#8b8fa3\" opacity=\"0.7\"/><line x1=\"16\" y1=\"33\" x2=\"14\" y2=\"39\" stroke=\"#5794f2\" stroke-width=\"1.5\" stroke-linecap=\"round\" opacity=\"0.8\"/><line x1=\"24\" y1=\"33\" x2=\"22\" y2=\"39\" stroke=\"#5794f2\" stroke-width=\"1.5\" stroke-linecap=\"round\" opacity=\"0.8\"/><line x1=\"32\" y1=\"33\" x2=\"30\" y2=\"39\" stroke=\"#5794f2\" stroke-width=\"1.5\" stroke-linecap=\"round\" opacity=\"0.8\"/></svg>';\n  }else if(rr>0){\n    svg='<svg width=\"36\" height=\"36\" viewBox=\"0 0 48 48\" fill=\"none\"><path d=\"M12 32a7 7 0 0 1 7-7h1a9 9 0 0 1 17.5-2A7 7 0 0 1 38 30v0a7 7 0 0 1-7 7H19a7 7 0 0 1-7-5z\" fill=\"#6b7085\" opacity=\"0.6\"/><path d=\"M8 36a6 6 0 0 1 6-6h1a8 8 0 0 1 15.3-1.8A6 6 0 0 1 36 34v0a6 6 0 0 1-6 6H14a6 6 0 0 1-6-4z\" fill=\"#8b8fa3\" opacity=\"0.8\"/></svg>';\n  }else{\n    var hh=new Date().getHours();\n    if(hh>=7&&hh<=19){\n      svg='<svg width=\"36\" height=\"36\" viewBox=\"0 0 48 48\" fill=\"none\"><circle cx=\"18\" cy=\"18\" r=\"8\" fill=\"#f2cc0c\" opacity=\"0.8\"/><path d=\"M16 34a8 8 0 0 1 8-8h4a6 6 0 0 1 6 6v0a6 6 0 0 1-6 6H22a6 6 0 0 1-6-4z\" fill=\"#8b8fa3\" opacity=\"0.7\"/></svg>';\n    }else{\n      svg='<svg width=\"36\" height=\"36\" viewBox=\"0 0 48 48\" fill=\"none\"><path d=\"M12 32a7 7 0 0 1 7-7h1a9 9 0 0 1 17.5-2A7 7 0 0 1 38 30v0a7 7 0 0 1-7 7H19a7 7 0 0 1-7-5z\" fill=\"#6b7085\" opacity=\"0.6\"/><path d=\"M8 36a6 6 0 0 1 6-6h1a8 8 0 0 1 15.3-1.8A6 6 0 0 1 36 34v0a6 6 0 0 1-6 6H14a6 6 0 0 1-6-4z\" fill=\"#8b8fa3\" opacity=\"0.8\"/></svg>';\n    }\n  }\n  iconEl.innerHTML=svg;\n}\n\nvar tempEl=root.querySelector(\".ww-temp\");\nvar degEl=root.querySelector(\".ww-deg\");\nif(tempEl){\n  var tc=temp<=0?\"#4fc3f7\":temp>=30?\"#f2495c\":\"#f2cc0c\";\n  tempEl.style.color=tc;\n  if(degEl)degEl.style.color=tc;\n}\n\n// Parse hourly: \"H:val,H:val,...\" where H is local hour (0-23)\nvar hourlyStr=root.dataset.hourly||\"\";\nif(!hourlyStr){\n  container.innerHTML='<div style=\"color:#5a5e72;font-size:11px;text-align:center;padding:16px\">Forecast data loading...</div>';\n  return;\n}\n\nvar pts=[];\nvar seen={};\nvar pairs=hourlyStr.split(\",\");\nfor(var i=0;i<pairs.length;i++){\n  var idx=pairs[i].indexOf(\":\");\n  if(idx>0){\n    var hour=parseInt(pairs[i].substring(0,idx),10);\n    var val=parseFloat(pairs[i].substring(idx+1));\n    if(!isNaN(hour)&&!isNaN(val)&&!seen[hour]){\n      seen[hour]=true;\n      pts.push({h:hour,v:val});\n    }\n  }\n}\npts.sort(function(a,b){return a.h-b.h});\nif(pts.length<2){\n  container.innerHTML='<div style=\"color:#5a5e72;font-size:11px;text-align:center;padding:16px\">Not enough forecast data</div>';\n  return;\n}\n\n\n// Parse rain hourly data\nvar rainStr=root.dataset.rainHourly||\"\";\nvar rainMap={};\nif(rainStr){\n  var rPairs=rainStr.split(\",\");\n  for(var i=0;i<rPairs.length;i++){\n    var ri=rPairs[i].indexOf(\":\");\n    if(ri>0){\n      var rh=parseInt(rPairs[i].substring(0,ri),10);\n      var rv=parseFloat(rPairs[i].substring(ri+1));\n      if(!isNaN(rh)&&!isNaN(rv))rainMap[rh]=rv;\n    }\n  }\n}\nvar maxRain=0.1;\nfor(var k in rainMap){if(rainMap[k]>maxRain)maxRain=rainMap[k]}\nvar W=container.offsetWidth||480;\nvar H=80;\nvar padX=8,padY=14,padBot=14;\nvar temps=pts.map(function(p){return p.v});\nvar minV=Math.min.apply(null,temps)-0.5;\nvar maxV=Math.max.apply(null,temps)+0.5;\n\n// Always span 0-23 for full day\nvar hMin=0,hMax=23;\nfunction xS(h){return padX+((h-hMin)/(hMax-hMin))*(W-2*padX)}\nfunction yS(v){return padY+((maxV-v)/(maxV-minV))*(H-padY-padBot)}\n\n// Catmull-Rom spline\nfunction crPath(P){\n  if(P.length<2)return\"\";\n  var d=\"M\"+xS(P[0].h)+\",\"+yS(P[0].v);\n  for(var i=0;i<P.length-1;i++){\n    var i0=i>0?i-1:0,i1=i,i2=i+1,i3=i+2<P.length?i+2:P.length-1;\n    var x1=xS(P[i1].h),y1=yS(P[i1].v);\n    var x2=xS(P[i2].h),y2=yS(P[i2].v);\n    d+=\" C\"+(x1+(xS(P[i2].h)-xS(P[i0].h))/6)+\",\"+(y1+(yS(P[i2].v)-yS(P[i0].v))/6)+\" \"+(x2-(xS(P[i3].h)-xS(P[i1].h))/6)+\",\"+(y2-(yS(P[i3].v)-yS(P[i1].v))/6)+\" \"+x2+\",\"+y2;\n  }\n  return d;\n}\n\nvar lineD=crPath(pts);\nvar areaD=lineD+\" L\"+xS(pts[pts.length-1].h)+\",\"+H+\" L\"+xS(pts[0].h)+\",\"+H+\" Z\";\n\n// Now marker (local time)\nvar now=new Date();\nvar nowH=now.getHours()+now.getMinutes()/60;\n// Interpolate Y\nvar nowY=0;\nfor(var i=0;i<pts.length-1;i++){\n  if(nowH>=pts[i].h&&nowH<=pts[i+1].h){\n    var f=(nowH-pts[i].h)/(pts[i+1].h-pts[i].h);\n    nowY=yS(pts[i].v+(pts[i+1].v-pts[i].v)*f);\n    break;\n  }\n}\nif(nowH<=pts[0].h)nowY=yS(pts[0].v);\nif(nowH>=pts[pts.length-1].h)nowY=yS(pts[pts.length-1].v);\nvar nowX=xS(nowH);\n\n// Hour labels every 3h\nvar labels=\"\";\nfor(var i=0;i<pts.length;i++){\n  if(pts[i].h%3===0){\n    labels+='<text x=\"'+xS(pts[i].h)+'\" y=\"'+(H-2)+'\" text-anchor=\"middle\" fill=\"#5a5e72\" font-size=\"8\" font-family=\"Inter,sans-serif\">'+String(pts[i].h).padStart(2,\"0\")+':00</text>';\n  }\n}\n\n// Hi/Lo labels\nvar hiIdx=0,loIdx=0;\nfor(var i=1;i<pts.length;i++){\n  if(pts[i].v>pts[hiIdx].v)hiIdx=i;\n  if(pts[i].v<pts[loIdx].v)loIdx=i;\n}\nvar tL='<text x=\"'+xS(pts[hiIdx].h)+'\" y=\"'+(yS(pts[hiIdx].v)-5)+'\" text-anchor=\"middle\" fill=\"#FF9830\" font-size=\"9\" font-weight=\"600\" font-family=\"Inter,sans-serif\">'+pts[hiIdx].v.toFixed(1)+'\u00b0</text>';\ntL+='<text x=\"'+xS(pts[loIdx].h)+'\" y=\"'+(yS(pts[loIdx].v)-5)+'\" text-anchor=\"middle\" fill=\"#5794F2\" font-size=\"9\" font-weight=\"600\" font-family=\"Inter,sans-serif\">'+pts[loIdx].v.toFixed(1)+'\u00b0</text>';\n\n\n// Rain bars\nvar rainBars=\"\";\nvar barSlotW=(W-2*padX)/24;\nvar barW=barSlotW*0.6;\nvar rainBarMaxH=(H-padY-padBot)*0.6;\nfor(var rk in rainMap){\n  var rv=rainMap[rk];\n  if(rv>0){\n    var bH=(rv/maxRain)*rainBarMaxH;\n    var bX=xS(parseInt(rk,10))-barW/2;\n    var bY=H-padBot-bH;\n    var op=(0.15+(rv/maxRain)*0.45).toFixed(2);\n    rainBars+='<rect x=\"'+bX+'\" y=\"'+bY+'\" width=\"'+barW+'\" height=\"'+bH+'\" rx=\"'+(barW/2)+'\" fill=\"#B877D9\" opacity=\"'+op+'\"/>';\n  }\n}\n\n\n// Parse wind hourly data\nvar windStr=root.dataset.windHourly||\"\";\nvar windPts=[];\nvar windSeen={};\nif(windStr){\n  var wPairs=windStr.split(\",\");\n  for(var i=0;i<wPairs.length;i++){\n    var wi=wPairs[i].indexOf(\":\");\n    if(wi>0){\n      var wh=parseInt(wPairs[i].substring(0,wi),10);\n      var wv=parseFloat(wPairs[i].substring(wi+1));\n      if(!isNaN(wh)&&!isNaN(wv)&&!windSeen[wh]){\n        windSeen[wh]=true;\n        windPts.push({h:wh,v:wv});\n      }\n    }\n  }\n}\nwindPts.sort(function(a,b){return a.h-b.h});\n\n// Wind sparkline (blue line with separate Y scale)\nvar windLine=\"\";\nvar windDot=\"\";\nvar windLabels=\"\";\nif(windPts.length>=2){\n  var wVals=windPts.map(function(p){return p.v});\n  var wMin=Math.min.apply(null,wVals);\n  var wMax=Math.max.apply(null,wVals);\n  if(wMax-wMin<1){wMax=wMin+1}\n  var wPadTop=padY+4;\n  var wPadBot=padBot+4;\n  function yW(v){return wPadTop+((wMax-v)/(wMax-wMin))*(H-wPadTop-wPadBot)}\n\n  // Catmull-Rom for wind\n  function crW(P){\n    if(P.length<2)return\"\";\n    var d=\"M\"+xS(P[0].h)+\",\"+yW(P[0].v);\n    for(var i=0;i<P.length-1;i++){\n      var i0=i>0?i-1:0,i1=i,i2=i+1,i3=i+2<P.length?i+2:P.length-1;\n      var x1=xS(P[i1].h),y1=yW(P[i1].v);\n      var x2=xS(P[i2].h),y2=yW(P[i2].v);\n      d+=\" C\"+(x1+(xS(P[i2].h)-xS(P[i0].h))/6)+\",\"+(y1+(yW(P[i2].v)-yW(P[i0].v))/6)+\" \"+(x2-(xS(P[i3].h)-xS(P[i1].h))/6)+\",\"+(y2-(yW(P[i3].v)-yW(P[i1].v))/6)+\" \"+x2+\",\"+y2;\n    }\n    return d;\n  }\n  var wLineD=crW(windPts);\n  windLine='<path d=\"'+wLineD+'\" fill=\"none\" stroke=\"#5794F2\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\" opacity=\"0.6\"/>';\n\n  // Wind now dot\n  var wNowY=0;\n  for(var i=0;i<windPts.length-1;i++){\n    if(nowH>=windPts[i].h&&nowH<=windPts[i+1].h){\n      var f=(nowH-windPts[i].h)/(windPts[i+1].h-windPts[i].h);\n      wNowY=yW(windPts[i].v+(windPts[i+1].v-windPts[i].v)*f);\n      break;\n    }\n  }\n  if(nowH<=windPts[0].h)wNowY=yW(windPts[0].v);\n  if(nowH>=windPts[windPts.length-1].h)wNowY=yW(windPts[windPts.length-1].v);\n  windDot='<circle cx=\"'+nowX+'\" cy=\"'+wNowY+'\" r=\"6\" fill=\"#5794F2\" opacity=\"0.12\"/><circle cx=\"'+nowX+'\" cy=\"'+wNowY+'\" r=\"3\" fill=\"#5794F2\" opacity=\"0.7\"/>';\n\n  // Wind hi/lo labels\n  var wHiIdx=0,wLoIdx=0;\n  for(var i=1;i<windPts.length;i++){\n    if(windPts[i].v>windPts[wHiIdx].v)wHiIdx=i;\n    if(windPts[i].v<windPts[wLoIdx].v)wLoIdx=i;\n  }\n  var wHiY=yW(windPts[wHiIdx].v);\n  var wLoY=yW(windPts[wLoIdx].v);\n  windLabels='<text x=\"'+xS(windPts[wHiIdx].h)+'\" y=\"'+(wHiY-5)+'\" text-anchor=\"middle\" fill=\"#5794F2\" font-size=\"8\" font-weight=\"600\" font-family=\"Inter,sans-serif\" opacity=\"0.7\">'+Math.round(windPts[wHiIdx].v)+'</text>';\n  windLabels+='<text x=\"'+xS(windPts[wLoIdx].h)+'\" y=\"'+(wLoY+12)+'\" text-anchor=\"middle\" fill=\"#5794F2\" font-size=\"8\" font-weight=\"600\" font-family=\"Inter,sans-serif\" opacity=\"0.7\">'+Math.round(windPts[wLoIdx].v)+'</text>';\n}\n\ncontainer.innerHTML='<svg width=\"'+W+'\" height=\"'+H+'\" style=\"display:block\">'\n+'<defs><linearGradient id=\"wwGrad\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\"><stop offset=\"0%\" stop-color=\"#f2cc0c\" stop-opacity=\"0.2\"/><stop offset=\"100%\" stop-color=\"#f2cc0c\" stop-opacity=\"0\"/></linearGradient></defs>'\n+rainBars+windLine+'<path d=\"'+areaD+'\" fill=\"url(#wwGrad)\"/>'\n+'<path d=\"'+lineD+'\" fill=\"none\" stroke=\"#f2cc0c\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"/>'\n+'<line x1=\"'+nowX+'\" y1=\"'+padY+'\" x2=\"'+nowX+'\" y2=\"'+(H-padBot)+'\" stroke=\"#f2cc0c\" stroke-width=\"0.5\" stroke-dasharray=\"2,2\" opacity=\"0.4\"/>'\n+'<circle cx=\"'+nowX+'\" cy=\"'+nowY+'\" r=\"8\" fill=\"#f2cc0c\" opacity=\"0.15\"/>'\n+'<circle cx=\"'+nowX+'\" cy=\"'+nowY+'\" r=\"4.5\" fill=\"#f2cc0c\"/>'\n+windDot+windLabels+tL+labels+'</svg>';",
+          "content": "<style>\n.ww{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#e8e8e8}\n.ww-hero{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}\n.ww-left{display:flex;align-items:center;gap:10px}\n.ww-temp-group{display:flex;align-items:baseline;gap:2px}\n.ww-temp{font-size:4.7vw;font-weight:800;color:#f2cc0c;line-height:1;letter-spacing:-0.03em}\n.ww-deg{font-size:2.1vw;font-weight:700;color:#f2cc0c;opacity:0.7}\n.ww-hilo{display:flex;flex-direction:column;gap:1px;margin-left:6px}\n.ww-hi{font-size:1.4vw;color:#FF9830;font-weight:700}\n.ww-lo{font-size:1.4vw;color:#5794F2;font-weight:700}\n.ww-hi-lbl,.ww-lo-lbl{font-size:0.9vw;color:#5a5e72;margin-right:3px}\n.ww-icon{flex-shrink:0}\n.ww-clock{display:flex;flex-direction:column;align-items:flex-end}\n.ww-clock-time{font-size:2.75vw;font-weight:700;color:#e8e8e8;font-variant-numeric:tabular-nums;letter-spacing:-0.02em;line-height:1}\n.ww-clock-date{font-size:1.35vw;color:#e8e8e8;font-weight:500;font-variant-numeric:tabular-nums}\n.ww-spark{margin:0 -4px 2px;height:80px}\n.ww-stats{display:flex;justify-content:space-between;align-items:stretch;background:#111217;border-radius:6px;padding:4px 12px;gap:0}\n.ww-stat{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;flex:1;padding:2px 4px}\n.ww-label{font-size:1.16vw;color:#5a5e72;text-transform:uppercase;letter-spacing:0.05em;font-weight:500;line-height:1.2}\n.ww-val{font-size:3.63vw;font-weight:700;color:#e8e8e8;line-height:1.15}\n.ww-unit{font-size:1.32vw;color:#5a5e72;font-weight:500}\n.ww-sub{font-size:1.82vw;color:#5a5e72;font-weight:500}\n.ww-sub-orange{font-size:1.82vw;color:#FF9830;font-weight:600}\n.ww-sep{width:1px;background:#2a2d35;align-self:stretch;margin:2px 0}\n.ww-blue{color:#5794F2}\n.ww-purple{color:#B877D9}\n.ww-orange{color:#FF9830}\n.ww-rain-row{display:flex;gap:8px;align-items:baseline;justify-content:center}\n.ww-rain-item{display:flex;align-items:baseline;gap:2px}\n.ww-rain-val{font-size:2.64vw;font-weight:700;color:#B877D9}\n.ww-rain-unit{font-size:1.16vw;color:#5a5e72}\n</style>\n\n<div class=\"ww\" id=\"ww-root\" data-temp=\"{{temp}}\" data-hi=\"{{hi}}\" data-lo=\"{{lo}}\" data-humidity=\"{{humidity}}\" data-rain-fc=\"{{rain_fc}}\" data-rain-rate=\"{{rain_rate}}\" data-rain-total=\"{{rain_total}}\" data-wind=\"{{wind}}\" data-gust=\"{{gust}}\" data-wind-30m=\"{{wind_30m}}\" data-gust-30m=\"{{gust_30m}}\" data-hourly=\"{{hourly}}\" data-rain-hourly=\"{{rain_hourly}}\" data-wind-hourly=\"{{wind_hourly}}\">\n  <div class=\"ww-hero\">\n    <div class=\"ww-left\">\n      <div class=\"ww-icon\" id=\"ww-icon\"></div>\n      <div class=\"ww-temp-group\">\n        <span class=\"ww-temp\">{{temp}}</span>\n        <span class=\"ww-deg\">\u00b0C</span>\n      </div>\n      <div class=\"ww-hilo\">\n        <span class=\"ww-hi\"><span class=\"ww-hi-lbl\">Hi</span>{{hi}}\u00b0</span>\n        <span class=\"ww-lo\"><span class=\"ww-lo-lbl\">Lo</span>{{lo}}\u00b0</span>\n      </div>\n    </div>\n    <div class=\"ww-clock\" id=\"ww-clock\"></div>\n  </div>\n  <div id=\"ww-spark\" class=\"ww-spark\"></div>\n  <div class=\"ww-stats\">\n    <div class=\"ww-stat\" style=\"flex:0.67\">\n      <span class=\"ww-label\">Humidity</span>\n      <span class=\"ww-val ww-blue\">{{humidity}}<span class=\"ww-unit\">%</span></span>\n    </div>\n    <div class=\"ww-sep\"></div>\n    <div class=\"ww-stat\" style=\"flex-direction:row;gap:6px;justify-content:space-between;padding:2px 8px\">\n      <div style=\"display:flex;flex-direction:column;align-items:center\">\n        <span class=\"ww-label\">Wind <span class=\"ww-unit\">km/h</span></span>\n        <span class=\"ww-val\">{{wind}}<span class=\"ww-sub\"> / {{gust}}</span></span>\n      </div>\n      <div style=\"display:flex;flex-direction:column;align-items:center\">\n        <span class=\"ww-label\">30m <span class=\"ww-unit\">km/h</span></span>\n        <span class=\"ww-val ww-orange\">{{wind_30m}}<span class=\"ww-sub-orange\"> / {{gust_30m}}</span></span>\n      </div>\n    </div>\n    <div class=\"ww-sep\"></div>\n    <div class=\"ww-stat\">\n      <span class=\"ww-label\">Rain</span>\n      <div class=\"ww-rain-row\">\n        <div class=\"ww-rain-item\"><span class=\"ww-rain-val\">{{rain_rate}}</span><span class=\"ww-rain-unit\">mm/h</span></div>\n        <div class=\"ww-rain-item\"><span class=\"ww-rain-val\">{{rain_fc}}</span><span class=\"ww-rain-unit\">fc</span></div>\n        <div class=\"ww-rain-item\"><span class=\"ww-rain-val\">{{rain_total}}</span><span class=\"ww-rain-unit\">tot</span></div>\n      </div>\n    </div>\n  </div>\n</div>",
+          "contentPartials": [],
+          "defaultContent": "",
+          "editor": {
+            "format": "auto",
+            "language": "html"
+          },
+          "editors": [],
+          "externalStyles": [],
+          "helpers": "",
+          "renderMode": "everyRow",
+          "styles": "",
+          "wrap": true
+        },
+        "pluginVersion": "6.2.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "ceyru5v6xg3r4b"
+            },
+            "query": "import \"array\"\nimport \"math\"\nimport \"strings\"\nimport \"date\"\nimport \"timezone\"\n\noption location = timezone.location(name: \"Europe/Prague\")\n\ntemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"temperature\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nmaxtemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"maxtemp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nmintemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"mintemp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nhumidity = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"humidity\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecip = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"precip\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecipRate = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"precipRate\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindSpeed = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windSpeed\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindGust = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windGust\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecipTotal = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"precipTotal\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n\nwind30m = from(bucket: \"default\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windSpeed\")\n  |> max()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindGust30m = from(bucket: \"default\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windGust\")\n  |> max()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nhourly_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"TempForecast\" and r._field == \"temperature\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nhourly_str = strings.joinStr(arr: hourly_data, v: \",\")\n\nrain_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"RainForecast\" and r._field == \"precipitation\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nrain_str = strings.joinStr(arr: rain_data, v: \",\")\n\n\nwind_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"WindForecast\" and r._field == \"wind_speed\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nwind_str = strings.joinStr(arr: wind_data, v: \",\")\n\narray.from(rows: [{\n  temp: math.round(x: temp._value * 10.0) / 10.0,\n  hi: math.round(x: maxtemp._value),\n  lo: math.round(x: mintemp._value),\n  humidity: math.round(x: humidity._value),\n  rain_fc: math.round(x: precip._value * 10.0) / 10.0,\n  rain_rate: math.round(x: precipRate._value * 10.0) / 10.0,\n  rain_total: math.round(x: precipTotal._value * 10.0) / 10.0,\n  wind: math.round(x: windSpeed._value),\n  gust: math.round(x: windGust._value),\n  wind_30m: math.round(x: wind30m._value),\n  gust_30m: math.round(x: windGust30m._value),\n  hourly: hourly_str,\n  rain_hourly: rain_str,\n  wind_hourly: wind_str,\n}])",
+            "refId": "A"
+          }
+        ],
+        "title": "",
+        "transparent": true,
+        "type": "marcusolsson-dynamictext-panel"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 10,
+          "x": 14,
+          "y": 0
+        },
+        "id": 67,
+        "options": {
+          "afterRender": "",
+          "content": "<style>\n.indoor {\n  display: flex;\n  gap: 0.5vw;\n}\n.indoor-rooms {\n  flex: 1;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n}\n.indoor-room {\n  background: #1e2228;\n  border-radius: 6px;\n  padding: 0.4vw 0.7vw;\n  display: flex;\n  align-items: center;\n  gap: 0.6vw;\n}\n.indoor-name {\n  font-size: 0.8vw;\n  color: #d8d9da;\n  min-width: 5vw;\n}\n.indoor-temp {\n  font-size: 1.8vw;\n  font-weight: 500;\n}\n.indoor-u {\n  font-size: 1vw;\n  color: #8e8e8e;\n}\n.indoor-target {\n  font-size: 1.1vw;\n  color: #8e8e8e;\n}\n.indoor-target-arrow {\n  font-size: 0.9vw;\n  color: #555;\n}\n.indoor-heat-arrow {\n  font-size: 0.9vw;\n  color: #FF9830;\n  margin-left: auto;\n}\n.indoor-hum {\n  font-size: 1.4vw;\n  font-weight: 500;\n  color: #5794F2;\n}\n.indoor-divider {\n  width: 1px;\n  background: #2c3035;\n}\n.indoor-heat {\n  flex: 0 0 auto;\n  display: flex;\n  flex-direction: column;\n  gap: 2px;\n  min-width: 7vw;\n}\n.indoor-heat-row {\n  background: #1e2228;\n  border-radius: 6px;\n  padding: 0.4vw 0.7vw;\n  display: flex;\n  justify-content: space-between;\n  align-items: center;\n  flex: 1;\n}\n.indoor-heat-label {\n  font-size: 1vw;\n  color: #8e8e8e;\n}\n.indoor-heat-val {\n  font-size: 1.5vw;\n  font-weight: 500;\n}\n.indoor-heat-row-lg {\n  flex: 2;\n}\n.indoor-heat-row-lg .indoor-heat-val {\n  font-size: 2.6vw;\n}\n.indoor-heat-row-lg .indoor-u {\n  display: block;\n  text-align: right;\n}\n</style>\n<div class=\"indoor\">\n<div class=\"indoor-rooms\">\n<div class=\"indoor-room\">\n<span class=\"indoor-name\">Obyvacka</span>\n<span class=\"indoor-temp\" style=\"color: {{#if (gt oby_t 26)}}#f2495c{{else if (gt oby_t 25)}}#dd5d5e{{else if (gt oby_t 24)}}#b38463{{else if (gt oby_t 23)}}#88ab67{{else if (gt oby_t 20)}}#73bf69{{else if (gt oby_t 16)}}#80b368{{else if (gt oby_t 12)}}#999c65{{else if (gt oby_t 8)}}#b38463{{else if (gt oby_t 4)}}#cc6c60{{else}}#f2495c{{/if}};\">{{oby_t}}<span class=\"indoor-u\">\u00b0</span></span>\n<span class=\"indoor-target\"><span class=\"indoor-target-arrow\">\u25b8</span>{{oby_set}}\u00b0</span>\n<span class=\"indoor-hum\">{{oby_h}}<span class=\"indoor-u\">%</span></span>\n{{#if (gt oby_on 0)}}<span class=\"indoor-heat-arrow\">\u25b2</span>{{/if}}\n</div>\n<div class=\"indoor-room\">\n<span class=\"indoor-name\">Pracovna</span>\n<span class=\"indoor-temp\" style=\"color: {{#if (gt pra_t 26)}}#f2495c{{else if (gt pra_t 25)}}#dd5d5e{{else if (gt pra_t 24)}}#b38463{{else if (gt pra_t 23)}}#88ab67{{else if (gt pra_t 20)}}#73bf69{{else if (gt pra_t 16)}}#80b368{{else if (gt pra_t 12)}}#999c65{{else if (gt pra_t 8)}}#b38463{{else if (gt pra_t 4)}}#cc6c60{{else}}#f2495c{{/if}};\">{{pra_t}}<span class=\"indoor-u\">\u00b0</span></span>\n<span class=\"indoor-target\"><span class=\"indoor-target-arrow\">\u25b8</span>{{pra_set}}\u00b0</span>\n<span class=\"indoor-hum\">{{pra_h}}<span class=\"indoor-u\">%</span></span>\n{{#if (gt pra_on 0)}}<span class=\"indoor-heat-arrow\">\u25b2</span>{{/if}}\n</div>\n<div class=\"indoor-room\">\n<span class=\"indoor-name\">Julinka</span>\n<span class=\"indoor-temp\" style=\"color: {{#if (gt jul_t 26)}}#f2495c{{else if (gt jul_t 25)}}#dd5d5e{{else if (gt jul_t 24)}}#b38463{{else if (gt jul_t 23)}}#88ab67{{else if (gt jul_t 20)}}#73bf69{{else if (gt jul_t 16)}}#80b368{{else if (gt jul_t 12)}}#999c65{{else if (gt jul_t 8)}}#b38463{{else if (gt jul_t 4)}}#cc6c60{{else}}#f2495c{{/if}};\">{{jul_t}}<span class=\"indoor-u\">\u00b0</span></span>\n<span class=\"indoor-target\"><span class=\"indoor-target-arrow\">\u25b8</span>{{jul_set}}\u00b0</span>\n{{#if (gt jul_on 0)}}<span class=\"indoor-heat-arrow\">\u25b2</span>{{/if}}\n</div>\n<div class=\"indoor-room\">\n<span class=\"indoor-name\">Kubo</span>\n<span class=\"indoor-temp\" style=\"color: {{#if (gt kub_t 26)}}#f2495c{{else if (gt kub_t 25)}}#dd5d5e{{else if (gt kub_t 24)}}#b38463{{else if (gt kub_t 23)}}#88ab67{{else if (gt kub_t 20)}}#73bf69{{else if (gt kub_t 16)}}#80b368{{else if (gt kub_t 12)}}#999c65{{else if (gt kub_t 8)}}#b38463{{else if (gt kub_t 4)}}#cc6c60{{else}}#f2495c{{/if}};\">{{kub_t}}<span class=\"indoor-u\">\u00b0</span></span>\n<span class=\"indoor-target\"><span class=\"indoor-target-arrow\">\u25b8</span>{{kub_set}}\u00b0</span>\n{{#if (gt kub_on 0)}}<span class=\"indoor-heat-arrow\">\u25b2</span>{{/if}}\n</div>\n<div class=\"indoor-room\">\n<span class=\"indoor-name\">Spalna</span>\n<span class=\"indoor-temp\" style=\"color: {{#if (gt spa_t 26)}}#f2495c{{else if (gt spa_t 25)}}#dd5d5e{{else if (gt spa_t 24)}}#b38463{{else if (gt spa_t 23)}}#88ab67{{else if (gt spa_t 20)}}#73bf69{{else if (gt spa_t 16)}}#80b368{{else if (gt spa_t 12)}}#999c65{{else if (gt spa_t 8)}}#b38463{{else if (gt spa_t 4)}}#cc6c60{{else}}#f2495c{{/if}};\">{{spa_t}}<span class=\"indoor-u\">\u00b0</span></span>\n<span class=\"indoor-target\"><span class=\"indoor-target-arrow\">\u25b8</span>{{spa_set}}\u00b0</span>\n{{#if (gt spa_on 0)}}<span class=\"indoor-heat-arrow\">\u25b2</span>{{/if}}\n</div>\n</div>\n<div class=\"indoor-divider\"></div>\n<div class=\"indoor-heat\">\n<div class=\"indoor-heat-row\">\n<span class=\"indoor-heat-label\">Krb</span>\n<span class=\"indoor-heat-val\" style=\"color: {{#if (gt krb_w 20)}}#73bf69{{else}}#f2495c{{/if}};\">{{#if (gt krb_w 20)}}ON{{else}}OFF{{/if}}</span>\n</div>\n<div class=\"indoor-heat-row\">\n<span class=\"indoor-heat-label\">Krb T</span>\n<span class=\"indoor-heat-val\" style=\"color: {{#if (gt krb_t 70)}}#f2495c{{else if (gt krb_t 65)}}#c87060{{else if (gt krb_t 60)}}#9d9865{{else if (gt krb_t 15)}}#73bf69{{else if (gt krb_t 10)}}#9d9865{{else if (gt krb_t 5)}}#c87060{{else}}#f2495c{{/if}};\">{{krb_t}}\u00b0</span>\n</div>\n<div class=\"indoor-heat-row\">\n<span class=\"indoor-heat-label\">COP 24h</span>\n<span class=\"indoor-heat-val\" style=\"color: #73bf69;\">{{cop}}</span>\n</div>\n<div class=\"indoor-heat-row indoor-heat-row-lg\">\n<span class=\"indoor-heat-label\">CO2</span>\n<span class=\"indoor-heat-val\" style=\"color: {{#if (gt co2 1000)}}#f2495c{{else if (gt co2 800)}}#FF9830{{else}}#73bf69{{/if}};\">{{co2}}<span class=\"indoor-u\"> ppm</span></span>\n</div>\n</div>\n</div>\n",
+          "contentPartials": [],
+          "defaultContent": "The query didn't return any results.",
+          "editor": {
+            "format": "auto",
+            "language": "handlebars"
+          },
+          "editors": [],
+          "externalStyles": [],
+          "helpers": "",
+          "renderMode": "everyRow",
+          "styles": "",
+          "wrap": false
+        },
+        "pluginVersion": "6.2.0",
+        "targets": [
+          {
+            "query": "import \"array\"\nimport \"math\"\n\nobyvacka_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"temperature_upstairs_in\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nobyvacka_hum = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"humidity_upstairs_in\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nobyvacka_set = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"rehau_set\" and r._field == \"Obyvacka\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\npracovna_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"rehau\" and r._field == \"Pracovna\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\npracovna_hum = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"rehau_hum\" and r._field == \"Pracovna\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\npracovna_set = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"rehau_set\" and r._field == \"Pracovna\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\njulinka_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"netatmo\" and r._field == \"julinka\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nkubo_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"netatmo\" and r._field == \"kubo\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nspalna_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"netatmo\" and r._field == \"spalna\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nco2 = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"moes_co2\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nkrb_power = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"krb\" and r._field == \"apower\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nkrb_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"krb\" and r._field == \"tC\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\ncop = from(bucket: \"default\")\n  |> range(start: -24h)\n  |> filter(fn: (r) => r._measurement == \"Estia\" and r._field == \"cop_24h\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\noby_heat = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"rehau_output\" and r._field == \"Obyvacka-1\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\npra_heat = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"rehau_output\" and r._field == \"Pracovna\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\njul_heat = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"on\" and r._field == \"julinka\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nkub_heat = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"on\" and r._field == \"kubo\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nspa_heat = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"on\" and r._field == \"spalna\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\njulinka_set = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"temp_target\" and r._field == \"julinka\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nkubo_set = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"temp_target\" and r._field == \"kubo\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nspalna_set = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"temp_target\" and r._field == \"spalna\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\narray.from(rows: [{\n  oby_t: if exists obyvacka_temp._value then math.round(x: float(v: obyvacka_temp._value) * 10.0) / 10.0 else 0.0,\n  oby_h: if exists obyvacka_hum._value then math.round(x: float(v: obyvacka_hum._value)) else 0.0,\n  oby_set: if exists obyvacka_set._value then math.round(x: float(v: obyvacka_set._value) * 10.0) / 10.0 else 0.0,\n  pra_t: if exists pracovna_temp._value then math.round(x: float(v: pracovna_temp._value) * 10.0) / 10.0 else 0.0,\n  pra_h: if exists pracovna_hum._value then math.round(x: float(v: pracovna_hum._value)) else 0.0,\n  pra_set: if exists pracovna_set._value then math.round(x: float(v: pracovna_set._value) * 10.0) / 10.0 else 0.0,\n  jul_t: if exists julinka_temp._value then math.round(x: float(v: julinka_temp._value) * 10.0) / 10.0 else 0.0,\n  kub_t: if exists kubo_temp._value then math.round(x: float(v: kubo_temp._value) * 10.0) / 10.0 else 0.0,\n  spa_t: if exists spalna_temp._value then math.round(x: float(v: spalna_temp._value) * 10.0) / 10.0 else 0.0,\n  jul_set: if exists julinka_set._value then math.round(x: float(v: julinka_set._value) * 10.0) / 10.0 else 0.0,\n  kub_set: if exists kubo_set._value then math.round(x: float(v: kubo_set._value) * 10.0) / 10.0 else 0.0,\n  spa_set: if exists spalna_set._value then math.round(x: float(v: spalna_set._value) * 10.0) / 10.0 else 0.0,\n  co2: if exists co2._value then math.round(x: float(v: co2._value)) else 0.0,\n  krb_w: if exists krb_power._value then math.round(x: float(v: krb_power._value)) else 0.0,\n  krb_t: if exists krb_temp._value then math.round(x: float(v: krb_temp._value) * 10.0) / 10.0 else 0.0,\n  cop: if exists cop._value then math.round(x: float(v: cop._value) * 100.0) / 100.0 else 0.0,\n  oby_on: if exists oby_heat._value then float(v: oby_heat._value) else 0.0,\n  pra_on: if exists pra_heat._value then float(v: pra_heat._value) else 0.0,\n  jul_on: if exists jul_heat._value then float(v: jul_heat._value) else 0.0,\n  kub_on: if exists kub_heat._value then float(v: kub_heat._value) else 0.0,\n  spa_on: if exists spa_heat._value then float(v: spa_heat._value) else 0.0,\n}])\n",
+            "refId": "A"
+          }
+        ],
+        "title": "",
+        "transparent": true,
+        "type": "marcusolsson-dynamictext-panel"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 12,
+          "w": 10,
+          "x": 0,
+          "y": 7
+        },
+        "id": 68,
+        "options": {
+          "afterRender": "if(window.__pf6_id){cancelAnimationFrame(window.__pf6_id);window.__pf6_id=null}\nvar root=document.getElementById(\"pf6\");\nif(!root)return;\nvar D={\n  prod:parseFloat(root.dataset.prod)||0,\n  cons:parseFloat(root.dataset.cons)||0,\n  soc:parseFloat(root.dataset.soc)||0,\n  bat:parseFloat(root.dataset.bat)||0,\n  meter:parseFloat(root.dataset.meter)||0,\n  charge:parseFloat(root.dataset.charge)||0,\n  carConn:parseFloat(root.dataset.carConn)||0,\n  dCons:parseFloat(root.dataset.dCons)||0,\n  dGen:parseFloat(root.dataset.dGen)||0,\n  mCons:parseFloat(root.dataset.mCons)||0,\n  mGen:parseFloat(root.dataset.mGen)||0,\n  selfSuf:parseFloat(root.dataset.selfSuf)||0,\n  vbCharge:parseFloat(root.dataset.vbCharge)||0,\n  vbProd:parseFloat(root.dataset.vbProd)||0,\n  vbCons:parseFloat(root.dataset.vbCons)||0,\n  vbPct:parseFloat(root.dataset.vbPct)||0,\n  batHrs:parseFloat(root.dataset.batHrs)||0,\n  batMins:parseFloat(root.dataset.batMins)||0,\n  batChgHrs:parseFloat(root.dataset.batChgHrs)||0,\n  batChgMins:parseFloat(root.dataset.batChgMins)||0\n};\n\nfunction setBars(cId,gId,gcId,ggId,c,g){\n  var mx=Math.max(c,g,0.1);\n  var cb=document.getElementById(cId),gb=document.getElementById(gId);\n  var gcG=document.getElementById(gcId),ggG=document.getElementById(ggId);\n  if(cb)cb.style.width=(c/mx*100)+\"%\";\n  if(gb)gb.style.width=(g/mx*100)+\"%\";\n  if(gcG)gcG.style.left=(c/mx*100-1)+\"%\";\n  if(ggG)ggG.style.left=(g/mx*100-1)+\"%\";\n}\nsetBars(\"pf6-bar-dc\",\"pf6-bar-dg\",\"pf6-glow-dc\",\"pf6-glow-dg\",D.dCons,D.dGen);\nsetBars(\"pf6-bar-mc\",\"pf6-bar-mg\",\"pf6-glow-mc\",\"pf6-glow-mg\",D.mCons,D.mGen);\n\nvar solCv=document.getElementById(\"pf6-cv-sol\");\nvar solCtx=solCv?solCv.getContext(\"2d\"):null;\nvar houseCv=document.getElementById(\"pf6-cv-house\");\nvar houseCtx=houseCv?houseCv.getContext(\"2d\"):null;\nvar gridCv=document.getElementById(\"pf6-cv-grid\");\nvar gridCtx=gridCv?gridCv.getContext(\"2d\"):null;\nvar batCv=document.getElementById(\"pf6-cv-bat\");\nvar batCtx=batCv?batCv.getContext(\"2d\"):null;\nvar wbCv=document.getElementById(\"pf6-cv-wb\");\nvar wbCtx=wbCv?wbCv.getContext(\"2d\"):null;\nvar ssCv=document.getElementById(\"pf6-cv-ss\");\nvar ssCtx=ssCv?ssCv.getContext(\"2d\"):null;\nvar vbCv=document.getElementById(\"pf6-cv-vbat\");\nvar vbCtx=vbCv?vbCv.getContext(\"2d\"):null;\n\nfunction rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.lineTo(x+w-r,y);c.quadraticCurveTo(x+w,y,x+w,y+r);c.lineTo(x+w,y+h-r);c.quadraticCurveTo(x+w,y+h,x+w-r,y+h);c.lineTo(x+r,y+h);c.quadraticCurveTo(x,y+h,x,y+h-r);c.lineTo(x,y+r);c.quadraticCurveTo(x,y,x+r,y);c.closePath();}\n\n// \u2500\u2500 SOLAR (150x105) \u2500\u2500\nfunction drawSolar(ctx){\n  var kw=D.prod,maxKw=10,R=Math.min(kw/maxKw,1),t=Date.now();\n  var cr,cg,cb,ch;\n  if(kw<2){cr=100;cg=220;cb=100;ch=\"#64dc64\";}\n  else if(kw<4){cr=30;cg=140;cb=50;ch=\"#1e8c32\";}\n  else if(kw<6){cr=100;cg=190;cb=255;ch=\"#64beff\";}\n  else{cr=40;cg=100;cb=220;ch=\"#2864dc\";}\n  var sa=0.6+R*0.4,rp=0.7+Math.sin(t/400)*0.3,rl=(6+R*10)*rp;\n  var cx=75,cy=35;\n  ctx.clearRect(0,0,150,125);\n  ctx.save();ctx.translate(6,0);ctx.scale(0.92,0.92);\n  var g1=ctx.createRadialGradient(cx,cy,0,cx,cy,35+R*20);\n  g1.addColorStop(0,\"rgba(255,180,30,\"+(0.12+R*0.18)+\")\");g1.addColorStop(1,\"rgba(255,180,30,0)\");\n  ctx.fillStyle=g1;ctx.beginPath();ctx.arc(cx,cy,55+R*20,0,Math.PI*2);ctx.fill();\n  var g2=ctx.createRadialGradient(cx,cy,0,cx,cy,20+R*10);\n  g2.addColorStop(0,\"rgba(255,200,50,\"+(0.25+R*0.35)+\")\");g2.addColorStop(1,\"rgba(255,200,50,0)\");\n  ctx.fillStyle=g2;ctx.beginPath();ctx.arc(cx,cy,30+R*10,0,Math.PI*2);ctx.fill();\n  ctx.beginPath();ctx.arc(cx,cy,10,0,Math.PI*2);ctx.fillStyle=\"rgba(255,200,30,\"+sa+\")\";ctx.fill();\n  ctx.strokeStyle=\"rgba(255,210,50,\"+(0.3+R*0.5)+\")\";ctx.lineWidth=2;ctx.lineCap=\"round\";\n  for(var i=0;i<8;i++){var a=i/8*Math.PI*2;ctx.beginPath();ctx.moveTo(cx+Math.cos(a)*12,cy+Math.sin(a)*12);ctx.lineTo(cx+Math.cos(a)*(12+rl),cy+Math.sin(a)*(12+rl));ctx.stroke();}\n  ctx.lineCap=\"butt\";\n  ctx.fillStyle=\"#1a3a5c\";ctx.fillRect(20,70,110,22);\n  ctx.strokeStyle=\"#2a5a8c\";ctx.lineWidth=0.3;\n  [0,22,44,66,88,110].forEach(function(dx){ctx.beginPath();ctx.moveTo(20+dx,70);ctx.lineTo(20+dx,92);ctx.stroke();});\n  [0,7,14,22].forEach(function(dy){ctx.beginPath();ctx.moveTo(20,70+dy);ctx.lineTo(130,70+dy);ctx.stroke();});\n  ctx.lineWidth=0.5;ctx.strokeRect(20,70,110,22);\n  ctx.fillStyle=\"rgba(\"+cr+\",\"+cg+\",\"+cb+\",\"+(0.1+R*0.25)+\")\";ctx.fillRect(20,70,110,22);\n  ctx.fillStyle=ch;ctx.font=\"800 26px system-ui,sans-serif\";ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";\n  ctx.fillText(kw.toFixed(2)+\" kW\",75,104);\n\n\n  ctx.restore();\n}\n\n// \u2500\u2500 HOUSE (150x105) \u2500\u2500\nfunction drawHouse(ctx){\n  var kw=D.cons,maxKw=8,R=Math.min(kw/maxKw,1),t=Date.now();\n  var hue=R<0.4?120:R<0.7?40:0;\n  var breathe=Math.sin(t/(1000-R*600))*0.15+0.85;\n  var ga=(0.3+R*0.7)*breathe;\n  var nLit=Math.ceil(R*4);\n  ctx.clearRect(0,0,150,125);\n  ctx.save();ctx.translate(6,0);ctx.scale(0.92,0.92);\n  ctx.save();ctx.shadowColor=\"hsla(\"+hue+\",80%,45%,\"+(ga*0.5)+\")\";ctx.shadowBlur=18;\n  ctx.fillStyle=\"hsla(\"+hue+\",80%,45%,\"+(ga*0.5)+\")\";ctx.fillRect(10,12,130,85);ctx.restore();\n  ctx.save();ctx.shadowColor=\"hsla(\"+hue+\",90%,55%,\"+ga+\")\";ctx.shadowBlur=10;\n  ctx.fillStyle=\"hsla(\"+hue+\",90%,55%,\"+ga+\")\";ctx.fillRect(25,27,100,65);ctx.restore();\n  ctx.beginPath();ctx.moveTo(75,5);ctx.lineTo(18,38);ctx.lineTo(132,38);ctx.closePath();\n  ctx.fillStyle=\"#2a2a2a\";ctx.fill();ctx.strokeStyle=\"#444\";ctx.lineWidth=1.5;ctx.stroke();\n  ctx.fillStyle=\"#333\";ctx.fillRect(100,13,12,22);ctx.strokeStyle=\"#444\";ctx.lineWidth=1;ctx.strokeRect(100,13,12,22);\n  ctx.fillStyle=\"#1a1a1a\";ctx.fillRect(28,38,94,52);ctx.strokeStyle=\"#333\";ctx.lineWidth=1;ctx.strokeRect(28,38,94,52);\n  ctx.fillStyle=\"hsla(\"+hue+\",60%,40%,\"+(R*0.08)+\")\";ctx.fillRect(28,38,94,52);\n  rr(ctx,64,73,22,22,2);ctx.fillStyle=\"#222\";ctx.fill();ctx.strokeStyle=\"#444\";ctx.lineWidth=1;ctx.stroke();\n  ctx.beginPath();ctx.arc(81,85,1.5,0,Math.PI*2);ctx.fillStyle=\"#666\";ctx.fill();\n  var wp=[[38,48],[78,48],[38,68],[78,68]];\n  for(var i=0;i<4;i++){\n    var wx=wp[i][0],wy=wp[i][1],lit=i<nLit;\n    var fl=lit?0.7+Math.sin(t/125+i*2.5)*0.2:0;\n    if(lit){ctx.save();ctx.shadowColor=\"hsla(\"+hue+\",90%,65%,\"+(fl*0.35)+\")\";ctx.shadowBlur=4;\n    ctx.fillStyle=\"hsla(\"+hue+\",90%,65%,\"+(fl*0.35)+\")\";ctx.fillRect(wx-3,wy-3,24,22);ctx.restore();}\n    rr(ctx,wx,wy,18,16,1);ctx.fillStyle=lit?\"hsla(\"+hue+\",90%,65%,\"+fl+\")\":\"#111\";ctx.fill();\n    ctx.strokeStyle=\"#444\";ctx.lineWidth=0.8;ctx.stroke();\n    var ck=lit?\"hsla(\"+hue+\",60%,40%,1)\":\"#333\";ctx.strokeStyle=ck;ctx.lineWidth=0.5;\n    ctx.beginPath();ctx.moveTo(wx+9,wy);ctx.lineTo(wx+9,wy+16);ctx.stroke();\n    ctx.beginPath();ctx.moveTo(wx,wy+8);ctx.lineTo(wx+18,wy+8);ctx.stroke();\n  }\n  ctx.fillStyle=\"hsl(\"+hue+\",80%,55%)\";ctx.font=\"800 26px system-ui,sans-serif\";\n  ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";ctx.fillText(kw.toFixed(2)+\" kW\",75,104);\n\n\n  ctx.restore();\n}\n\n// \u2500\u2500 GRID (180x67, compact \u2014 now in row 3) \u2500\u2500\nfunction drawGrid(ctx){\n  var kw=D.meter,maxKw=5,t=Date.now();\n  var balanced=Math.abs(kw)<0.25,importing=kw<0;\n  var mag=Math.min(Math.abs(kw)/maxKw,1);\n  var color=balanced?\"#50a0ff\":importing?\"#ff5050\":\"#50ff78\";\n  var midY=35,dir=importing?1:-1;\n  ctx.clearRect(0,0,180,67);\n  ctx.save();ctx.translate(12.6,0);ctx.scale(0.86,0.86);\n  [28,152].forEach(function(x){\n    ctx.strokeStyle=\"#444\";ctx.lineWidth=2;\n    ctx.beginPath();ctx.moveTo(x-6,midY+22);ctx.lineTo(x,midY-18);ctx.stroke();\n    ctx.beginPath();ctx.moveTo(x+6,midY+22);ctx.lineTo(x,midY-18);ctx.stroke();\n    ctx.lineWidth=1.5;\n    ctx.beginPath();ctx.moveTo(x-10,midY-4);ctx.lineTo(x+10,midY-4);ctx.stroke();\n  });\n  ctx.beginPath();ctx.moveTo(10,midY);ctx.lineTo(170,midY);ctx.strokeStyle=\"#333\";ctx.lineWidth=2.5;ctx.stroke();\n  if(!balanced){\n    ctx.save();ctx.beginPath();ctx.moveTo(10,midY);ctx.lineTo(170,midY);\n    ctx.strokeStyle=color;ctx.lineWidth=4+mag*4;ctx.globalAlpha=0.4+mag*0.5;\n    ctx.setLineDash([6+mag*8,8-mag*4]);ctx.lineDashOffset=-(t/30*dir);\n    ctx.lineCap=\"round\";ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;ctx.lineCap=\"butt\";ctx.restore();\n  }\n  if(balanced){\n    var gr=12+Math.sin(t/360)*3,gA=0.15+Math.sin(t/360)*0.1;\n    var bg=ctx.createRadialGradient(90,midY,0,90,midY,gr);\n    bg.addColorStop(0,\"rgba(80,160,255,\"+Math.max(0,gA)+\")\");bg.addColorStop(1,\"rgba(80,160,255,0)\");\n    ctx.fillStyle=bg;ctx.beginPath();ctx.arc(90,midY,gr,0,Math.PI*2);ctx.fill();\n  }\n  if(!balanced){\n    var aOff=Math.sin(t/240)*12*dir,ax=90+aOff;\n    ctx.beginPath();\n    if(importing){ctx.moveTo(ax+12,midY);ctx.lineTo(ax-6,midY-9);ctx.lineTo(ax-6,midY+9);}\n    else{ctx.moveTo(ax-12,midY);ctx.lineTo(ax+6,midY-9);ctx.lineTo(ax+6,midY+9);}\n    ctx.closePath();ctx.fillStyle=color;ctx.globalAlpha=0.8;ctx.fill();ctx.globalAlpha=1;\n  }\n  ctx.fillStyle=\"#666\";ctx.font=\"10px sans-serif\";\n  ctx.textAlign=\"left\";ctx.fillText(\"GRID\",15,midY+28);\n  ctx.textAlign=\"right\";ctx.fillText(\"HOME\",165,midY+28);\n\n\n  ctx.restore();\n}\n\n// \u2500\u2500 BATTERY (150x105) \u2500\u2500\nfunction drawBattery(ctx){\n  var pct=D.soc,chg=D.bat,t=Date.now();\n  var charging=chg<-0.25,discharging=chg>0.25,idle=!charging&&!discharging;\n  var active=!idle,intensity=Math.min(Math.abs(chg)/5,1);\n  var hue=pct<20?0:pct<50?40:120;\n  var stateColor=idle?\"#666\":charging?\"#44ee44\":\"#ff4444\";\n  var borderColor=idle?\"#555\":stateColor;\n  var pctColor=pct<20?\"#ff4444\":pct<50?\"#ffaa00\":\"#44dd44\";\n  var bx=10,by=20,bw=110,bh=55;\n  var fillW=Math.max(0,(pct/100)*(bw-4));\n  var pulseAlpha=active?0.2+Math.sin(t/320)*0.15:0;\n  var boltAlpha=idle?0.25:0.5+Math.sin(t/240)*0.3;\n  var boltW=idle?2:3+intensity*6;\n  ctx.clearRect(0,0,150,125);\n  ctx.save();ctx.translate(6,0);ctx.scale(0.92,0.92);\n  if(active){\n    ctx.save();ctx.shadowColor=borderColor;ctx.shadowBlur=5;\n    rr(ctx,bx-4,by-4,bw+8,bh+8,6);ctx.strokeStyle=borderColor;ctx.lineWidth=3;\n    ctx.globalAlpha=pulseAlpha;ctx.stroke();ctx.globalAlpha=1;ctx.restore();\n  }\n  rr(ctx,bx+bw,by+18,11,24,2);ctx.fillStyle=active?borderColor:\"#444\";\n  if(active){ctx.globalAlpha=0.6+Math.sin(t/320)*0.3;}ctx.fill();ctx.globalAlpha=1;\n  rr(ctx,bx,by,bw,bh,5);ctx.fillStyle=\"#111\";ctx.fill();ctx.strokeStyle=borderColor;ctx.lineWidth=2.5;ctx.stroke();\n  if(fillW>0){\n    var fg=ctx.createLinearGradient(bx+2,0,bx+2+fillW,0);\n    fg.addColorStop(0,\"hsla(\"+hue+\",80%,55%,0.8)\");fg.addColorStop(1,\"hsla(\"+hue+\",80%,45%,0.95)\");\n    ctx.save();rr(ctx,bx+2,by+2,bw-4,bh-4,3);ctx.clip();\n    ctx.fillStyle=fg;ctx.fillRect(bx+2,by+2,fillW,bh-4);ctx.restore();\n  }\n  ctx.save();ctx.shadowColor=\"rgba(0,0,0,0.9)\";ctx.shadowBlur=6;\n  ctx.fillStyle=pctColor;ctx.font=\"800 28px system-ui,sans-serif\";\n  ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";\n  ctx.fillText(Math.round(pct)+\"%\",bx+bw/2,by+bh/2-1);ctx.restore();\n  ctx.save();ctx.globalAlpha=boltAlpha;\n  ctx.beginPath();ctx.moveTo(70,24);ctx.lineTo(56,50);ctx.lineTo(66,50);ctx.lineTo(58,70);\n  ctx.lineTo(80,44);ctx.lineTo(70,44);ctx.lineTo(80,24);ctx.closePath();\n  ctx.fillStyle=stateColor;ctx.globalAlpha=boltAlpha*(idle?0.4:0.7);ctx.fill();\n  ctx.strokeStyle=stateColor;ctx.lineWidth=boltW;ctx.lineJoin=\"round\";ctx.lineCap=\"round\";\n  ctx.globalAlpha=boltAlpha;ctx.stroke();ctx.restore();\n  ctx.fillStyle=stateColor;ctx.font=\"800 26px system-ui,sans-serif\";\n  ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";\n  ctx.fillText((chg>0?\"+\":\"\")+chg.toFixed(2)+\" kW\",bx+bw/2,by+bh+18);\n  // Time remaining \u2014 discharge OR charge\n  var ttlH=D.batHrs,ttlM=D.batMins;\n  var tchH=D.batChgHrs,tchM=D.batChgMins;\n  if(discharging&&(ttlH>0||ttlM>0)){\n    var ttlTotal=ttlH+ttlM/60;\n    var ttlColor=ttlTotal>4?\"#44dd44\":ttlTotal>1?\"#ffaa00\":\"#ff4444\";\n    ctx.fillStyle=ttlColor;ctx.font=\"700 20px system-ui,sans-serif\";\n    ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";\n    ctx.fillText(\"~\"+ttlH+\"h \"+ttlM+\"m\",bx+bw/2,by+bh+40);\n  }else if(charging&&(tchH>0||tchM>0)){\n    ctx.fillStyle=\"#44dd44\";ctx.font=\"700 20px system-ui,sans-serif\";\n    ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";\n    ctx.fillText(\"~\"+tchH+\"h \"+tchM+\"m\",bx+bw/2,by+bh+40);\n  }\n\n\n  ctx.restore();\n}\n\n// \u2500\u2500 WALLBOX (150x105) \u2500\u2500\nfunction drawWallbox(ctx){\n  var kw=D.charge,maxKw=11,t=Date.now();\n  var charging=kw>0&&D.carConn>0;\n  var connected=D.carConn>0;\n  var ratio=Math.min(kw/maxKw,1);\n  var hue=charging?145:35;\n  var stateColor=charging?\"#00cc66\":connected?\"#f90\":\"#444\";\n  var breathe=charging?Math.sin(t/(800-ratio*400))*0.12+0.88:1;\n  var nBars=charging?Math.ceil(ratio*4):0;\n  ctx.clearRect(0,0,150,125);\n  ctx.save();ctx.translate(6,0);ctx.scale(0.92,0.92);\n  // Charger box\n  rr(ctx,10,22,32,48,4);ctx.fillStyle=\"#1a1a2e\";ctx.fill();\n  ctx.strokeStyle=stateColor;ctx.lineWidth=1.5;ctx.globalAlpha=charging?breathe:0.6;ctx.stroke();ctx.globalAlpha=1;\n  // Charger post\n  ctx.fillStyle=\"#1a1a2e\";ctx.fillRect(21,70,10,14);\n  // Screen\n  rr(ctx,16,28,20,10,1);\n  ctx.fillStyle=charging?\"rgba(0,200,80,\"+(0.35*breathe)+\")\":connected?\"rgba(255,160,0,0.15)\":\"rgba(60,60,60,0.2)\";ctx.fill();\n  // Status LED\n  ctx.beginPath();ctx.arc(26,46,3,0,Math.PI*2);\n  ctx.fillStyle=charging?\"rgba(0,220,100,\"+(0.6*breathe)+\")\":connected?\"rgba(255,160,0,0.4)\":\"rgba(80,80,80,0.3)\";ctx.fill();\n  // Cable\n  ctx.beginPath();ctx.moveTo(42,42);ctx.quadraticCurveTo(62,78,86,62);\n  ctx.strokeStyle=stateColor;ctx.lineWidth=charging?3:2;ctx.lineCap=\"round\";\n  ctx.globalAlpha=charging?breathe:0.5;ctx.stroke();ctx.globalAlpha=1;ctx.lineCap=\"butt\";\n  // Car body\n  ctx.beginPath();ctx.moveTo(78,55);ctx.lineTo(84,42);ctx.lineTo(136,42);ctx.lineTo(142,55);\n  ctx.lineTo(144,68);ctx.lineTo(76,68);ctx.closePath();ctx.fillStyle=\"#1a1a2e\";ctx.fill();\n  ctx.strokeStyle=charging?stateColor:\"#444\";ctx.lineWidth=1.5;ctx.globalAlpha=charging?0.7*breathe:0.6;ctx.stroke();ctx.globalAlpha=1;\n  // Windshield\n  ctx.beginPath();ctx.moveTo(92,42);ctx.lineTo(98,30);ctx.lineTo(126,30);ctx.lineTo(132,42);ctx.closePath();\n  ctx.fillStyle=\"#111\";ctx.fill();ctx.strokeStyle=charging?\"rgba(0,140,60,0.3)\":\"#333\";ctx.lineWidth=1;ctx.stroke();\n  // Wheels\n  [92,132].forEach(function(wx){\n    ctx.beginPath();ctx.arc(wx,70,6,0,Math.PI*2);ctx.fillStyle=\"#111\";ctx.fill();\n    ctx.strokeStyle=\"#444\";ctx.lineWidth=1.5;ctx.stroke();\n    ctx.beginPath();ctx.arc(wx,70,2.5,0,Math.PI*2);ctx.fillStyle=\"#333\";ctx.fill();\n  });\n  // Charge level bars (like signal bars, inside car body)\n  for(var i=0;i<4;i++){\n    var bx=98+i*10,bh=6+i*4,by=62-bh;\n    rr(ctx,bx,by,6,bh,1);\n    ctx.fillStyle=i<nBars?\"hsla(\"+hue+\",70%,50%,\"+(0.6*breathe)+\")\":\"rgba(40,40,40,0.4)\";\n    ctx.fill();\n  }\n  // Value text\n  if(connected){\n    ctx.fillStyle=stateColor;ctx.font=\"700 20px system-ui,sans-serif\";\n    ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";ctx.fillText(kw.toFixed(1)+\" kW\",75,96);\n  }\n  ctx.restore();\n}\n\n// \u2500\u2500 SELF-SUFFICIENCY (150x118) \u2014 Full-size arc gauge \u2500\u2500\nfunction drawSelfSuf(ctx){\n  var pct=D.selfSuf,ratio=Math.min(pct/100,1),t=Date.now();\n  var color=pct>=80?\"#00cc66\":pct>=50?\"#ffaa00\":\"#ff4444\";\n  var cx=75,cy=58,R=38;\n  var startA=135*(Math.PI/180);\n  var sweepAngle=270*(Math.PI/180)*ratio;\n  var pulseAlpha=0.7+Math.sin(t/300)*0.15;\n  ctx.clearRect(0,0,150,118);\n  ctx.save();ctx.translate(3.75,0);ctx.scale(0.95,0.95);\n  // Label\n  ctx.fillStyle=\"#666\";ctx.font=\"600 8px system-ui,sans-serif\";ctx.textAlign=\"center\";ctx.letterSpacing=\"1.5px\";\n  ctx.fillText(\"SELF-SUFFICIENCY\",cx,14);\n  // Background arc\n  ctx.beginPath();ctx.arc(cx,cy,R,startA,startA+270*(Math.PI/180));\n  ctx.strokeStyle=\"#1a1a1a\";ctx.lineWidth=6;ctx.lineCap=\"round\";ctx.stroke();\n  // Glow arc\n  if(ratio>0){\n    ctx.save();ctx.shadowColor=color;ctx.shadowBlur=4;\n    ctx.beginPath();ctx.arc(cx,cy,R,startA,startA+sweepAngle);\n    ctx.strokeStyle=color;ctx.lineWidth=7;ctx.lineCap=\"round\";ctx.globalAlpha=pulseAlpha*0.3;ctx.stroke();\n    ctx.globalAlpha=1;ctx.restore();\n  }\n  // Filled arc\n  if(ratio>0){\n    ctx.beginPath();ctx.arc(cx,cy,R,startA,startA+sweepAngle);\n    ctx.strokeStyle=color;ctx.lineWidth=6;ctx.lineCap=\"round\";ctx.globalAlpha=pulseAlpha;ctx.stroke();\n    ctx.globalAlpha=1;\n  }\n  ctx.lineCap=\"butt\";\n  // % text\n  ctx.fillStyle=color;ctx.font=\"800 22px system-ui,sans-serif\";\n  ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";ctx.fillText(Math.round(pct)+\"%\",cx,cy-2);\n  \n\n\n  ctx.restore();\n}\n\n// \u2500\u2500 VIRTUAL BATTERY (150x66) \u2014 Arc gauge \u2500\u2500\nfunction drawVBat(ctx){\n  var pct=Math.min(D.vbPct,100),ratio=pct/100,t=Date.now();\n  var color=pct>=100?\"#00cc66\":pct>=50?\"#ffaa00\":\"#ff4444\";\n  var cx=75,cy=35,R=22;\n  var startA=135*(Math.PI/180);\n  var sweepAngle=270*(Math.PI/180)*ratio;\n  var pulseAlpha=0.7+Math.sin(t/300)*0.15;\n  ctx.clearRect(0,0,150,66);\n  // Label\n  ctx.fillStyle=\"#666\";ctx.font=\"600 7px system-ui,sans-serif\";ctx.textAlign=\"center\";\n  ctx.fillText(\"VIRTUAL BATTERY\",cx,9);\n  // Background arc\n  ctx.beginPath();ctx.arc(cx,cy,R,startA,startA+270*(Math.PI/180));\n  ctx.strokeStyle=\"#1a1a1a\";ctx.lineWidth=5;ctx.lineCap=\"round\";ctx.stroke();\n  // Glow arc\n  if(ratio>0){\n    ctx.save();ctx.shadowColor=color;ctx.shadowBlur=4;\n    ctx.beginPath();ctx.arc(cx,cy,R,startA,startA+sweepAngle);\n    ctx.strokeStyle=color;ctx.lineWidth=6;ctx.lineCap=\"round\";ctx.globalAlpha=pulseAlpha*0.3;ctx.stroke();\n    ctx.globalAlpha=1;ctx.restore();\n  }\n  // Filled arc\n  if(ratio>0){\n    ctx.beginPath();ctx.arc(cx,cy,R,startA,startA+sweepAngle);\n    ctx.strokeStyle=color;ctx.lineWidth=5;ctx.lineCap=\"round\";ctx.globalAlpha=pulseAlpha;ctx.stroke();\n    ctx.globalAlpha=1;\n  }\n  ctx.lineCap=\"butt\";\n  // % text\n  ctx.fillStyle=color;ctx.font=\"800 16px system-ui,sans-serif\";\n  ctx.textAlign=\"center\";ctx.textBaseline=\"middle\";ctx.fillText(Math.round(D.vbPct)+\"%\",cx,cy-2);\n}\n\nfunction mainLoop(){\n  if(solCtx)drawSolar(solCtx);\n  if(houseCtx)drawHouse(houseCtx);\n  if(gridCtx)drawGrid(gridCtx);\n  if(batCtx)drawBattery(batCtx);\n  if(wbCtx)drawWallbox(wbCtx);\n  if(ssCtx)drawSelfSuf(ssCtx);\n  if(vbCtx)drawVBat(vbCtx);\n  window.__pf6_id=requestAnimationFrame(mainLoop);\n}\nmainLoop();",
+          "content": "<style>\n#pf6{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr 1fr;gap:2px;height:100%;overflow:hidden;font-family:'Segoe UI',system-ui,sans-serif}\n.pf6-c{background:#0a0a0a;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;position:relative;padding:1px;min-height:0;min-width:0}\n.pf6-c canvas{display:block;max-width:100%;max-height:100%;width:auto;height:auto}\n.pf6-val{font-size:2.1vw;font-weight:700;line-height:1.15;white-space:nowrap}\n.pf6-u{font-size:1.1vw;color:#888;font-weight:400}\n.pf6-sub{font-size:1.05vw}\n#pf6-solar{grid-column:1;grid-row:1}\n#pf6-ss{grid-column:2;grid-row:1}\n#pf6-house{grid-column:3;grid-row:1}\n#pf6-bat{grid-column:1;grid-row:2}\n#pf6-vbat{grid-column:2;grid-row:3}\n#pf6-wb{grid-column:3;grid-row:2}\n#pf6-today{grid-column:1;grid-row:3}\n#pf6-grid{grid-column:2;grid-row:2}\n#pf6-month{grid-column:3;grid-row:3}\n.pf6-badge{display:inline-block;font-size:0.9vw;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;padding:1px 6px;border-radius:3px;margin-top:1px}\n.pf6-badge.imp{background:#3a1a1a;color:#ff5050}\n.pf6-badge.exp{background:#1c3a20;color:#50ff78}\n.pf6-badge.bal{background:#1a2a3a;color:#50a0ff}\n.pf6-lbl{font-size:0.9vw;color:#666;letter-spacing:0.12em;text-transform:uppercase}\n.pf6-off .pf6-val{color:#4a4a4a!important}\n.pf6-off canvas{opacity:0.3}\n.pf6-stat{padding:6px 10px;justify-content:center!important}\n.pf6-stat-hdr{font-size:1.1vw;color:#888;letter-spacing:0.12em;text-align:center;margin-bottom:6px;width:100%}\n.pf6-bar-wrap{width:100%;margin-bottom:6px}\n.pf6-bar-hdr{display:flex;justify-content:space-between;margin-bottom:3px}\n.pf6-bar-lbl{font-size:0.85vw}\n.pf6-bar-val{font-size:1.0vw;font-weight:700}\n.pf6-bar-track{height:10px;border-radius:5px;background:#1a1a1a;overflow:hidden;position:relative}\n.pf6-bar-fill{height:100%;border-radius:5px;position:relative;overflow:hidden;transition:width 0.6s ease}\n.pf6-bar-shimmer{position:absolute;top:0;width:30px;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,0.15),transparent);animation:pf6shim 2s infinite}\n@keyframes pf6shim{0%{left:-30px}100%{left:100%}}\n.pf6-bar-glow{position:absolute;top:0;width:6px;height:100%;filter:blur(3px);animation:pf6glow 1s ease-in-out infinite alternate}\n@keyframes pf6glow{0%{opacity:0.3}100%{opacity:0.7}}\n.pf6-vbat-footer{display:flex;justify-content:space-between;width:100%;margin-top:2px;padding-top:4px;border-top:1px solid #222}\n.pf6-vbat-col{text-align:center;flex:1}\n.pf6-vbat-sep{width:1px;background:#222}\n</style>\n<div id=\"pf6\"\n  data-prod=\"{{prod}}\" data-cons=\"{{cons}}\" data-soc=\"{{soc}}\"\n  data-bat=\"{{bat}}\" data-meter=\"{{meter}}\" data-charge=\"{{charge_w}}\"\n  data-car-conn=\"{{car_conn}}\" data-d-cons=\"{{d_cons}}\" data-d-gen=\"{{d_gen}}\"\n  data-m-cons=\"{{m_cons}}\" data-m-gen=\"{{m_gen}}\" data-self-suf=\"{{self_suf}}\"\n  data-vb-charge=\"{{vb_charge}}\" data-vb-prod=\"{{vb_prod}}\" data-vb-cons=\"{{vb_cons}}\" data-vb-pct=\"{{vb_pct}}\" data-bat-hrs=\"{{bat_hrs}}\" data-bat-mins=\"{{bat_mins}}\" data-bat-chg-hrs=\"{{bat_chg_hrs}}\" data-bat-chg-mins=\"{{bat_chg_mins}}\">\n\n  <div class=\"pf6-c\" id=\"pf6-solar\">\n    <canvas id=\"pf6-cv-sol\" width=\"150\" height=\"105\"></canvas>\n  </div>\n\n  <div class=\"pf6-c\" id=\"pf6-ss\">\n    <canvas id=\"pf6-cv-ss\" width=\"150\" height=\"118\"></canvas>\n  </div>\n\n  <div class=\"pf6-c\" id=\"pf6-house\">\n    <canvas id=\"pf6-cv-house\" width=\"150\" height=\"105\"></canvas>\n  </div>\n\n  <div class=\"pf6-c\" id=\"pf6-bat\">\n    <canvas id=\"pf6-cv-bat\" width=\"150\" height=\"125\"></canvas>\n  </div>\n\n  <div class=\"pf6-c\" id=\"pf6-vbat\">\n    <canvas id=\"pf6-cv-vbat\" width=\"150\" height=\"66\"></canvas>\n    <div class=\"pf6-vbat-footer\">\n      <div class=\"pf6-vbat-col\">\n        <div style=\"font-size:0.8vw;color:#00cc66;font-weight:600\">\u25b2 SOLD</div>\n        <div style=\"font-size:1.1vw;font-weight:700\">{{vb_prod}}<span style=\"font-size:0.8vw;color:#666\"> kWh</span></div>\n      </div>\n      <div class=\"pf6-vbat-sep\"></div>\n      <div class=\"pf6-vbat-col\">\n        <div style=\"font-size:0.8vw;color:#ffaa00;font-weight:600\">\u25bc BOUGHT</div>\n        <div style=\"font-size:1.1vw;font-weight:700\">{{vb_cons}}<span style=\"font-size:0.8vw;color:#666\"> kWh</span></div>\n      </div>\n    </div>\n  </div>\n\n  <div class=\"pf6-c {{#unless (gt car_conn 0)}}pf6-off{{/unless}}\" id=\"pf6-wb\">\n    <canvas id=\"pf6-cv-wb\" width=\"150\" height=\"105\"></canvas>\n    {{#unless (gt car_conn 0)}}<div class=\"pf6-val\" style=\"color:#4a4a4a\">\u2014</div>{{/unless}}\n  </div>\n\n  <div class=\"pf6-c pf6-stat\" id=\"pf6-today\">\n    <div class=\"pf6-stat-hdr\">TODAY</div>\n    <div class=\"pf6-bar-wrap\">\n      <div class=\"pf6-bar-hdr\"><span class=\"pf6-bar-lbl\" style=\"color:#ff6b6b\">Consumed</span><span class=\"pf6-bar-val\" style=\"color:#ff6b6b\">{{d_cons}} kWh</span></div>\n      <div class=\"pf6-bar-track\"><div class=\"pf6-bar-fill\" id=\"pf6-bar-dc\" style=\"background:linear-gradient(90deg,#cc3333,#ff5555)\"><div class=\"pf6-bar-shimmer\"></div></div><div class=\"pf6-bar-glow\" id=\"pf6-glow-dc\" style=\"background:rgba(255,100,100,0.5)\"></div></div>\n    </div>\n    <div class=\"pf6-bar-wrap\">\n      <div class=\"pf6-bar-hdr\"><span class=\"pf6-bar-lbl\" style=\"color:#51cf66\">Produced</span><span class=\"pf6-bar-val\" style=\"color:#51cf66\">{{d_gen}} kWh</span></div>\n      <div class=\"pf6-bar-track\"><div class=\"pf6-bar-fill\" id=\"pf6-bar-dg\" style=\"background:linear-gradient(90deg,#228833,#44cc55)\"><div class=\"pf6-bar-shimmer\"></div></div><div class=\"pf6-bar-glow\" id=\"pf6-glow-dg\" style=\"background:rgba(100,255,100,0.5)\"></div></div>\n    </div>\n  </div>\n\n  <div class=\"pf6-c\" id=\"pf6-grid\">\n    <canvas id=\"pf6-cv-grid\" width=\"180\" height=\"67\"></canvas>\n    <div class=\"pf6-val\" style=\"color:{{#if (lt meter -0.25)}}#ff5050{{else}}{{#if (gt meter 0.25)}}#50ff78{{else}}#50a0ff{{/if}}{{/if}}\">{{#if (gt meter 0)}}+{{meter}}{{else}}{{meter}}{{/if}} <span class=\"pf6-u\">kW</span></div>\n    {{#if (lt meter -0.25)}}<span class=\"pf6-badge imp\">Import</span>{{else}}{{#if (gt meter 0.25)}}<span class=\"pf6-badge exp\">Export</span>{{else}}<span class=\"pf6-badge bal\">Balanced</span>{{/if}}{{/if}}\n    <div class=\"pf6-lbl\">Grid</div>\n  </div>\n\n  <div class=\"pf6-c pf6-stat\" id=\"pf6-month\">\n    <div class=\"pf6-stat-hdr\">MONTH</div>\n    <div class=\"pf6-bar-wrap\">\n      <div class=\"pf6-bar-hdr\"><span class=\"pf6-bar-lbl\" style=\"color:#ff6b6b\">Consumed</span><span class=\"pf6-bar-val\" style=\"color:#ff6b6b\">{{m_cons}} kWh</span></div>\n      <div class=\"pf6-bar-track\"><div class=\"pf6-bar-fill\" id=\"pf6-bar-mc\" style=\"background:linear-gradient(90deg,#cc3333,#ff5555)\"><div class=\"pf6-bar-shimmer\"></div></div><div class=\"pf6-bar-glow\" id=\"pf6-glow-mc\" style=\"background:rgba(255,100,100,0.5)\"></div></div>\n    </div>\n    <div class=\"pf6-bar-wrap\">\n      <div class=\"pf6-bar-hdr\"><span class=\"pf6-bar-lbl\" style=\"color:#51cf66\">Produced</span><span class=\"pf6-bar-val\" style=\"color:#51cf66\">{{m_gen}} kWh</span></div>\n      <div class=\"pf6-bar-track\"><div class=\"pf6-bar-fill\" id=\"pf6-bar-mg\" style=\"background:linear-gradient(90deg,#228833,#44cc55)\"><div class=\"pf6-bar-shimmer\"></div></div><div class=\"pf6-bar-glow\" id=\"pf6-glow-mg\" style=\"background:rgba(100,255,100,0.5)\"></div></div>\n    </div>\n  </div>\n</div>",
+          "contentPartials": [],
+          "defaultContent": "The query didn't return any results.",
+          "editor": {
+            "format": "auto",
+            "language": "handlebars"
+          },
+          "editors": [],
+          "externalStyles": [],
+          "helpers": "",
+          "renderMode": "everyRow",
+          "styles": "",
+          "wrap": true
+        },
+        "pluginVersion": "6.2.0",
+        "targets": [
+          {
+            "query": "import \"math\"\nimport \"array\"\nimport \"date\"\n\n// \u2500\u2500 Live readings \u2500\u2500\nprod_raw = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"power\" and r.string == \"all\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\ncons_raw = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"consumption\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nbat_raw = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"battery_load\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nsoc_raw = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"soc\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// \u2500\u2500 Grid meter power (negative = import, positive = export) \u2500\u2500\nmeter_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])\n\nmeter_real = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"meter_power\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])\n\nmeter_rec = union(tables: [meter_default, meter_real])\n  |> sort(columns: [\"_time\"])\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// \u2500\u2500 Wallbox (safe \u2014 may have no data at all) \u2500\u2500\ncharge_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])\n\ncharge_real = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"Car\" and r._field == \"charging_wallbox_power\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])\n\ncharge_rec = union(tables: [charge_default, charge_real])\n  |> sort(columns: [\"_time\"])\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// \u2500\u2500 Car connected (1 = plugged in, 0 = not) \u2500\u2500\nconn_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])\n\nconn_real = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"Car\" and r._field == \"car_connected\")\n  |> last()\n  |> keep(columns: [\"_time\", \"_value\"])\n\nconn_rec = union(tables: [conn_default, conn_real])\n  |> sort(columns: [\"_time\"])\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// \u2500\u2500 Daily stats (today's running totals) \u2500\u2500\nd_cons_raw = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"consumption_day\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nd_gen_raw = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"generation_day\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// \u2500\u2500 Monthly stats (sum of daily maxes for current month) \u2500\u2500\nmonth_start = date.truncate(t: now(), unit: 1mo)\n\nm_cons_raw = from(bucket: \"default\")\n  |> range(start: month_start)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"consumption_day\")\n  |> aggregateWindow(every: 1d, fn: max)\n  |> sum()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nm_gen_raw = from(bucket: \"default\")\n  |> range(start: month_start)\n  |> filter(fn: (r) => r._measurement == \"FVE\" and r._field == \"generation_day\")\n  |> aggregateWindow(every: 1d, fn: max)\n  |> sum()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n\n// \u2500\u2500 Virtual Battery (CEZ) \u2500\u2500\nvb_charge_raw = from(bucket: \"default\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"cez\" and r._field == \"virtual_battery\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nvb_prod_raw = from(bucket: \"default\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"cez\" and r._field == \"aggregated_production\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nvb_cons_raw = from(bucket: \"default\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"cez\" and r._field == \"aggregated_consumption\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// \u2500\u2500 Extract values with null safety \u2500\u2500\nprod   = if exists prod_raw._value then float(v: prod_raw._value) else 0.0\ncons_total = if exists cons_raw._value then float(v: cons_raw._value) else 0.0\nbat    = if exists bat_raw._value  then float(v: bat_raw._value)  else 0.0\nsoc    = if exists soc_raw._value  then float(v: soc_raw._value)  else 0.0\nmeter  = if exists meter_rec._value then float(v: meter_rec._value) else 0.0\ncharge = if exists charge_rec._value then float(v: charge_rec._value) else 0.0\ncons   = if cons_total - charge > 0.0 then cons_total - charge else 0.0\ncar_conn = if exists conn_rec._value then float(v: conn_rec._value) else 0.0\nd_cons = if exists d_cons_raw._value then float(v: d_cons_raw._value) else 0.0\nd_gen  = if exists d_gen_raw._value  then float(v: d_gen_raw._value)  else 0.0\nm_cons = if exists m_cons_raw._value then float(v: m_cons_raw._value) else 0.0\nm_gen  = if exists m_gen_raw._value  then float(v: m_gen_raw._value)  else 0.0\n\n// Self-sufficiency: today's generation / consumption * 100\nself_suf = if d_cons > 0.0 then math.round(x: d_gen / d_cons * 100.0) else 0.0\n\n\n// Virtual Battery values\nvb_charge = if exists vb_charge_raw._value then float(v: vb_charge_raw._value) else 0.0\nvb_prod   = if exists vb_prod_raw._value then float(v: vb_prod_raw._value) else 0.0\nvb_cons   = if exists vb_cons_raw._value then float(v: vb_cons_raw._value) else 0.0\nvb_pct    = if vb_cons > 0.0 then math.round(x: vb_prod / vb_cons * 100.0) else 0.0\n\n\n// Battery time remaining (hours until DoD floor)\ndod = float(v: ${InverterDepthOfDischarge})\nmin_soc = 100.0 - dod\nusable_pct = if soc > min_soc then soc - min_soc else 0.0\nusable_kwh = usable_pct / 100.0 * 20.0\nbat_discharge_kw = if bat > 50.0 then bat / 1000.0 else 0.0\nbat_hours_raw = if bat_discharge_kw > 0.0 then usable_kwh / bat_discharge_kw else 0.0\nbat_hrs_v = math.floor(x: bat_hours_raw)\nbat_mins_v = math.round(x: (bat_hours_raw - math.floor(x: bat_hours_raw)) * 60.0)\n\n// Battery time to full charge\nbat_charge_kw = if bat < -50.0 then math.abs(x: bat) / 1000.0 else 0.0\nremaining_pct = 100.0 - soc\nremaining_kwh = remaining_pct / 100.0 * 20.0\nbat_chg_hours_raw = if bat_charge_kw > 0.0 then remaining_kwh / bat_charge_kw else 0.0\nbat_chg_hrs_v = math.floor(x: bat_chg_hours_raw)\nbat_chg_mins_v = math.round(x: (bat_chg_hours_raw - math.floor(x: bat_chg_hours_raw)) * 60.0)\n\narray.from(rows: [{\n  prod:      math.round(x: prod / 1000.0 * 100.0) / 100.0,\n  cons:      math.round(x: cons / 1000.0 * 100.0) / 100.0,\n  soc:       math.round(x: soc),\n  bat:       math.round(x: bat / 1000.0 * 100.0) / 100.0,\n  meter:     math.round(x: meter / 1000.0 * 100.0) / 100.0,\n  charge_w:  math.round(x: charge / 1000.0 * 100.0) / 100.0,\n  car_conn:  math.round(x: car_conn),\n  d_cons:    math.round(x: d_cons * 10.0) / 10.0,\n  d_gen:     math.round(x: d_gen * 10.0) / 10.0,\n  m_cons:    math.round(x: m_cons),\n  m_gen:     math.round(x: m_gen),\n  self_suf:  self_suf,\n  vb_charge: math.round(x: vb_charge * 10.0) / 10.0,\n  vb_prod:   math.round(x: vb_prod),\n  vb_cons:   math.round(x: vb_cons),\n  vb_pct:    vb_pct,\n  bat_hrs:   bat_hrs_v,\n  bat_mins:  bat_mins_v,\n  bat_chg_hrs:  bat_chg_hrs_v,\n  bat_chg_mins: bat_chg_mins_v,\n}])",
+            "refId": "A"
+          }
+        ],
+        "title": "",
+        "type": "marcusolsson-dynamictext-panel"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 0,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineStyle": {
+                "fill": "solid"
+              },
+              "lineWidth": 5,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "decimals": 0,
+            "fieldMinMax": false,
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "celsius"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "in_temp"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "dark-blue",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "out_temp"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "dark-red",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "target_temp"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "dark-green",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "becka tC krb/status/temperature:101"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "orange",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 7,
+          "x": 10,
+          "y": 7
+        },
+        "id": 47,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": false
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"estia\" and\n    // (r._field == \"out_temp\" or r._field == \"target_temp\" or r._field == \"in_temp\")\n    r._field == \"target_temp\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:last)",
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"becka\" and\n    r._field == \"tC\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:last)",
+            "refId": "B"
+          }
+        ],
+        "title": "TC - TEMP",
+        "type": "timeseries"
+      },
+      {
+        "gridPos": {
+          "h": 6,
+          "w": 7,
+          "x": 17,
+          "y": 7
+        },
+        "id": 61,
+        "libraryPanel": {
+          "name": "Cars",
+          "uid": "ffhemurxfumf4a"
+        },
+        "title": "",
+        "type": "library-panel-ref"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "description": "",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 20,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineStyle": {
+                "fill": "solid"
+              },
+              "lineWidth": 1,
+              "pointSize": 5,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "power {string=\"all\"}"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "power"
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "light-blue",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "battery_load"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "light-yellow",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "consumption"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "green",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "bojlery {pretoky=\"pretoky\"}"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "bojlery"
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "orange",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 10,
+          "x": 10,
+          "y": 13
+        },
+        "id": 2,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "multi",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"consumption\" or r._field == \"bojlery\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:mean)",
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"battery_load\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:mean)",
+            "refId": "B"
+          },
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"power\" and r.string != \"1\" and r.string != \"2\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:mean)",
+            "refId": "C"
+          }
+        ],
+        "title": "Power",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 4,
+          "x": 20,
+          "y": 13
+        },
+        "id": 69,
+        "options": {
+          "afterRender": "\nconst cp = parseFloat(document.getElementById(\"ov-cur-price\")?.textContent || \"0\");\nconst pc = cp < 0 ? \"#73BF69\" : cp < 1.5 ? \"#73BF69\" : cp < 3.0 ? \"#FF9830\" : \"#F2495C\";\nconst el = document.getElementById(\"ov-cur-price\");\nif (el) el.style.color = pc;\nconst dot = document.getElementById(\"ov-price-dot\");\nif (dot) dot.style.border = \"2px solid \" + pc;\n",
+          "content": "<style>\n.ov-wrap{display:flex;flex-direction:column;gap:8px;font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#d8d9da;height:100%}\n.ov-card{background:#1e2128;border-radius:6px;padding:10px;height:100%;display:flex;flex-direction:column;justify-content:space-between}\n.ov-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}\n.ov-lbl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#8e8ea0}\n.ov-unit{font-size:10px;color:#6e6e80}\n.ov-hero{text-align:center;margin-bottom:6px}\n.ov-hero-val{font-size:32px;font-weight:700;line-height:1}\n.ov-hero-sub{font-size:10px;color:#8e8ea0;margin-top:2px}\n.ov-bar{position:relative;width:100%;height:5px;background:linear-gradient(to right,#73BF69,#FF9830,#F2495C);border-radius:3px;margin:4px 0 2px}\n.ov-dot{position:absolute;top:-3px;width:11px;height:11px;border-radius:50%;background:#fff;transform:translateX(-50%)}\n.ov-mm{display:flex;justify-content:space-between;margin-top:4px}\n.ov-mm-lbl{font-size:10px;font-weight:600}\n.ov-mm-row{display:flex;align-items:baseline;gap:3px}\n.ov-mm-val{font-size:18px;font-weight:700}\n.ov-mm-hr{font-size:10px;color:#6e6e80}\n</style>\n\n<div class=\"ov-wrap\">\n  <div class=\"ov-card\">\n    <div class=\"ov-hdr\"><span class=\"ov-lbl\">OTE Today</span><span class=\"ov-unit\">CZK/kWh</span></div>\n    <div class=\"ov-hero\">\n      <span class=\"ov-hero-val\" id=\"ov-cur-price\">{{cur_price}}</span>\n      <div class=\"ov-hero-sub\">now \u00b7 {{cur_hour}}:00</div>\n    </div>\n    <div class=\"ov-bar\"><div class=\"ov-dot\" id=\"ov-price-dot\" style=\"left:{{dot_pct}}%\"></div></div>\n    <div class=\"ov-mm\">\n      <div>\n        <div class=\"ov-mm-lbl\" style=\"color:#73BF69\">MIN</div>\n        <div class=\"ov-mm-row\">\n          <span class=\"ov-mm-val\" style=\"color:#73BF69\">{{min_price}}</span>\n          <span class=\"ov-mm-hr\">@{{min_hour}}:00</span>\n        </div>\n      </div>\n      <div style=\"text-align:right\">\n        <div class=\"ov-mm-lbl\" style=\"color:#F2495C\">MAX</div>\n        <div class=\"ov-mm-row\">\n          <span class=\"ov-mm-val\" style=\"color:#F2495C\">{{max_price}}</span>\n          <span class=\"ov-mm-hr\">@{{max_hour}}:00</span>\n        </div>\n      </div>\n    </div>\n  </div>\n</div>",
+          "contentPartials": [],
+          "defaultContent": "",
+          "editor": {
+            "format": "auto",
+            "language": "html"
+          },
+          "editors": [],
+          "externalStyles": [],
+          "helpers": "",
+          "renderMode": "everyRow",
+          "styles": "",
+          "wrap": true
+        },
+        "pluginVersion": "6.2.0",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "ceyru5v6xg3r4b"
+            },
+            "query": "import \"math\"\nimport \"experimental\"\nimport \"array\"\nimport \"date\"\nimport \"timezone\"\n\noption location = timezone.location(name: \"Europe/Prague\")\n_loc = timezone.location(name: \"Europe/Prague\")\n_zero = 1970-01-01T00:00:00Z\n_def_cur = array.from(rows: [{_value: 0.0, _time: _zero}])\n_def_min = array.from(rows: [{_value: 999.0, _time: _zero}])\n_def_max = array.from(rows: [{_value: -999.0, _time: _zero}])\n\n// OTE: all hourly prices for today (always full day, ignores dashboard time range)\note_raw = from(bucket: \"default\")\n  |> range(start: today(), stop: experimental.addDuration(d: 25h, to: today()))\n  |> filter(fn: (r) => r._measurement == \"OTE\" and r._field == \"price_czk_kwh\" and r.type == \"hourly\")\n  |> keep(columns: [\"_value\", \"_time\"])\n\n// Current hour (Prague time)\n// Data stored at end-of-hour: 8-9am price at 09:00, so filter by hour+1\nnow_hour = date.hour(t: now(), location: _loc)\note_cur_raw = ote_raw\n  |> filter(fn: (r) => date.hour(t: r._time, location: _loc) == now_hour + 1)\n  |> last()\note_cur = union(tables: [_def_cur, ote_cur_raw]) |> group() |> sort(columns: [\"_time\"]) |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// Min price (default 999 so real prices always win)\note_min_r = union(tables: [_def_min, ote_raw |> min()])\n  |> group() |> sort(columns: [\"_value\"]) |> first()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// Max price (default -999 so real prices always win)\note_max_r = union(tables: [_def_max, ote_raw |> max()])\n  |> group() |> sort(columns: [\"_value\"], desc: true) |> first()\n  |> findRecord(fn: (key) => true, idx: 0)\n\ncur_price = ote_cur._value\nmin_price = ote_min_r._value\nmax_price = ote_max_r._value\n// Subtract 1 from hour: timestamps are end-of-hour, display start-of-hour\nmin_hour = if ote_min_r._time == _zero then 0 else date.hour(t: ote_min_r._time, location: _loc) - 1\nmax_hour = if ote_max_r._time == _zero then 0 else date.hour(t: ote_max_r._time, location: _loc) - 1\n\n// Dot position on the range bar (clamped 2-98%)\n_raw_pct = if max_price == min_price then 50.0 else (cur_price - min_price) / (max_price - min_price) * 100.0\ndot_pct = if _raw_pct < 2.0 then 2.0 else if _raw_pct > 98.0 then 98.0 else _raw_pct\n\narray.from(rows: [{\n  cur_price: string(v: math.round(x: cur_price * 100.0) / 100.0),\n  cur_hour: string(v: now_hour),\n  min_price: string(v: math.round(x: min_price * 100.0) / 100.0),\n  min_hour: string(v: min_hour),\n  max_price: string(v: math.round(x: max_price * 100.0) / 100.0),\n  max_hour: string(v: max_hour),\n  dot_pct: string(v: math.round(x: dot_pct)),\n}])",
+            "refId": "A"
+          }
+        ],
+        "title": "",
+        "transparent": true,
+        "type": "marcusolsson-dynamictext-panel"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "barAlignment": -1,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 50,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "smooth",
+              "lineWidth": 3,
+              "pointSize": 1,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": false,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "kwatth"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "SolarForecast 30m_90p_cummulative"
+              },
+              "properties": [
+                {
+                  "id": "custom.lineWidth",
+                  "value": 0
+                },
+                {
+                  "id": "custom.fillBelowTo",
+                  "value": "SolarForecast 30m_10p_cummulative"
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "light-green",
+                    "mode": "fixed"
+                  }
+                },
+                {
+                  "id": "custom.fillOpacity",
+                  "value": 25
+                },
+                {
+                  "id": "displayName",
+                  "value": "90p"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "FVE generation_day"
+              },
+              "properties": [
+                {
+                  "id": "custom.lineWidth",
+                  "value": 3
+                },
+                {
+                  "id": "custom.drawStyle",
+                  "value": "bars"
+                },
+                {
+                  "id": "custom.fillOpacity",
+                  "value": 50
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "blue",
+                    "mode": "fixed"
+                  }
+                },
+                {
+                  "id": "displayName",
+                  "value": "production"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "SolarForecast 30m_50p_cummulative"
+              },
+              "properties": [
+                {
+                  "id": "custom.drawStyle",
+                  "value": "line"
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "green",
+                    "mode": "fixed"
+                  }
+                },
+                {
+                  "id": "custom.fillOpacity",
+                  "value": 0
+                },
+                {
+                  "id": "displayName",
+                  "value": "mean"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "SolarForecast 30m_10p_cummulative"
+              },
+              "properties": [
+                {
+                  "id": "custom.fillOpacity",
+                  "value": 0
+                },
+                {
+                  "id": "custom.lineWidth",
+                  "value": 0
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 6,
+          "x": 0,
+          "y": 19
+        },
+        "id": 43,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "import \"date\"\nimport \"experimental\"\n\nfrom(bucket: \"default\")\n  |> range(start: experimental.addDuration(d: 5h, to:date.truncate(t: v.timeRangeStart, unit: 1d)), stop: experimental.addDuration(d: 18h, to:date.truncate(t: v.timeRangeStart, unit: 1d)))\n  |> filter(fn: (r) =>\n    r._measurement == \"SolarForecast\" and\n    (r._field == \"30m_10p_cummulative\" or r._field == \"30m_50p_cummulative\" or r._field == \"30m_90p_cummulative\")\n  )\n  |> aggregateWindow(every: 30m, fn:last)",
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "import \"date\"\nimport \"experimental\"\n\nfrom(bucket: \"default\")\n  |> range(start: experimental.addDuration(d: 5h, to:date.truncate(t: v.timeRangeStart, unit: 1d)), stop: experimental.addDuration(d: 18h, to:date.truncate(t: v.timeRangeStart, unit: 1d)))\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"generation_day\"\n  )\n  |> aggregateWindow(every: 30m, fn:mean)",
+            "refId": "B"
+          }
+        ],
+        "title": "Power vs Forecast",
+        "type": "timeseries"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "description": "",
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "palette-classic"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "auto",
+              "axisSoftMin": 0,
+              "fillOpacity": 80,
+              "gradientMode": "hue",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "lineWidth": 1,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "decimals": 2,
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            },
+            "unit": "kwatth"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "SolarForecast 30m_50p_cummulative"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "forecast"
+                },
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "green",
+                    "mode": "fixed"
+                  }
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "FVE generation_day"
+              },
+              "properties": [
+                {
+                  "id": "color",
+                  "value": {
+                    "fixedColor": "blue",
+                    "mode": "fixed"
+                  }
+                },
+                {
+                  "id": "displayName",
+                  "value": "generation"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 9,
+          "w": 10,
+          "x": 6,
+          "y": 19
+        },
+        "id": 39,
+        "options": {
+          "barRadius": 0,
+          "barWidth": 0.95,
+          "fullHighlight": false,
+          "groupWidth": 0.8,
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": true
+          },
+          "orientation": "auto",
+          "showValue": "auto",
+          "stacking": "none",
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          },
+          "xTickLabelRotation": 0,
+          "xTickLabelSpacing": 100
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "import \"date\"\nimport \"experimental\"\n\nfrom(bucket: \"default\")\n  |> range(start: experimental.addDuration(d: 5h, to:date.truncate(t: v.timeRangeStart, unit: 1d)), stop: experimental.addDuration(d: 18h, to:date.truncate(t: v.timeRangeStart, unit: 1d)))\n  |> filter(fn: (r) =>\n    r._measurement == \"SolarForecast\" and\n    r._field == \"30m_50p_cummulative\"\n  )\n  |> aggregateWindow(every: 30m , fn:last)",
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "import \"date\"\nimport \"experimental\"\n\nfrom(bucket: \"default\")\n  |> range(start: experimental.addDuration(d: 5h, to:date.truncate(t: v.timeRangeStart, unit: 1d)), stop: experimental.addDuration(d: 18h, to:date.truncate(t: v.timeRangeStart, unit: 1d)))\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"generation_day\"\n  )\n  |> aggregateWindow(every: 30m, fn:last)",
+            "refId": "C"
+          }
+        ],
+        "title": "Power vs Forecast",
+        "type": "barchart"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-BlYlRd"
+            },
+            "mappings": [],
+            "max": 14.5,
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "yellow",
+                  "value": 0
+                }
+              ]
+            },
+            "unit": "amp"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "power all"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Production"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "curr 1"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Phase 1 (traktor, KL, pracka)"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "curr 2"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Phase 2 (mycka)"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "curr 3"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Phase 3 (AC, trouba)"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 7,
+          "x": 17,
+          "y": 19
+        },
+        "id": 50,
+        "options": {
+          "displayMode": "lcd",
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": false
+          },
+          "maxVizHeight": 300,
+          "minVizHeight": 10,
+          "minVizWidth": 0,
+          "namePlacement": "auto",
+          "orientation": "horizontal",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showUnfilled": true,
+          "sizing": "auto",
+          "valueMode": "color"
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"curr\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:last)",
+            "refId": "C"
+          }
+        ],
+        "title": "FVE phases",
+        "type": "bargauge"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "fixedColor": "text",
+              "mode": "fixed"
+            },
+            "mappings": [],
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            },
+            "unit": "X"
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "FVE soh"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "SOH"
+                },
+                {
+                  "id": "unit",
+                  "value": "percent"
+                }
+              ]
+            },
+            {
+              "matcher": {
+                "id": "byName",
+                "options": "battery_charged"
+              },
+              "properties": [
+                {
+                  "id": "displayName",
+                  "value": "Cycles"
+                }
+              ]
+            }
+          ]
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 2,
+          "x": 17,
+          "y": 26
+        },
+        "id": 24,
+        "options": {
+          "colorMode": "none",
+          "graphMode": "none",
+          "justifyMode": "auto",
+          "orientation": "horizontal",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"battery_charged\" and r.sum == \"total\"\n  )\n  |> map(fn: (r) => ({battery_charged: (r._value / 14.8)}))",
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"soh\"\n  )",
+            "refId": "B"
+          }
+        ],
+        "title": "FVE Battery life",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-BlYlRd"
+            },
+            "decimals": 0,
+            "mappings": [],
+            "max": 1200,
+            "min": 0,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            },
+            "unit": "Wm2"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 2,
+          "x": 19,
+          "y": 26
+        },
+        "id": 20,
+        "interval": "1m",
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "center",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "text": {
+            "valueSize": 35
+          },
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"weather\" and\n    r._field == \"solarRadiation\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:mean)",
+            "refId": "A"
+          }
+        ],
+        "title": "Solar Radiation",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "custom": {
+              "axisPlacement": "auto",
+              "fillOpacity": 59,
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineWidth": 4,
+              "spanNulls": false
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "semi-dark-red",
+                  "value": 0
+                },
+                {
+                  "color": "super-light-green",
+                  "value": 0.2
+                },
+                {
+                  "color": "light-green",
+                  "value": 0.5
+                },
+                {
+                  "color": "semi-dark-green",
+                  "value": 0.7
+                },
+                {
+                  "color": "dark-green",
+                  "value": 0.9
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 11,
+          "w": 13,
+          "x": 0,
+          "y": 28
+        },
+        "id": 57,
+        "interval": "60s",
+        "options": {
+          "alignValue": "center",
+          "legend": {
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": false
+          },
+          "mergeValues": false,
+          "rowHeight": 0.67,
+          "showValue": "never",
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"rehau_output\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:mean)",
+            "refId": "A"
+          },
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "hide": false,
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"on\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:mean)",
+            "refId": "B"
+          }
+        ],
+        "title": "Panel Title",
+        "type": "state-timeline"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "thresholds"
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 4,
+          "w": 8,
+          "x": 13,
+          "y": 32
+        },
+        "id": 36,
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "/.*/",
+            "values": false
+          },
+          "showPercentChange": false,
+          "text": {
+            "valueSize": 25
+          },
+          "textMode": "value",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"FVE\" and\n    r._field == \"diag\"\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn:last, createEmpty: false)",
+            "refId": "A"
+          }
+        ],
+        "title": "Diagnostic message",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-RdYlGr"
+            },
+            "mappings": [],
+            "max": 6,
+            "min": 1.8,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            },
+            "unit": "none"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 7,
+          "w": 2,
+          "x": 17,
+          "y": 36
+        },
+        "id": 49,
+        "interval": "1h",
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "vertical",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "import \"date\"\nfrom(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop:v.timeRangeStop)\n  |> filter(fn: (r) =>\n    r._measurement == \"Estia\" and\n    r._field == \"cop_24h\" or r._field == \"consumption_24h\"\n  )\n  |> aggregateWindow(every: 1d, fn: last)\n  |> pivot(rowKey:[\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> map(fn: (r) => ({\n      _time: r._time,\n      weighted_cop: r.cop_24h * r.consumption_24h,\n      consumption_24h: r.consumption_24h\n  }))\n  |> reduce(\n      fn: (r, accumulator) => ({\n          consumption_24h: accumulator.consumption_24h + r.consumption_24h,\n          weighted_cop: accumulator.weighted_cop + r.weighted_cop\n      }),\n      identity: {consumption_24h: 0.0, weighted_cop: 0.0}\n  )\n  |> map(fn: (r) => ({\n      _time: r._time,\n      cop: r.weighted_cop/ r.consumption_24h\n  }))",
+            "refId": "A"
+          }
+        ],
+        "title": "COP timewindow",
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "mode": "continuous-BlYlRd"
+            },
+            "decimals": 1,
+            "mappings": [],
+            "max": 30,
+            "min": -10,
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                }
+              ]
+            },
+            "unit": "celsius"
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 6,
+          "w": 4,
+          "x": 0,
+          "y": 39
+        },
+        "id": 10,
+        "interval": "1m",
+        "options": {
+          "colorMode": "value",
+          "graphMode": "area",
+          "justifyMode": "auto",
+          "orientation": "auto",
+          "percentChangeColorMode": "standard",
+          "reduceOptions": {
+            "calcs": [
+              "lastNotNull"
+            ],
+            "fields": "",
+            "values": false
+          },
+          "showPercentChange": false,
+          "text": {},
+          "textMode": "auto",
+          "wideLayout": true
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "datasource": {
+              "type": "influxdb",
+              "uid": "XZHBcaf7z"
+            },
+            "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) =>\n    (r._measurement == \"estia\" and r._field == \"outside_temp\") or\n    (r._measurement == \"weather\" and r._field == \"temperature\")\n  )\n  |> aggregateWindow(every: v.windowPeriod, fn: last)\n  |> fill(usePrevious: true)\n  |> elapsed(unit: v.windowPeriod)\n  |> map(fn: (r) => ({\n      r with\n      _value: if r.elapsed <= int(v: 3) then r._value else float(v: 0.0/0.0)\n    })\n  )\n  |> drop(columns: [\"elapsed\"])",
+            "refId": "A"
+          }
+        ],
+        "title": "Temp",
+        "transformations": [
+          {
+            "id": "calculateField",
+            "options": {
+              "mode": "reduceRow",
+              "reduce": {
+                "reducer": "min"
+              },
+              "replaceFields": true
+            }
+          }
+        ],
+        "type": "stat"
+      },
+      {
+        "datasource": {
+          "type": "influxdb",
+          "uid": "ceyru5v6xg3r4b"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "color": {
+              "fixedColor": "#B877D9",
+              "mode": "fixed"
+            },
+            "custom": {
+              "axisBorderShow": false,
+              "axisCenteredZero": false,
+              "axisColorMode": "text",
+              "axisLabel": "",
+              "axisPlacement": "hidden",
+              "barAlignment": 0,
+              "barWidthFactor": 0.6,
+              "drawStyle": "line",
+              "fillOpacity": 10,
+              "gradientMode": "none",
+              "hideFrom": {
+                "legend": false,
+                "tooltip": false,
+                "viz": false
+              },
+              "insertNulls": false,
+              "lineInterpolation": "linear",
+              "lineWidth": 1,
+              "pointSize": 1,
+              "scaleDistribution": {
+                "type": "linear"
+              },
+              "showPoints": "auto",
+              "spanNulls": true,
+              "stacking": {
+                "group": "A",
+                "mode": "none"
+              },
+              "thresholdsStyle": {
+                "mode": "off"
+              }
+            },
+            "mappings": [],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {
+                  "color": "green",
+                  "value": 0
+                },
+                {
+                  "color": "red",
+                  "value": 80
+                }
+              ]
+            }
+          },
+          "overrides": []
+        },
+        "gridPos": {
+          "h": 2,
+          "w": 4,
+          "x": 0,
+          "y": 45
+        },
+        "id": 66,
+        "options": {
+          "legend": {
+            "calcs": [],
+            "displayMode": "list",
+            "placement": "bottom",
+            "showLegend": false
+          },
+          "tooltip": {
+            "hideZeros": false,
+            "mode": "single",
+            "sort": "none"
+          }
+        },
+        "pluginVersion": "12.1.1",
+        "targets": [
+          {
+            "query": "// Query D - Rain rate\nfrom(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"precipRate\")\n  |> aggregateWindow(every: v.windowPeriod, fn: max)",
+            "refId": "A"
+          }
+        ],
+        "title": "",
+        "transparent": true,
+        "type": "timeseries"
+      }
+    ],
+    "preload": false,
+    "refresh": "10s",
+    "schemaVersion": 41,
+    "tags": [],
+    "templating": {
+      "list": [
+        {
+          "current": {
+            "text": "21",
+            "value": "21"
+          },
+          "includeAll": false,
+          "label": "Temp1NP",
+          "name": "Termostat1NP",
+          "options": [
+            {
+              "selected": false,
+              "text": "17",
+              "value": "17"
+            },
+            {
+              "selected": false,
+              "text": "20",
+              "value": "20"
+            },
+            {
+              "selected": true,
+              "text": "21",
+              "value": "21"
+            },
+            {
+              "selected": false,
+              "text": "22",
+              "value": "22"
+            },
+            {
+              "selected": false,
+              "text": "23",
+              "value": "23"
+            },
+            {
+              "selected": false,
+              "text": "24",
+              "value": "24"
+            },
+            {
+              "selected": false,
+              "text": "25",
+              "value": "25"
+            },
+            {
+              "selected": false,
+              "text": "26",
+              "value": "26"
+            }
+          ],
+          "query": "17,20,21,22,23,24,25,26",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "70",
+            "value": "70"
+          },
+          "includeAll": false,
+          "label": "DoD",
+          "name": "InverterDepthOfDischarge",
+          "options": [
+            {
+              "selected": false,
+              "text": "10",
+              "value": "10"
+            },
+            {
+              "selected": false,
+              "text": "20",
+              "value": "20"
+            },
+            {
+              "selected": false,
+              "text": "30",
+              "value": "30"
+            },
+            {
+              "selected": false,
+              "text": "40",
+              "value": "40"
+            },
+            {
+              "selected": false,
+              "text": "50",
+              "value": "50"
+            },
+            {
+              "selected": false,
+              "text": "60",
+              "value": "60"
+            },
+            {
+              "selected": true,
+              "text": "70",
+              "value": "70"
+            },
+            {
+              "selected": false,
+              "text": "80",
+              "value": "80"
+            },
+            {
+              "selected": false,
+              "text": "90",
+              "value": "90"
+            }
+          ],
+          "query": "10,20,30,40,50,60,70,80,90",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "90",
+            "value": "90"
+          },
+          "includeAll": false,
+          "label": "SoCStop",
+          "name": "InverterStopChargingAt",
+          "options": [
+            {
+              "selected": false,
+              "text": "10",
+              "value": "10"
+            },
+            {
+              "selected": false,
+              "text": "20",
+              "value": "20"
+            },
+            {
+              "selected": false,
+              "text": "30",
+              "value": "30"
+            },
+            {
+              "selected": false,
+              "text": "40",
+              "value": "40"
+            },
+            {
+              "selected": false,
+              "text": "50",
+              "value": "50"
+            },
+            {
+              "selected": false,
+              "text": "60",
+              "value": "60"
+            },
+            {
+              "selected": false,
+              "text": "70",
+              "value": "70"
+            },
+            {
+              "selected": false,
+              "text": "80",
+              "value": "80"
+            },
+            {
+              "selected": true,
+              "text": "90",
+              "value": "90"
+            },
+            {
+              "selected": false,
+              "text": "100",
+              "value": "100"
+            }
+          ],
+          "query": "10,20,30,40,50,60,70,80,90,100",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "16",
+            "value": "16"
+          },
+          "includeAll": false,
+          "label": "CarAmp",
+          "name": "WallboxAmp",
+          "options": [
+            {
+              "selected": false,
+              "text": "6",
+              "value": "6"
+            },
+            {
+              "selected": false,
+              "text": "7",
+              "value": "7"
+            },
+            {
+              "selected": false,
+              "text": "8",
+              "value": "8"
+            },
+            {
+              "selected": false,
+              "text": "9",
+              "value": "9"
+            },
+            {
+              "selected": false,
+              "text": "10",
+              "value": "10"
+            },
+            {
+              "selected": false,
+              "text": "11",
+              "value": "11"
+            },
+            {
+              "selected": false,
+              "text": "12",
+              "value": "12"
+            },
+            {
+              "selected": false,
+              "text": "13",
+              "value": "13"
+            },
+            {
+              "selected": false,
+              "text": "14",
+              "value": "14"
+            },
+            {
+              "selected": false,
+              "text": "15",
+              "value": "15"
+            },
+            {
+              "selected": true,
+              "text": "16",
+              "value": "16"
+            }
+          ],
+          "query": "6,7,8,9,10,11,12,13,14,15,16",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "60",
+            "value": "60"
+          },
+          "includeAll": false,
+          "label": "CarStartAt",
+          "name": "WallboxStartSOC",
+          "options": [
+            {
+              "selected": false,
+              "text": "10",
+              "value": "10"
+            },
+            {
+              "selected": false,
+              "text": "20",
+              "value": "20"
+            },
+            {
+              "selected": false,
+              "text": "30",
+              "value": "30"
+            },
+            {
+              "selected": false,
+              "text": "40",
+              "value": "40"
+            },
+            {
+              "selected": false,
+              "text": "50",
+              "value": "50"
+            },
+            {
+              "selected": true,
+              "text": "60",
+              "value": "60"
+            },
+            {
+              "selected": false,
+              "text": "70",
+              "value": "70"
+            },
+            {
+              "selected": false,
+              "text": "80",
+              "value": "80"
+            },
+            {
+              "selected": false,
+              "text": "90",
+              "value": "90"
+            },
+            {
+              "selected": false,
+              "text": "99",
+              "value": "99"
+            }
+          ],
+          "query": "10,20,30,40,50,60,70,80,90,99",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "10",
+            "value": "10"
+          },
+          "hide": 2,
+          "includeAll": false,
+          "label": "CarStopAtDiff",
+          "name": "WallboxStopAtSOCDiff",
+          "options": [
+            {
+              "selected": false,
+              "text": "1",
+              "value": "1"
+            },
+            {
+              "selected": false,
+              "text": "2",
+              "value": "2"
+            },
+            {
+              "selected": false,
+              "text": "3",
+              "value": "3"
+            },
+            {
+              "selected": false,
+              "text": "4",
+              "value": "4"
+            },
+            {
+              "selected": false,
+              "text": "5",
+              "value": "5"
+            },
+            {
+              "selected": true,
+              "text": "10",
+              "value": "10"
+            }
+          ],
+          "query": "1,2,3,4,5,10",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "-1",
+            "value": "-1"
+          },
+          "hide": 2,
+          "includeAll": false,
+          "label": "CarReserveAmp",
+          "name": "WallboxReserveAmp",
+          "options": [
+            {
+              "selected": false,
+              "text": "-5",
+              "value": "-5"
+            },
+            {
+              "selected": false,
+              "text": "-4",
+              "value": "-4"
+            },
+            {
+              "selected": false,
+              "text": "-3",
+              "value": "-3"
+            },
+            {
+              "selected": false,
+              "text": "-2",
+              "value": "-2"
+            },
+            {
+              "selected": true,
+              "text": "-1",
+              "value": "-1"
+            },
+            {
+              "selected": false,
+              "text": "0",
+              "value": "0"
+            },
+            {
+              "selected": false,
+              "text": "1",
+              "value": "1"
+            },
+            {
+              "selected": false,
+              "text": "2",
+              "value": "2"
+            },
+            {
+              "selected": false,
+              "text": "3",
+              "value": "3"
+            },
+            {
+              "selected": false,
+              "text": "4",
+              "value": "4"
+            },
+            {
+              "selected": false,
+              "text": "5",
+              "value": "5"
+            }
+          ],
+          "query": "-5,-4,-3,-2,-1,0,1,2,3,4,5",
+          "type": "custom"
+        },
+        {
+          "current": {
+            "text": "Auto",
+            "value": "Auto"
+          },
+          "hide": 1,
+          "includeAll": false,
+          "name": "WallboxMode",
+          "options": [
+            {
+              "selected": true,
+              "text": "Auto",
+              "value": "Auto"
+            },
+            {
+              "selected": false,
+              "text": "Start",
+              "value": "Start"
+            },
+            {
+              "selected": false,
+              "text": "Stop",
+              "value": "Stop"
+            },
+            {
+              "selected": false,
+              "text": "Disable",
+              "value": "Disable"
+            }
+          ],
+          "query": "Auto,Start,Stop,Disable",
+          "type": "custom"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-3h",
+      "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "",
+    "title": "Prdikov",
+    "uid": "q50mEhf7k",
+    "version": 364
+  }
+}

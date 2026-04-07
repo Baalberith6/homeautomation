@@ -1,0 +1,3147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Prdikov Dashboard — Panel Preview</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #0d0e12; color: #d8d9da; font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif; padding: 20px; }
+  h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; color: #e8e8e8; }
+  .subtitle { font-size: 13px; color: #6e6e80; margin-bottom: 30px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(500px, 1fr)); gap: 20px; }
+  .panel-wrapper { background: #181b1f; border-radius: 8px; overflow: hidden; border: 1px solid #2a2d35; }
+  .panel-header { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid #2a2d35; background: #14161a; }
+  .panel-title { font-size: 13px; font-weight: 600; color: #8e8ea0; }
+  .panel-id { font-size: 11px; color: #5a5e72; font-family: monospace; }
+  .panel-body { padding: 12px; min-height: 200px; overflow: auto; }
+  .panel-body-wide { padding: 12px; min-height: 300px; overflow: auto; }
+  .full-width { grid-column: 1 / -1; }
+  .toc { margin-bottom: 30px; padding: 16px; background: #14161a; border-radius: 8px; border: 1px solid #2a2d35; }
+  .toc h2 { font-size: 14px; font-weight: 600; color: #8e8ea0; margin-bottom: 8px; }
+  .toc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 16px; }
+  .toc a { color: #5794F2; text-decoration: none; font-size: 12px; }
+  .toc a:hover { text-decoration: underline; }
+  .panel-error { color: #f2495c; font-size: 12px; padding: 8px; font-family: monospace; }
+</style>
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body>
+<h1>Prdikov Dashboard — Panel Preview</h1>
+<p class="subtitle">All 17 panels rendered with mock data. Serve with <code>python3 -m http.server</code> from spec/grafana/.</p>
+<div class="toc"><h2>Panels</h2><div class="toc-grid">
+  <a href="#panel-70">Panel 70: Weather Widget</a>
+  <a href="#panel-67">Panel 67: Indoor / Rooms</a>
+  <a href="#panel-68">Panel 68: Power Flow v6</a>
+  <a href="#panel-69">Panel 69: OTE Price</a>
+  <a href="#panel-61">Panel 61: Cars</a>
+  <a href="#panel-47">Panel 47: TC-TEMP</a>
+  <a href="#panel-2">Panel 2: Power</a>
+  <a href="#panel-43">Panel 43: Forecast (Line)</a>
+  <a href="#panel-39">Panel 39: Forecast (Bar)</a>
+  <a href="#panel-50">Panel 50: FVE Phases</a>
+  <a href="#panel-24">Panel 24: Battery Life</a>
+  <a href="#panel-20">Panel 20: Solar Radiation</a>
+  <a href="#panel-57">Panel 57: Heating Timeline</a>
+  <a href="#panel-36">Panel 36: Diagnostic</a>
+  <a href="#panel-49">Panel 49: COP</a>
+  <a href="#panel-10">Panel 10: Temperature</a>
+  <a href="#panel-66">Panel 66: Rain Sparkline</a>
+</div></div>
+<div class="grid">
+  <div class="panel-wrapper full-width" id="panel-70"><div class="panel-header"><span class="panel-title">Panel 70: Weather Widget</span><span class="panel-id">panel-70-*.jsx</span></div><div class="panel-body-wide" id="root-70"></div></div>
+  <div class="panel-wrapper" id="panel-67"><div class="panel-header"><span class="panel-title">Panel 67: Indoor / Rooms</span><span class="panel-id">panel-67-*.jsx</span></div><div class="panel-body" id="root-67"></div></div>
+  <div class="panel-wrapper full-width" id="panel-68"><div class="panel-header"><span class="panel-title">Panel 68: Power Flow v6</span><span class="panel-id">panel-68-*.jsx</span></div><div class="panel-body-wide" id="root-68"></div></div>
+  <div class="panel-wrapper" id="panel-69"><div class="panel-header"><span class="panel-title">Panel 69: OTE Price</span><span class="panel-id">panel-69-*.jsx</span></div><div class="panel-body" id="root-69"></div></div>
+  <div class="panel-wrapper" id="panel-61"><div class="panel-header"><span class="panel-title">Panel 61: Cars</span><span class="panel-id">panel-61-*.jsx</span></div><div class="panel-body" id="root-61"></div></div>
+  <div class="panel-wrapper" id="panel-47"><div class="panel-header"><span class="panel-title">Panel 47: TC-TEMP</span><span class="panel-id">panel-47-*.jsx</span></div><div class="panel-body" id="root-47"></div></div>
+  <div class="panel-wrapper full-width" id="panel-2"><div class="panel-header"><span class="panel-title">Panel 2: Power</span><span class="panel-id">panel-2-*.jsx</span></div><div class="panel-body-wide" id="root-2"></div></div>
+  <div class="panel-wrapper" id="panel-43"><div class="panel-header"><span class="panel-title">Panel 43: Forecast (Line)</span><span class="panel-id">panel-43-*.jsx</span></div><div class="panel-body" id="root-43"></div></div>
+  <div class="panel-wrapper" id="panel-39"><div class="panel-header"><span class="panel-title">Panel 39: Forecast (Bar)</span><span class="panel-id">panel-39-*.jsx</span></div><div class="panel-body" id="root-39"></div></div>
+  <div class="panel-wrapper" id="panel-50"><div class="panel-header"><span class="panel-title">Panel 50: FVE Phases</span><span class="panel-id">panel-50-*.jsx</span></div><div class="panel-body" id="root-50"></div></div>
+  <div class="panel-wrapper" id="panel-24"><div class="panel-header"><span class="panel-title">Panel 24: Battery Life</span><span class="panel-id">panel-24-*.jsx</span></div><div class="panel-body" id="root-24"></div></div>
+  <div class="panel-wrapper" id="panel-20"><div class="panel-header"><span class="panel-title">Panel 20: Solar Radiation</span><span class="panel-id">panel-20-*.jsx</span></div><div class="panel-body" id="root-20"></div></div>
+  <div class="panel-wrapper full-width" id="panel-57"><div class="panel-header"><span class="panel-title">Panel 57: Heating Timeline</span><span class="panel-id">panel-57-*.jsx</span></div><div class="panel-body-wide" id="root-57"></div></div>
+  <div class="panel-wrapper" id="panel-36"><div class="panel-header"><span class="panel-title">Panel 36: Diagnostic</span><span class="panel-id">panel-36-*.jsx</span></div><div class="panel-body" id="root-36"></div></div>
+  <div class="panel-wrapper" id="panel-49"><div class="panel-header"><span class="panel-title">Panel 49: COP</span><span class="panel-id">panel-49-*.jsx</span></div><div class="panel-body" id="root-49"></div></div>
+  <div class="panel-wrapper" id="panel-10"><div class="panel-header"><span class="panel-title">Panel 10: Temperature</span><span class="panel-id">panel-10-*.jsx</span></div><div class="panel-body" id="root-10"></div></div>
+  <div class="panel-wrapper" id="panel-66"><div class="panel-header"><span class="panel-title">Panel 66: Rain Sparkline</span><span class="panel-id">panel-66-*.jsx</span></div><div class="panel-body" id="root-66"></div></div>
+</div>
+
+<script type="text/babel" data-panel="70">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+// ---------- Mock data ----------
+const MOCK = {
+  temp: 18.4,
+  hi: 23,
+  lo: 14,
+  humidity: 72,
+  rain_fc: 2.1,
+  rain_rate: 0.0,
+  rain_total: 4.2,
+  wind: 12,
+  gust: 18,
+  wind_30m: 15,
+  gust_30m: 22,
+};
+
+// Hourly temperature forecast (0-23h): rises from 14 to 23 at 14h, falls to 16 at 23h
+const HOURLY_TEMP = [
+  { h: 0, v: 14.0 },
+  { h: 1, v: 14.2 },
+  { h: 2, v: 14.1 },
+  { h: 3, v: 14.0 },
+  { h: 4, v: 14.3 },
+  { h: 5, v: 14.8 },
+  { h: 6, v: 15.5 },
+  { h: 7, v: 16.5 },
+  { h: 8, v: 17.5 },
+  { h: 9, v: 18.8 },
+  { h: 10, v: 20.0 },
+  { h: 11, v: 21.2 },
+  { h: 12, v: 22.1 },
+  { h: 13, v: 22.8 },
+  { h: 14, v: 23.0 },
+  { h: 15, v: 22.5 },
+  { h: 16, v: 21.8 },
+  { h: 17, v: 20.5 },
+  { h: 18, v: 19.2 },
+  { h: 19, v: 18.0 },
+  { h: 20, v: 17.2 },
+  { h: 21, v: 16.5 },
+  { h: 22, v: 16.2 },
+  { h: 23, v: 16.0 },
+];
+
+// Rain hourly mock (mm) - only non-zero hours
+const HOURLY_RAIN = { 15: 0.5, 16: 1.2, 17: 0.8 };
+
+// Wind hourly mock (km/h) - values 5-15 across the day
+const HOURLY_WIND = [
+  { h: 0, v: 5 },
+  { h: 1, v: 5 },
+  { h: 2, v: 6 },
+  { h: 3, v: 6 },
+  { h: 4, v: 7 },
+  { h: 5, v: 7 },
+  { h: 6, v: 8 },
+  { h: 7, v: 9 },
+  { h: 8, v: 10 },
+  { h: 9, v: 11 },
+  { h: 10, v: 12 },
+  { h: 11, v: 13 },
+  { h: 12, v: 14 },
+  { h: 13, v: 15 },
+  { h: 14, v: 14 },
+  { h: 15, v: 13 },
+  { h: 16, v: 12 },
+  { h: 17, v: 11 },
+  { h: 18, v: 10 },
+  { h: 19, v: 9 },
+  { h: 20, v: 8 },
+  { h: 21, v: 7 },
+  { h: 22, v: 6 },
+  { h: 23, v: 5 },
+];
+
+// ---------- SVG chart dimensions ----------
+const W = 680;
+const H = 80;
+const PAD_X = 8;
+const PAD_Y = 14;
+const PAD_BOT = 14;
+
+// ---------- Helpers ----------
+function pad02(n) {
+  return String(n).padStart(2, "0");
+}
+
+function tempColor(temp) {
+  if (temp <= 0) return "#4fc3f7";
+  if (temp >= 30) return "#f2495c";
+  return "#f2cc0c";
+}
+
+// Weather icon selection based on rain rate (matches panel 70 afterRender logic)
+function WeatherIcon({ rainRate }) {
+  if (rainRate > 1) {
+    // Heavy rain: cloud with rain drops
+    return (
+      <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+        <path
+          d="M10 28a6 6 0 0 1 6-6h1a8 8 0 0 1 15.3-1.8A6 6 0 0 1 38 26v0a6 6 0 0 1-6 6H16a6 6 0 0 1-6-4z"
+          fill="#8b8fa3"
+          opacity="0.7"
+        />
+        <line x1="16" y1="33" x2="14" y2="39" stroke="#5794f2" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
+        <line x1="24" y1="33" x2="22" y2="39" stroke="#5794f2" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
+        <line x1="32" y1="33" x2="30" y2="39" stroke="#5794f2" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
+      </svg>
+    );
+  }
+  if (rainRate > 0) {
+    // Light rain: double cloud layer, no drops
+    return (
+      <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+        <path
+          d="M12 32a7 7 0 0 1 7-7h1a9 9 0 0 1 17.5-2A7 7 0 0 1 38 30v0a7 7 0 0 1-7 7H19a7 7 0 0 1-7-5z"
+          fill="#6b7085"
+          opacity="0.6"
+        />
+        <path
+          d="M8 36a6 6 0 0 1 6-6h1a8 8 0 0 1 15.3-1.8A6 6 0 0 1 36 34v0a6 6 0 0 1-6 6H14a6 6 0 0 1-6-4z"
+          fill="#8b8fa3"
+          opacity="0.8"
+        />
+      </svg>
+    );
+  }
+  // Daytime: sun + partial cloud
+  return (
+    <svg width="36" height="36" viewBox="0 0 48 48" fill="none">
+      <circle cx="18" cy="18" r="8" fill="#f2cc0c" opacity="0.8" />
+      <path
+        d="M16 34a8 8 0 0 1 8-8h4a6 6 0 0 1 6 6v0a6 6 0 0 1-6 6H22a6 6 0 0 1-6-4z"
+        fill="#8b8fa3"
+        opacity="0.7"
+      />
+    </svg>
+  );
+}
+
+// ---------- Scale functions ----------
+const temps = HOURLY_TEMP.map((p) => p.v);
+const minV = Math.min(...temps) - 0.5;
+const maxV = Math.max(...temps) + 0.5;
+
+const wVals = HOURLY_WIND.map((p) => p.v);
+const wMin = Math.min(...wVals);
+const wMax = Math.max(...wVals) + 1;
+
+function xS(h) {
+  return PAD_X + (h / 23) * (W - 2 * PAD_X);
+}
+
+function yS(v) {
+  return PAD_Y + ((maxV - v) / (maxV - minV)) * (H - PAD_Y - PAD_BOT);
+}
+
+function yW(v) {
+  const wPadTop = PAD_Y + 4;
+  const wPadBot = PAD_BOT + 4;
+  return wPadTop + ((wMax - v) / (wMax - wMin)) * (H - wPadTop - wPadBot);
+}
+
+// Catmull-Rom spline path
+function catmullRomPath(pts, yFn) {
+  if (pts.length < 2) return "";
+  let d = `M${xS(pts[0].h)},${yFn(pts[0].v)}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const i0 = Math.max(0, i - 1);
+    const i2 = i + 1;
+    const i3 = Math.min(pts.length - 1, i + 2);
+
+    const x1 = xS(pts[i].h);
+    const y1 = yFn(pts[i].v);
+    const x2 = xS(pts[i2].h);
+    const y2 = yFn(pts[i2].v);
+
+    const cpx1 = x1 + (xS(pts[i2].h) - xS(pts[i0].h)) / 6;
+    const cpy1 = y1 + (yFn(pts[i2].v) - yFn(pts[i0].v)) / 6;
+    const cpx2 = x2 - (xS(pts[i3].h) - xS(pts[i].h)) / 6;
+    const cpy2 = y2 - (yFn(pts[i3].v) - yFn(pts[i].v)) / 6;
+
+    d += ` C${cpx1},${cpy1} ${cpx2},${cpy2} ${x2},${y2}`;
+  }
+  return d;
+}
+
+// Interpolate Y at fractional hour
+function interpolateY(nowH, pts, yFn) {
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (nowH >= pts[i].h && nowH <= pts[i + 1].h) {
+      const f = (nowH - pts[i].h) / (pts[i + 1].h - pts[i].h);
+      return yFn(pts[i].v + (pts[i + 1].v - pts[i].v) * f);
+    }
+  }
+  if (nowH <= pts[0].h) return yFn(pts[0].v);
+  return yFn(pts[pts.length - 1].v);
+}
+
+// Pre-compute paths and indices
+const tempLineD = catmullRomPath(HOURLY_TEMP, yS);
+const tempAreaD =
+  tempLineD +
+  ` L${xS(HOURLY_TEMP[HOURLY_TEMP.length - 1].h)},${H} L${xS(HOURLY_TEMP[0].h)},${H} Z`;
+const windLineD = catmullRomPath(HOURLY_WIND, yW);
+
+const hiIdx = HOURLY_TEMP.reduce((best, p, i) => (p.v > HOURLY_TEMP[best].v ? i : best), 0);
+const loIdx = HOURLY_TEMP.reduce((best, p, i) => (p.v < HOURLY_TEMP[best].v ? i : best), 0);
+const wHiIdx = HOURLY_WIND.reduce((best, p, i) => (p.v > HOURLY_WIND[best].v ? i : best), 0);
+const wLoIdx = HOURLY_WIND.reduce((best, p, i) => (p.v < HOURLY_WIND[best].v ? i : best), 0);
+
+// Rain bar sizing
+const maxRain = Math.max(0.1, ...Object.values(HOURLY_RAIN));
+const barSlotW = (W - 2 * PAD_X) / 24;
+const barW = barSlotW * 0.6;
+const rainBarMaxH = (H - PAD_Y - PAD_BOT) * 0.6;
+
+// Hour labels at 3h intervals
+const hourLabels = HOURLY_TEMP.filter((p) => p.h % 3 === 0);
+
+// ---------- Sparkline SVG component ----------
+function SparklineSVG({ nowH }) {
+  const nowX = xS(nowH);
+  const nowTempY = interpolateY(nowH, HOURLY_TEMP, yS);
+  const nowWindY = interpolateY(nowH, HOURLY_WIND, yW);
+
+  return (
+    <svg
+      width={W}
+      height={H}
+      viewBox={`0 0 ${W} ${H}`}
+      style={{ display: "block", width: "100%", height: "100%" }}
+    >
+      <defs>
+        <linearGradient id="wwGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#f2cc0c" stopOpacity="0.2" />
+          <stop offset="100%" stopColor="#f2cc0c" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+
+      {/* Rain bars (purple) */}
+      {Object.entries(HOURLY_RAIN).map(([hour, rv]) => {
+        if (rv <= 0) return null;
+        const bH = (rv / maxRain) * rainBarMaxH;
+        const bX = xS(parseInt(hour, 10)) - barW / 2;
+        const bY = H - PAD_BOT - bH;
+        const op = (0.15 + (rv / maxRain) * 0.45).toFixed(2);
+        return (
+          <rect
+            key={`rain-${hour}`}
+            x={bX}
+            y={bY}
+            width={barW}
+            height={bH}
+            rx={barW / 2}
+            fill="#B877D9"
+            opacity={op}
+          />
+        );
+      })}
+
+      {/* Wind line (blue) */}
+      <path
+        d={windLineD}
+        fill="none"
+        stroke="#5794F2"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        opacity="0.6"
+      />
+
+      {/* Temp area gradient fill */}
+      <path d={tempAreaD} fill="url(#wwGrad)" />
+
+      {/* Temp line (yellow) */}
+      <path
+        d={tempLineD}
+        fill="none"
+        stroke="#f2cc0c"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      {/* "Now" vertical dashed line */}
+      <line
+        x1={nowX}
+        y1={PAD_Y}
+        x2={nowX}
+        y2={H - PAD_BOT}
+        stroke="#f2cc0c"
+        strokeWidth="0.5"
+        strokeDasharray="2,2"
+        opacity="0.4"
+      />
+
+      {/* Temp now dot (yellow) */}
+      <circle cx={nowX} cy={nowTempY} r="8" fill="#f2cc0c" opacity="0.15" />
+      <circle cx={nowX} cy={nowTempY} r="4.5" fill="#f2cc0c" />
+
+      {/* Wind now dot (blue) */}
+      <circle cx={nowX} cy={nowWindY} r="6" fill="#5794F2" opacity="0.12" />
+      <circle cx={nowX} cy={nowWindY} r="3" fill="#5794F2" opacity="0.7" />
+
+      {/* Wind hi/lo labels */}
+      <text
+        x={xS(HOURLY_WIND[wHiIdx].h)}
+        y={yW(HOURLY_WIND[wHiIdx].v) - 5}
+        textAnchor="middle"
+        fill="#5794F2"
+        fontSize="8"
+        fontWeight="600"
+        fontFamily="Inter,sans-serif"
+        opacity="0.7"
+      >
+        {Math.round(HOURLY_WIND[wHiIdx].v)}
+      </text>
+      <text
+        x={xS(HOURLY_WIND[wLoIdx].h)}
+        y={yW(HOURLY_WIND[wLoIdx].v) + 12}
+        textAnchor="middle"
+        fill="#5794F2"
+        fontSize="8"
+        fontWeight="600"
+        fontFamily="Inter,sans-serif"
+        opacity="0.7"
+      >
+        {Math.round(HOURLY_WIND[wLoIdx].v)}
+      </text>
+
+      {/* Temp hi/lo labels */}
+      <text
+        x={xS(HOURLY_TEMP[hiIdx].h)}
+        y={yS(HOURLY_TEMP[hiIdx].v) - 5}
+        textAnchor="middle"
+        fill="#FF9830"
+        fontSize="9"
+        fontWeight="600"
+        fontFamily="Inter,sans-serif"
+      >
+        {HOURLY_TEMP[hiIdx].v.toFixed(1)}°
+      </text>
+      <text
+        x={xS(HOURLY_TEMP[loIdx].h)}
+        y={yS(HOURLY_TEMP[loIdx].v) - 5}
+        textAnchor="middle"
+        fill="#5794F2"
+        fontSize="9"
+        fontWeight="600"
+        fontFamily="Inter,sans-serif"
+      >
+        {HOURLY_TEMP[loIdx].v.toFixed(1)}°
+      </text>
+
+      {/* Hour labels every 3h */}
+      {hourLabels.map((p) => (
+        <text
+          key={`hr-${p.h}`}
+          x={xS(p.h)}
+          y={H - 2}
+          textAnchor="middle"
+          fill="#5a5e72"
+          fontSize="8"
+          fontFamily="Inter,sans-serif"
+        >
+          {pad02(p.h)}:00
+        </text>
+      ))}
+    </svg>
+  );
+}
+
+// ---------- Main component ----------
+function WeatherPanel() {
+  const [now, setNow] = useState(new Date());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  const tc = tempColor(MOCK.temp);
+
+  return (
+    <div className="ww" style={styles.root}>
+      <style>{cssText}</style>
+
+      {/* ---- Hero row ---- */}
+      <div className="ww-hero" style={styles.hero}>
+        <div className="ww-left" style={styles.left}>
+          <div className="ww-icon">
+            <WeatherIcon rainRate={MOCK.rain_rate} />
+          </div>
+          <div className="ww-temp-group" style={styles.tempGroup}>
+            <span className="ww-temp" style={{ ...styles.temp, color: tc }}>
+              {MOCK.temp}
+            </span>
+            <span className="ww-deg" style={{ ...styles.deg, color: tc }}>
+              °C
+            </span>
+          </div>
+          <div className="ww-hilo" style={styles.hilo}>
+            <span className="ww-hi" style={styles.hi}>
+              <span className="ww-hi-lbl" style={styles.hiloLbl}>
+                Hi
+              </span>
+              {MOCK.hi}°
+            </span>
+            <span className="ww-lo" style={styles.lo}>
+              <span className="ww-lo-lbl" style={styles.hiloLbl}>
+                Lo
+              </span>
+              {MOCK.lo}°
+            </span>
+          </div>
+        </div>
+        <div className="ww-clock" style={styles.clock}>
+          <span className="ww-clock-time" style={styles.clockTime}>
+            {pad02(now.getHours())}:{pad02(now.getMinutes())}:{pad02(now.getSeconds())}
+          </span>
+          <span className="ww-clock-date" style={styles.clockDate}>
+            {pad02(now.getDate())}.{pad02(now.getMonth() + 1)}.
+            {String(now.getFullYear()).slice(2)}
+          </span>
+        </div>
+      </div>
+
+      {/* ---- Sparkline chart ---- */}
+      <div className="ww-spark" style={styles.spark}>
+        <SparklineSVG nowH={nowH} />
+      </div>
+
+      {/* ---- Bottom stats bar ---- */}
+      <div className="ww-stats" style={styles.stats}>
+        {/* Humidity */}
+        <div className="ww-stat" style={{ ...styles.stat, flex: 0.67 }}>
+          <span className="ww-label" style={styles.label}>
+            Humidity
+          </span>
+          <span
+            className="ww-val ww-blue"
+            style={{ ...styles.val, color: "#5794F2" }}
+          >
+            {MOCK.humidity}
+            <span className="ww-unit" style={styles.unit}>
+              %
+            </span>
+          </span>
+        </div>
+
+        <div className="ww-sep" style={styles.sep} />
+
+        {/* Wind: current + 30m max */}
+        <div
+          className="ww-stat"
+          style={{
+            ...styles.stat,
+            flexDirection: "row",
+            gap: "6px",
+            justifyContent: "space-between",
+            padding: "2px 8px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <span className="ww-label" style={styles.label}>
+              Wind{" "}
+              <span className="ww-unit" style={styles.unit}>
+                km/h
+              </span>
+            </span>
+            <span className="ww-val" style={styles.val}>
+              {MOCK.wind}
+              <span className="ww-sub" style={styles.sub}>
+                {" "}
+                / {MOCK.gust}
+              </span>
+            </span>
+          </div>
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+            }}
+          >
+            <span className="ww-label" style={styles.label}>
+              30m{" "}
+              <span className="ww-unit" style={styles.unit}>
+                km/h
+              </span>
+            </span>
+            <span
+              className="ww-val ww-orange"
+              style={{ ...styles.val, color: "#FF9830" }}
+            >
+              {MOCK.wind_30m}
+              <span className="ww-sub-orange" style={styles.subOrange}>
+                {" "}
+                / {MOCK.gust_30m}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        <div className="ww-sep" style={styles.sep} />
+
+        {/* Rain: rate + forecast + total */}
+        <div className="ww-stat" style={styles.stat}>
+          <span className="ww-label" style={styles.label}>
+            Rain
+          </span>
+          <div className="ww-rain-row" style={styles.rainRow}>
+            <div className="ww-rain-item" style={styles.rainItem}>
+              <span className="ww-rain-val" style={styles.rainVal}>
+                {MOCK.rain_rate}
+              </span>
+              <span className="ww-rain-unit" style={styles.rainUnit}>
+                mm/h
+              </span>
+            </div>
+            <div className="ww-rain-item" style={styles.rainItem}>
+              <span className="ww-rain-val" style={styles.rainVal}>
+                {MOCK.rain_fc}
+              </span>
+              <span className="ww-rain-unit" style={styles.rainUnit}>
+                fc
+              </span>
+            </div>
+            <div className="ww-rain-item" style={styles.rainItem}>
+              <span className="ww-rain-val" style={styles.rainVal}>
+                {MOCK.rain_total}
+              </span>
+              <span className="ww-rain-unit" style={styles.rainUnit}>
+                tot
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Injected CSS (matches original .ww- class styles) ----------
+const cssText = `
+.ww {
+  font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+  color: #e8e8e8;
+}
+`;
+
+// ---------- Inline styles (vw-based for responsive scaling, matching panel 70 CSS) ----------
+const styles = {
+  root: {
+    fontFamily: "'Inter', 'Helvetica Neue', Arial, sans-serif",
+    color: "#e8e8e8",
+    background: "#181b1f",
+    borderRadius: 8,
+    padding: "8px 12px",
+    overflow: "hidden",
+  },
+  hero: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: "2px",
+  },
+  left: {
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+  },
+  tempGroup: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: "2px",
+  },
+  temp: {
+    fontSize: "4.7vw",
+    fontWeight: 800,
+    color: "#f2cc0c",
+    lineHeight: 1,
+    letterSpacing: "-0.03em",
+  },
+  deg: {
+    fontSize: "2.1vw",
+    fontWeight: 700,
+    color: "#f2cc0c",
+    opacity: 0.7,
+  },
+  hilo: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1px",
+    marginLeft: "6px",
+  },
+  hi: {
+    fontSize: "1.4vw",
+    color: "#FF9830",
+    fontWeight: 700,
+  },
+  lo: {
+    fontSize: "1.4vw",
+    color: "#5794F2",
+    fontWeight: 700,
+  },
+  hiloLbl: {
+    fontSize: "0.9vw",
+    color: "#5a5e72",
+    marginRight: "3px",
+  },
+  clock: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+  },
+  clockTime: {
+    fontSize: "2.75vw",
+    fontWeight: 700,
+    color: "#e8e8e8",
+    fontVariantNumeric: "tabular-nums",
+    letterSpacing: "-0.02em",
+    lineHeight: 1,
+  },
+  clockDate: {
+    fontSize: "1.35vw",
+    color: "#e8e8e8",
+    fontWeight: 500,
+    fontVariantNumeric: "tabular-nums",
+  },
+  spark: {
+    margin: "0 -4px 2px",
+    height: "80px",
+  },
+  stats: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "stretch",
+    background: "#111217",
+    borderRadius: "6px",
+    padding: "4px 12px",
+    gap: 0,
+  },
+  stat: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 0,
+    flex: 1,
+    padding: "2px 4px",
+  },
+  label: {
+    fontSize: "1.16vw",
+    color: "#5a5e72",
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+    fontWeight: 500,
+    lineHeight: 1.2,
+  },
+  val: {
+    fontSize: "3.63vw",
+    fontWeight: 700,
+    color: "#e8e8e8",
+    lineHeight: 1.15,
+  },
+  unit: {
+    fontSize: "1.32vw",
+    color: "#5a5e72",
+    fontWeight: 500,
+  },
+  sub: {
+    fontSize: "1.82vw",
+    color: "#5a5e72",
+    fontWeight: 500,
+  },
+  subOrange: {
+    fontSize: "1.82vw",
+    color: "#FF9830",
+    fontWeight: 600,
+  },
+  sep: {
+    width: "1px",
+    background: "#2a2d35",
+    alignSelf: "stretch",
+    margin: "2px 0",
+  },
+  rainRow: {
+    display: "flex",
+    gap: "8px",
+    alignItems: "baseline",
+    justifyContent: "center",
+  },
+  rainItem: {
+    display: "flex",
+    alignItems: "baseline",
+    gap: "2px",
+  },
+  rainVal: {
+    fontSize: "2.64vw",
+    fontWeight: 700,
+    color: "#B877D9",
+  },
+  rainUnit: {
+    fontSize: "1.16vw",
+    color: "#5a5e72",
+  },
+};
+
+
+    const root = document.getElementById("root-70");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(WeatherPanel));
+  } catch(e) {
+    const root = document.getElementById("root-70");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 70:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="67">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+// Temperature color coding
+const getTempColor = (temp) => {
+  if (temp > 26) return '#f2495c';
+  if (temp > 25) return '#dd5d5e';
+  if (temp > 24) return '#b38463';
+  if (temp > 23) return '#88ab67';
+  if (temp > 20) return '#73bf69';
+  if (temp > 16) return '#80b368';
+  if (temp > 12) return '#999c65';
+  if (temp > 8) return '#b38463';
+  if (temp > 4) return '#cc6c60';
+  return '#f2495c';
+};
+
+// CO2 color coding
+const getCo2Color = (ppm) => {
+  if (ppm < 800) return '#73bf69';
+  if (ppm <= 1000) return '#ff9830';
+  return '#f2495c';
+};
+
+// Mock data
+const rooms = [
+  { name: 'Obyvacka', temp: 22.1, target: 22.0, humidity: 48, heating: true },
+  { name: 'Pracovna', temp: 21.5, target: 21.0, humidity: 52, heating: true },
+  { name: 'Julinka', temp: 20.8, target: 20.0, humidity: null, heating: true },
+  { name: 'Kubo', temp: 21.2, target: 21.0, humidity: null, heating: true },
+  { name: 'Spalna', temp: 19.5, target: 19.0, humidity: null, heating: false },
+];
+
+const heatingStatus = {
+  krbOn: true,       // power > 20W
+  krbTemp: 65.2,
+  cop24h: 3.45,
+  co2: 742,
+};
+
+const styles = `
+  .indoor-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    gap: 0;
+    font-family: 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    color: #d8d9da;
+  }
+
+  .indoor-col-left {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .indoor-divider {
+    width: 1px;
+    background: #2c3035;
+    align-self: stretch;
+  }
+
+  .indoor-col-right {
+    flex: 0 0 auto;
+    width: 38%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .indoor-card {
+    background: #1e2228;
+    border-radius: 4px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .indoor-room-info {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .indoor-room-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .indoor-name {
+    font-size: 0.8vw;
+    color: #999;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .indoor-temp {
+    font-size: 1.8vw;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .indoor-target {
+    font-size: 1.1vw;
+    color: #888;
+  }
+
+  .indoor-humidity {
+    font-size: 1.4vw;
+    color: #6e9fff;
+  }
+
+  .indoor-heat-arrow {
+    font-size: 1.4vw;
+    color: #ff9830;
+    line-height: 1;
+  }
+
+  .indoor-heat-card {
+    background: #1e2228;
+    border-radius: 4px;
+    padding: 6px 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+    min-height: 0;
+  }
+
+  .indoor-heat-label {
+    font-size: 0.8vw;
+    color: #999;
+  }
+
+  .indoor-heat-val {
+    font-size: 1.5vw;
+    font-weight: 600;
+    line-height: 1;
+  }
+
+  .indoor-heat-row-lg {
+    flex: 1.6;
+  }
+
+  .indoor-heat-val-lg {
+    font-size: 2.6vw;
+    font-weight: 600;
+    line-height: 1;
+  }
+`;
+
+const RoomRow = ({ name, temp, target, humidity, heating }) => {
+  const tempColor = getTempColor(temp);
+  return (
+    <div className="indoor-card">
+      <div className="indoor-room-info">
+        <span className="indoor-name">{name}</span>
+        <span className="indoor-temp" style={{ color: tempColor }}>
+          {temp.toFixed(1)}&deg;
+        </span>
+        <span className="indoor-target">
+          &#9656;{target.toFixed(1)}&deg;
+        </span>
+      </div>
+      <div className="indoor-room-right">
+        {humidity != null && (
+          <span className="indoor-humidity">{humidity}%</span>
+        )}
+        {heating && (
+          <span className="indoor-heat-arrow">&#9650;</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const IndoorPanel = () => {
+  const krbColor = heatingStatus.krbOn ? '#73bf69' : '#f2495c';
+  const krbText = heatingStatus.krbOn ? 'ON' : 'OFF';
+
+  // Krb temp color: gradient from blue (cold) through green to red (hot)
+  const krbTempColor = getTempColor(heatingStatus.krbTemp > 50 ? 27 : heatingStatus.krbTemp);
+  // For fireplace temps (typically 40-80), use warm colors
+  const krbTempDisplayColor =
+    heatingStatus.krbTemp > 60 ? '#f2495c' :
+    heatingStatus.krbTemp > 50 ? '#dd5d5e' :
+    heatingStatus.krbTemp > 40 ? '#b38463' :
+    '#73bf69';
+
+  const copColor = '#73bf69';
+  const co2Color = getCo2Color(heatingStatus.co2);
+
+  return (
+    <>
+      <style>{styles}</style>
+      <div className="indoor-container">
+        {/* Left column - Rooms */}
+        <div className="indoor-col-left">
+          {rooms.map((room) => (
+            <RoomRow key={room.name} {...room} />
+          ))}
+        </div>
+
+        {/* Vertical divider */}
+        <div className="indoor-divider" />
+
+        {/* Right column - Heating status */}
+        <div className="indoor-col-right">
+          <div className="indoor-heat-card">
+            <span className="indoor-heat-label">Krb</span>
+            <span className="indoor-heat-val" style={{ color: krbColor }}>
+              {krbText}
+            </span>
+          </div>
+
+          <div className="indoor-heat-card">
+            <span className="indoor-heat-label">Krb T</span>
+            <span className="indoor-heat-val" style={{ color: krbTempDisplayColor }}>
+              {heatingStatus.krbTemp.toFixed(1)}&deg;
+            </span>
+          </div>
+
+          <div className="indoor-heat-card">
+            <span className="indoor-heat-label">COP 24h</span>
+            <span className="indoor-heat-val" style={{ color: copColor }}>
+              {heatingStatus.cop24h.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="indoor-heat-card indoor-heat-row-lg">
+            <span className="indoor-heat-label">CO2</span>
+            <span className="indoor-heat-val-lg" style={{ color: co2Color }}>
+              {heatingStatus.co2} <small style={{ fontSize: '0.5em', color: '#888' }}>ppm</small>
+            </span>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+
+    const root = document.getElementById("root-67");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(IndoorPanel));
+  } catch(e) {
+    const root = document.getElementById("root-67");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 67:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="68">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+/**
+ * Power Flow v6 — Panel 68 (Grafana Business Text)
+ *
+ * Self-contained React component that renders a 3x3 CSS grid with styled
+ * divs approximating the canvas-rendered icons used in the real panel.
+ *
+ * Mock data is embedded so the component can be previewed standalone.
+ *
+ * CSS scope: #pf6, .pf6-* prefixes to avoid collisions with the rest of
+ * the Grafana dashboard.
+ */
+
+// ---------------------------------------------------------------------------
+// Mock data
+// ---------------------------------------------------------------------------
+const MOCK = {
+  solar: { kW: 3.42 },
+  selfSufficiency: { pct: 67 },
+  house: { kW: 2.18 },
+  battery: { pct: 72, kW: 0.85, charging: true, timeRemaining: "~2h 15m" },
+  grid: { kW: 1.24, exporting: true },
+  wallbox: { kW: 6.5, carConnected: true },
+  today: { consumed: 15.2, produced: 18.7 },
+  virtualBattery: { pct: 87, sold: 142, bought: 163 },
+  month: { consumed: 487, produced: 523 },
+};
+
+// ---------------------------------------------------------------------------
+// Colour helpers
+// ---------------------------------------------------------------------------
+const solarColor = (kW) => (kW < 4 ? "#64dc64" : "#ffaa00");
+const houseColor = (kW) => (kW < 2 ? "#73bf69" : kW < 4 ? "#ffaa00" : "#ff4444");
+const ssColor = (pct) =>
+  pct >= 80 ? "#00cc66" : pct >= 50 ? "#ffaa00" : "#ff4444";
+const batteryFillColor = (pct) =>
+  pct >= 60 ? "#00cc66" : pct >= 30 ? "#ffaa00" : "#ff4444";
+const gridBadge = (exporting) =>
+  exporting
+    ? { label: "EXPORT", bg: "#1c3a20", color: "#50ff78" }
+    : { label: "IMPORT", bg: "#3a1a1a", color: "#ff5050" };
+
+// ---------------------------------------------------------------------------
+// Tiny SVG arc gauge (self-sufficiency / virtual battery)
+// ---------------------------------------------------------------------------
+function ArcGauge({ pct, color, size = 80 }) {
+  const r = (size - 8) / 2;
+  const cx = size / 2;
+  const cy = size / 2;
+  const startAngle = -210;
+  const sweep = 240;
+  const endAngle = startAngle + sweep * (pct / 100);
+
+  const polarToCart = (angleDeg) => {
+    const rad = (angleDeg * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+
+  const bgStart = polarToCart(startAngle);
+  const bgEnd = polarToCart(startAngle + sweep);
+  const fgEnd = polarToCart(endAngle);
+
+  const arcPath = (sx, sy, ex, ey, sweepDeg) => {
+    const large = Math.abs(sweepDeg) > 180 ? 1 : 0;
+    return `M ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey}`;
+  };
+
+  return (
+    <svg width={size} height={size} style={{ display: "block", margin: "0 auto" }}>
+      <path
+        d={arcPath(bgStart.x, bgStart.y, bgEnd.x, bgEnd.y, sweep)}
+        fill="none"
+        stroke="#222"
+        strokeWidth={6}
+        strokeLinecap="round"
+      />
+      <path
+        d={arcPath(bgStart.x, bgStart.y, fgEnd.x, fgEnd.y, sweep * (pct / 100))}
+        fill="none"
+        stroke={color}
+        strokeWidth={6}
+        strokeLinecap="round"
+      />
+      <text
+        x={cx}
+        y={cy + 4}
+        textAnchor="middle"
+        fill="#eee"
+        fontSize={size * 0.26}
+        fontWeight="bold"
+        fontFamily="monospace"
+      >
+        {pct}%
+      </text>
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Energy bar with shimmer
+// ---------------------------------------------------------------------------
+function EnergyBar({ value, max, color, label }) {
+  const pct = Math.min((value / max) * 100, 100);
+  return (
+    <div className="pf6-bar-row">
+      <span className="pf6-bar-label">{label}</span>
+      <div className="pf6-bar-track">
+        <div
+          className="pf6-bar-fill pf6-shimmer"
+          style={{
+            width: `${pct}%`,
+            background: `linear-gradient(90deg, ${color}cc, ${color})`,
+            boxShadow: `0 0 8px ${color}88`,
+          }}
+        />
+      </div>
+      <span className="pf6-bar-value" style={{ color }}>
+        {value} kWh
+      </span>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+function PowerFlowPanel() {
+  const d = MOCK;
+  const badge = gridBadge(d.grid.exporting);
+  const gridValueColor = d.grid.exporting ? "#50ff78" : "#ff5050";
+  const batteryDeltaColor = d.battery.charging ? "#50ff78" : "#ff5050";
+  const batteryDeltaSign = d.battery.charging ? "+" : "-";
+
+  const barMax = Math.max(
+    d.today.consumed,
+    d.today.produced,
+    d.month.consumed,
+    d.month.produced
+  );
+
+  return (
+    <div id="pf6">
+      <style>{`
+        /* ----- base grid ----- */
+        #pf6 {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          grid-template-rows: 1fr 1fr 1fr;
+          gap: 2px;
+          width: 100%;
+          height: 100%;
+          min-height: 380px;
+          background: #050505;
+          font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+          color: #ddd;
+          box-sizing: border-box;
+        }
+        .pf6-cell {
+          background: #0a0a0a;
+          border-radius: 8px;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          padding: 6px 4px;
+          overflow: hidden;
+          position: relative;
+        }
+        .pf6-icon {
+          font-size: 28px;
+          line-height: 1;
+          margin-bottom: 2px;
+        }
+        .pf6-value {
+          font-size: 18px;
+          font-weight: 700;
+          font-family: monospace;
+          line-height: 1.2;
+        }
+        .pf6-sub {
+          font-size: 10px;
+          color: #888;
+          line-height: 1.2;
+          margin-top: 1px;
+        }
+        .pf6-title {
+          font-size: 9px;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+          color: #666;
+          margin-bottom: 2px;
+        }
+
+        /* ----- badge ----- */
+        .pf6-badge {
+          display: inline-block;
+          font-size: 9px;
+          font-weight: 700;
+          padding: 1px 6px;
+          border-radius: 4px;
+          letter-spacing: 0.6px;
+          margin-top: 2px;
+        }
+
+        /* ----- battery fill bar ----- */
+        .pf6-batt-track {
+          width: 60%;
+          height: 10px;
+          background: #1a1a1a;
+          border-radius: 5px;
+          overflow: hidden;
+          margin: 3px 0;
+          border: 1px solid #333;
+        }
+        .pf6-batt-fill {
+          height: 100%;
+          border-radius: 5px;
+          transition: width 0.6s ease;
+        }
+
+        /* ----- energy bars ----- */
+        .pf6-bar-row {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          width: 90%;
+          margin: 1px 0;
+        }
+        .pf6-bar-label {
+          font-size: 8px;
+          color: #777;
+          width: 10px;
+          text-align: right;
+          flex-shrink: 0;
+        }
+        .pf6-bar-track {
+          flex: 1;
+          height: 7px;
+          background: #1a1a1a;
+          border-radius: 4px;
+          overflow: hidden;
+        }
+        .pf6-bar-fill {
+          height: 100%;
+          border-radius: 4px;
+          position: relative;
+        }
+        .pf6-bar-value {
+          font-size: 9px;
+          font-weight: 600;
+          font-family: monospace;
+          min-width: 48px;
+          text-align: right;
+          flex-shrink: 0;
+        }
+
+        /* ----- shimmer animation ----- */
+        @keyframes pf6shim {
+          0%   { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .pf6-shimmer {
+          background-size: 200% 100%;
+          animation: pf6shim 3s linear infinite;
+        }
+
+        /* ----- virtual battery footer ----- */
+        .pf6-vb-footer {
+          display: flex;
+          gap: 8px;
+          font-size: 8px;
+          color: #888;
+          margin-top: 2px;
+        }
+        .pf6-vb-footer span {
+          font-weight: 600;
+        }
+
+        /* ----- wallbox ----- */
+        .pf6-wallbox-dot {
+          display: inline-block;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          margin-right: 3px;
+          vertical-align: middle;
+        }
+      `}</style>
+
+      {/* ===== Row 1 ===== */}
+
+      {/* (1,1) Solar */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Solar</div>
+        <div className="pf6-icon">&#9728;&#65039;</div>
+        <div className="pf6-value" style={{ color: solarColor(d.solar.kW) }}>
+          {d.solar.kW.toFixed(2)} kW
+        </div>
+      </div>
+
+      {/* (2,1) Self-Sufficiency */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Self-Sufficiency</div>
+        <ArcGauge pct={d.selfSufficiency.pct} color={ssColor(d.selfSufficiency.pct)} size={76} />
+      </div>
+
+      {/* (3,1) House */}
+      <div className="pf6-cell">
+        <div className="pf6-title">House</div>
+        <div className="pf6-icon">&#127968;</div>
+        <div className="pf6-value" style={{ color: houseColor(d.house.kW) }}>
+          {d.house.kW.toFixed(2)} kW
+        </div>
+      </div>
+
+      {/* ===== Row 2 ===== */}
+
+      {/* (1,2) Battery */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Battery</div>
+        <div className="pf6-icon">&#128267;</div>
+        <div className="pf6-value" style={{ color: batteryFillColor(d.battery.pct) }}>
+          {d.battery.pct}%
+        </div>
+        <div className="pf6-batt-track">
+          <div
+            className="pf6-batt-fill"
+            style={{
+              width: `${d.battery.pct}%`,
+              background: batteryFillColor(d.battery.pct),
+            }}
+          />
+        </div>
+        <div className="pf6-sub" style={{ color: batteryDeltaColor }}>
+          {batteryDeltaSign}{Math.abs(d.battery.kW).toFixed(2)} kW
+        </div>
+        <div className="pf6-sub">{d.battery.timeRemaining}</div>
+      </div>
+
+      {/* (2,2) Grid */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Grid</div>
+        <div className="pf6-icon">&#9889;</div>
+        <div className="pf6-value" style={{ color: gridValueColor }}>
+          {d.grid.exporting ? "+" : "-"}{d.grid.kW.toFixed(2)} kW
+        </div>
+        <div
+          className="pf6-badge"
+          style={{ background: badge.bg, color: badge.color }}
+        >
+          {badge.label}
+        </div>
+      </div>
+
+      {/* (3,2) Wallbox */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Wallbox</div>
+        <div className="pf6-icon">&#128663;</div>
+        <div className="pf6-value" style={{ color: "#FF9830" }}>
+          {d.wallbox.kW.toFixed(1)} kW
+        </div>
+        <div className="pf6-sub">
+          <span
+            className="pf6-wallbox-dot"
+            style={{ background: d.wallbox.carConnected ? "#50ff78" : "#555" }}
+          />
+          {d.wallbox.carConnected ? "Car connected" : "No car"}
+        </div>
+      </div>
+
+      {/* ===== Row 3 ===== */}
+
+      {/* (1,3) Today */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Today</div>
+        <EnergyBar
+          value={d.today.produced}
+          max={barMax}
+          color="#51cf66"
+          label="P"
+        />
+        <EnergyBar
+          value={d.today.consumed}
+          max={barMax}
+          color="#ff6b6b"
+          label="C"
+        />
+      </div>
+
+      {/* (2,3) Virtual Battery */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Virtual Battery</div>
+        <ArcGauge
+          pct={d.virtualBattery.pct}
+          color={ssColor(d.virtualBattery.pct)}
+          size={68}
+        />
+        <div className="pf6-vb-footer">
+          <div>
+            SOLD <span style={{ color: "#51cf66" }}>{d.virtualBattery.sold}</span> kWh
+          </div>
+          <div>
+            BOUGHT <span style={{ color: "#ff6b6b" }}>{d.virtualBattery.bought}</span> kWh
+          </div>
+        </div>
+      </div>
+
+      {/* (3,3) Month */}
+      <div className="pf6-cell">
+        <div className="pf6-title">Month</div>
+        <EnergyBar
+          value={d.month.produced}
+          max={barMax}
+          color="#51cf66"
+          label="P"
+        />
+        <EnergyBar
+          value={d.month.consumed}
+          max={barMax}
+          color="#ff6b6b"
+          label="C"
+        />
+      </div>
+    </div>
+  );
+}
+
+
+    const root = document.getElementById("root-68");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(PowerFlowPanel));
+  } catch(e) {
+    const root = document.getElementById("root-68");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 68:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="69">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const styles = `
+  .ov-panel {
+    background: #181b1f;
+    padding: 16px;
+    border-radius: 8px;
+    font-family: 'Inter', 'Helvetica Neue', sans-serif;
+    color: #d8d9da;
+    min-width: 220px;
+  }
+  .ov-card {
+    background: #1e2128;
+    border-radius: 6px;
+    padding: 16px;
+  }
+  .ov-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 8px;
+  }
+  .ov-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #d8d9da;
+  }
+  .ov-unit {
+    font-size: 11px;
+    color: #8e8e8e;
+  }
+  .ov-hero {
+    font-size: 32px;
+    font-weight: 700;
+    color: #d8d9da;
+    line-height: 1.1;
+    margin-bottom: 2px;
+  }
+  .ov-sub {
+    font-size: 12px;
+    color: #8e8e8e;
+    margin-bottom: 14px;
+  }
+  .ov-range-track {
+    position: relative;
+    height: 8px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, #73BF69 0%, #FF9830 50%, #F2495C 100%);
+    margin-bottom: 12px;
+  }
+  .ov-range-dot {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid #181b1f;
+    box-shadow: 0 0 4px rgba(0,0,0,0.5);
+  }
+  .ov-extremes {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+  }
+  .ov-min {
+    color: #73BF69;
+  }
+  .ov-min-label {
+    color: #8e8e8e;
+    font-size: 10px;
+  }
+  .ov-max {
+    color: #F2495C;
+    text-align: right;
+  }
+  .ov-max-label {
+    color: #8e8e8e;
+    font-size: 10px;
+  }
+`;
+
+const OTEPanel = () => {
+  const currentPrice = 2.45;
+  const minPrice = 1.23;
+  const minTime = '3:00';
+  const maxPrice = 4.56;
+  const maxTime = '18:00';
+  const currentHour = '14:00';
+  const dotPct = 45;
+
+  return (
+    <>
+      <style>{styles}</style>
+      <div className="ov-panel">
+        <div className="ov-card">
+          <div className="ov-header">
+            <span className="ov-title">OTE Today</span>
+            <span className="ov-unit">CZK/kWh</span>
+          </div>
+          <div className="ov-hero">{currentPrice.toFixed(2)}</div>
+          <div className="ov-sub">now &middot; {currentHour}</div>
+          <div className="ov-range-track">
+            <div
+              className="ov-range-dot"
+              style={{ left: `${dotPct}%` }}
+            />
+          </div>
+          <div className="ov-extremes">
+            <div className="ov-min">
+              <div>MIN: {minPrice.toFixed(2)}</div>
+              <div className="ov-min-label">@{minTime}</div>
+            </div>
+            <div className="ov-max">
+              <div>MAX: {maxPrice.toFixed(2)}</div>
+              <div className="ov-max-label">@{maxTime}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+
+    const root = document.getElementById("root-69");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(OTEPanel));
+  } catch(e) {
+    const root = document.getElementById("root-69");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 69:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="61">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const styles = `
+  .car-panel {
+    background: #181b1f;
+    padding: 12px;
+    border-radius: 8px;
+    font-family: 'Inter', 'Helvetica Neue', sans-serif;
+    color: #d8d9da;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .car-card {
+    background: #1e2228;
+    border-radius: 6px;
+    padding: 12px 14px;
+  }
+  .car-row1 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+  .car-name {
+    font-size: 1.9vw;
+    font-weight: 600;
+    color: #d8d9da;
+    width: 5.5vw;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .car-bar-container {
+    flex: 1;
+    height: 14px;
+    border-radius: 7px;
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #f2495c 0%, #73bf69 20%, #73bf69 90%, #B877D9 100%);
+  }
+  .car-bar-spacer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    background: transparent;
+  }
+  .car-bar-cover {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 100%;
+    background: #1e2228;
+    border-radius: 0 7px 7px 0;
+  }
+  .car-soc {
+    font-size: 16px;
+    font-weight: 700;
+    min-width: 48px;
+    text-align: right;
+  }
+  .car-row2 {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 12px;
+    padding-left: 2px;
+  }
+  .car-range {
+    color: #d8d9da;
+    font-weight: 500;
+  }
+  .car-maxrange {
+    color: #8e8e8e;
+  }
+  .car-timeleft {
+    color: #FF9830;
+    font-weight: 500;
+  }
+  @keyframes car-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .car-charging .car-bar-container {
+    animation: car-pulse 2s ease-in-out infinite;
+  }
+`;
+
+function socColor(soc) {
+  if (soc > 90) return '#B877D9';
+  if (soc > 20) return '#73bf69';
+  return '#f2495c';
+}
+
+const CarCard = ({ name, soc, range, maxRange, charging, timeLeft }) => {
+  const coverWidth = 100 - soc;
+  return (
+    <div className={`car-card${charging ? ' car-charging' : ''}`}>
+      <div className="car-row1">
+        <div className="car-name">{name}</div>
+        <div className="car-bar-container">
+          <div className="car-bar-spacer" style={{ width: `${soc}%` }} />
+          <div className="car-bar-cover" style={{ width: `${coverWidth}%` }} />
+        </div>
+        <div className="car-soc" style={{ color: socColor(soc) }}>
+          {soc}%
+        </div>
+      </div>
+      <div className="car-row2">
+        <span className="car-range">{range} km</span>
+        <span className="car-maxrange">max {maxRange} km</span>
+        {charging && timeLeft != null && (
+          <span className="car-timeleft">{timeLeft} min left</span>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const CarsPanel = () => {
+  const cars = [
+    {
+      name: 'Enyaq',
+      soc: 78,
+      range: 285,
+      maxRange: 365,
+      charging: false,
+      timeLeft: null,
+    },
+    {
+      name: 'ID.3',
+      soc: 45,
+      range: 142,
+      maxRange: 315,
+      charging: true,
+      timeLeft: 47,
+    },
+  ];
+
+  return (
+    <>
+      <style>{styles}</style>
+      <div className="car-panel">
+        {cars.map((car) => (
+          <CarCard key={car.name} {...car} />
+        ))}
+      </div>
+    </>
+  );
+};
+
+
+    const root = document.getElementById("root-61");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(CarsPanel));
+  } catch(e) {
+    const root = document.getElementById("root-61");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 61:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="47">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const TCTempPanel = () => {
+  const width = 600;
+  const height = 300;
+  const padL = 50;
+  const padR = 20;
+  const padT = 40;
+  const padB = 40;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  // 24 hours of data
+  const hours = Array.from({ length: 25 }, (_, i) => i);
+
+  // Target temp: stays around 45C
+  const targetData = hours.map((h) => {
+    if (h >= 6 && h <= 22) return 45;
+    return 42;
+  });
+
+  // Becka tC: fluctuates 30-65
+  const beckaData = [
+    35, 33, 31, 30, 32, 34, 40, 48, 55, 60, 63, 65, 62, 58, 52, 48, 45, 50,
+    55, 58, 52, 46, 40, 37, 35,
+  ];
+
+  const minTemp = 25;
+  const maxTemp = 70;
+  const tempRange = maxTemp - minTemp;
+
+  function x(h) {
+    return padL + (h / 24) * chartW;
+  }
+  function y(temp) {
+    return padT + chartH - ((temp - minTemp) / tempRange) * chartH;
+  }
+
+  const targetPath = targetData
+    .map((t, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(t).toFixed(1)}`)
+    .join(' ');
+
+  const beckaPath = beckaData
+    .map((t, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(t).toFixed(1)}`)
+    .join(' ');
+
+  const gridTemps = [30, 40, 50, 60, 70];
+  const gridHours = [0, 4, 8, 12, 16, 20, 24];
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 8,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 14,
+          fontWeight: 600,
+          padding: '4px 8px 8px',
+        }}
+      >
+        TC - TEMP
+      </div>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        {/* Grid lines */}
+        {gridTemps.map((t) => (
+          <g key={`gt-${t}`}>
+            <line
+              x1={padL}
+              y1={y(t)}
+              x2={width - padR}
+              y2={y(t)}
+              stroke="#2a2e35"
+              strokeWidth={1}
+            />
+            <text x={padL - 8} y={y(t) + 4} fill="#8e8e8e" fontSize={11} textAnchor="end">
+              {t}&deg;
+            </text>
+          </g>
+        ))}
+        {gridHours.map((h) => (
+          <g key={`gh-${h}`}>
+            <line
+              x1={x(h)}
+              y1={padT}
+              x2={x(h)}
+              y2={height - padB}
+              stroke="#2a2e35"
+              strokeWidth={1}
+            />
+            <text
+              x={x(h)}
+              y={height - padB + 18}
+              fill="#8e8e8e"
+              fontSize={11}
+              textAnchor="middle"
+            >
+              {String(h).padStart(2, '0')}:00
+            </text>
+          </g>
+        ))}
+        {/* Target temp line (dark green, thick) */}
+        <path d={targetPath} fill="none" stroke="#37872D" strokeWidth={5} strokeLinejoin="round" />
+        {/* Becka tC line (orange) */}
+        <path d={beckaPath} fill="none" stroke="#FF9830" strokeWidth={2} strokeLinejoin="round" />
+        {/* Legend */}
+        <rect x={padL + 10} y={padT + 5} width={12} height={4} rx={2} fill="#37872D" />
+        <text x={padL + 26} y={padT + 10} fill="#8e8e8e" fontSize={10}>
+          target_temp
+        </text>
+        <rect x={padL + 110} y={padT + 5} width={12} height={4} rx={2} fill="#FF9830" />
+        <text x={padL + 126} y={padT + 10} fill="#8e8e8e" fontSize={10}>
+          becka tC
+        </text>
+      </svg>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-47");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(TCTempPanel));
+  } catch(e) {
+    const root = document.getElementById("root-47");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 47:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="2">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const PowerPanel = () => {
+  const width = 700;
+  const height = 320;
+  const padL = 55;
+  const padR = 20;
+  const padT = 40;
+  const padB = 40;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  const hours = Array.from({ length: 25 }, (_, i) => i);
+
+  // Power (PV generation) - peaks midday ~5kW
+  const powerData = [
+    0, 0, 0, 0, 0, 0.1, 0.4, 1.0, 2.0, 3.2, 4.2, 4.8, 5.0, 4.7, 4.0, 3.0,
+    2.0, 1.0, 0.3, 0.05, 0, 0, 0, 0, 0,
+  ];
+
+  // Consumption - relatively flat ~1.5kW
+  const consumptionData = [
+    0.8, 0.7, 0.6, 0.6, 0.7, 0.9, 1.2, 1.5, 1.6, 1.4, 1.3, 1.5, 1.8, 1.6,
+    1.4, 1.5, 1.8, 2.2, 2.5, 2.0, 1.5, 1.2, 1.0, 0.9, 0.8,
+  ];
+
+  // Battery load - charges during day, discharges at night
+  const batteryData = [
+    -0.5, -0.4, -0.3, -0.2, -0.1, 0, 0.2, 0.5, 1.0, 1.5, 2.0, 2.2, 2.0,
+    1.5, 1.0, 0.5, 0, -0.3, -0.5, -0.8, -0.7, -0.6, -0.5, -0.5, -0.5,
+  ];
+
+  // Bojlery (hot water heaters)
+  const bojleryData = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.5, 1.5, 2.0, 2.0, 1.5, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0,
+  ];
+
+  const allValues = [
+    ...powerData,
+    ...consumptionData,
+    ...batteryData,
+    ...bojleryData,
+  ];
+  const minVal = Math.min(...allValues) - 0.5;
+  const maxVal = Math.max(...allValues) + 0.5;
+  const valRange = maxVal - minVal;
+
+  function x(h) {
+    return padL + (h / 24) * chartW;
+  }
+  function y(val) {
+    return padT + chartH - ((val - minVal) / valRange) * chartH;
+  }
+
+  function makePath(data) {
+    return data
+      .map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+      .join(' ');
+  }
+
+  function makeFill(data, color) {
+    const path = data
+      .map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+      .join(' ');
+    const baseline = y(0);
+    return `M${x(0).toFixed(1)},${baseline} ${path.split(' ').map((p, i) => `L${p}`).join(' ')} L${x(24).toFixed(1)},${baseline} Z`;
+  }
+
+  const series = [
+    { name: 'power', data: powerData, color: '#73C0DE', width: 1 },
+    { name: 'consumption', data: consumptionData, color: '#73BF69', width: 1 },
+    { name: 'battery_load', data: batteryData, color: '#F2CC0C', width: 1 },
+    { name: 'bojlery', data: bojleryData, color: '#FF9830', width: 1 },
+  ];
+
+  const gridVals = [-1, 0, 1, 2, 3, 4, 5];
+  const gridHours = [0, 4, 8, 12, 16, 20, 24];
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 8,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 14,
+          fontWeight: 600,
+          padding: '4px 8px 8px',
+        }}
+      >
+        Power
+      </div>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        <defs>
+          {series.map((s) => (
+            <linearGradient key={`grad-${s.name}`} id={`fill-${s.name}`} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={s.color} stopOpacity={0.2} />
+              <stop offset="100%" stopColor={s.color} stopOpacity={0.02} />
+            </linearGradient>
+          ))}
+        </defs>
+        {/* Grid */}
+        {gridVals.map((v) => (
+          <g key={`gv-${v}`}>
+            <line x1={padL} y1={y(v)} x2={width - padR} y2={y(v)} stroke="#2a2e35" strokeWidth={1} />
+            <text x={padL - 8} y={y(v) + 4} fill="#8e8e8e" fontSize={11} textAnchor="end">
+              {v} kW
+            </text>
+          </g>
+        ))}
+        {gridHours.map((h) => (
+          <g key={`gh-${h}`}>
+            <line x1={x(h)} y1={padT} x2={x(h)} y2={height - padB} stroke="#2a2e35" strokeWidth={1} />
+            <text x={x(h)} y={height - padB + 18} fill="#8e8e8e" fontSize={11} textAnchor="middle">
+              {String(h).padStart(2, '0')}:00
+            </text>
+          </g>
+        ))}
+        {/* Zero line */}
+        <line x1={padL} y1={y(0)} x2={width - padR} y2={y(0)} stroke="#555" strokeWidth={1} strokeDasharray="4,3" />
+        {/* Filled areas and lines */}
+        {series.map((s) => {
+          const pts = s.data.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+          const fillPath = `M${x(0).toFixed(1)},${y(0).toFixed(1)} L${pts.split(' ').map((p) => p).join(' L')} L${x(24).toFixed(1)},${y(0).toFixed(1)} Z`;
+          return (
+            <g key={s.name}>
+              <path d={fillPath} fill={`url(#fill-${s.name})`} />
+              <path d={makePath(s.data)} fill="none" stroke={s.color} strokeWidth={s.width} />
+            </g>
+          );
+        })}
+        {/* Legend */}
+        {series.map((s, i) => (
+          <g key={`leg-${s.name}`}>
+            <rect x={padL + 10 + i * 120} y={padT + 5} width={12} height={4} rx={2} fill={s.color} />
+            <text x={padL + 26 + i * 120} y={padT + 10} fill="#8e8e8e" fontSize={10}>
+              {s.name}
+            </text>
+          </g>
+        ))}
+      </svg>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-2");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(PowerPanel));
+  } catch(e) {
+    const root = document.getElementById("root-2");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 2:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="43">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const ForecastLinePanel = () => {
+  const width = 500;
+  const height = 300;
+  const padL = 50;
+  const padR = 20;
+  const padT = 40;
+  const padB = 40;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  // Hours from 5 to 18
+  const hours = Array.from({ length: 14 }, (_, i) => i + 5);
+  const minH = 5;
+  const maxH = 18;
+  const maxVal = 6;
+
+  function xPos(h) {
+    return padL + ((h - minH) / (maxH - minH)) * chartW;
+  }
+  function yPos(v) {
+    return padT + chartH - (v / maxVal) * chartH;
+  }
+
+  // Forecast percentiles
+  const p10 = [0, 0.1, 0.3, 0.8, 1.5, 2.2, 3.0, 3.2, 3.0, 2.2, 1.5, 0.8, 0.2, 0];
+  const p50 = [0.1, 0.3, 0.8, 1.8, 2.8, 3.8, 4.5, 4.6, 4.2, 3.5, 2.5, 1.5, 0.5, 0.1];
+  const p90 = [0.2, 0.6, 1.5, 2.8, 4.0, 5.0, 5.5, 5.6, 5.2, 4.5, 3.5, 2.2, 0.8, 0.2];
+
+  // Actual generation (bars)
+  const actual = [0.15, 0.4, 0.9, 2.0, 3.0, 4.0, 4.8, 4.5, 4.0, 3.2, 2.0, 1.2, 0.4, 0.05];
+
+  // Build band path (p10 forward, p90 backward)
+  const bandPath = hours
+    .map((h, i) => `${i === 0 ? 'M' : 'L'}${xPos(h).toFixed(1)},${yPos(p10[i]).toFixed(1)}`)
+    .join(' ')
+    + ' '
+    + [...hours].reverse()
+      .map((h, i) => `L${xPos(h).toFixed(1)},${yPos(p90[hours.length - 1 - i]).toFixed(1)}`)
+      .join(' ')
+    + ' Z';
+
+  const p50Path = hours
+    .map((h, i) => `${i === 0 ? 'M' : 'L'}${xPos(h).toFixed(1)},${yPos(p50[i]).toFixed(1)}`)
+    .join(' ');
+
+  const barWidth = (chartW / hours.length) * 0.6;
+
+  const gridVals = [0, 1, 2, 3, 4, 5, 6];
+  const gridHours = [5, 8, 11, 14, 17];
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 8,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 14,
+          fontWeight: 600,
+          padding: '4px 8px 8px',
+        }}
+      >
+        Power vs Forecast
+      </div>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        {/* Grid */}
+        {gridVals.map((v) => (
+          <g key={`gv-${v}`}>
+            <line x1={padL} y1={yPos(v)} x2={width - padR} y2={yPos(v)} stroke="#2a2e35" strokeWidth={1} />
+            <text x={padL - 8} y={yPos(v) + 4} fill="#8e8e8e" fontSize={11} textAnchor="end">
+              {v} kW
+            </text>
+          </g>
+        ))}
+        {gridHours.map((h) => (
+          <g key={`gh-${h}`}>
+            <line x1={xPos(h)} y1={padT} x2={xPos(h)} y2={height - padB} stroke="#2a2e35" strokeWidth={1} />
+            <text x={xPos(h)} y={height - padB + 18} fill="#8e8e8e" fontSize={11} textAnchor="middle">
+              {String(h).padStart(2, '0')}:00
+            </text>
+          </g>
+        ))}
+        {/* Forecast band (10p-90p) */}
+        <path d={bandPath} fill="#73BF69" fillOpacity={0.15} stroke="none" />
+        {/* Forecast 50p line */}
+        <path d={p50Path} fill="none" stroke="#73BF69" strokeWidth={2} />
+        {/* Actual bars */}
+        {hours.map((h, i) => (
+          <rect
+            key={`bar-${h}`}
+            x={xPos(h) - barWidth / 2}
+            y={yPos(actual[i])}
+            width={barWidth}
+            height={yPos(0) - yPos(actual[i])}
+            fill="#5794F2"
+            fillOpacity={0.7}
+            rx={2}
+          />
+        ))}
+        {/* Legend */}
+        <rect x={padL + 10} y={padT + 5} width={12} height={8} rx={2} fill="#73BF69" fillOpacity={0.15} stroke="#73BF69" strokeWidth={1} />
+        <text x={padL + 26} y={padT + 13} fill="#8e8e8e" fontSize={10}>
+          Forecast 10p-90p
+        </text>
+        <line x1={padL + 140} y1={padT + 9} x2={padL + 152} y2={padT + 9} stroke="#73BF69" strokeWidth={2} />
+        <text x={padL + 156} y={padT + 13} fill="#8e8e8e" fontSize={10}>
+          50p
+        </text>
+        <rect x={padL + 186} y={padT + 5} width={8} height={8} rx={2} fill="#5794F2" fillOpacity={0.7} />
+        <text x={padL + 198} y={padT + 13} fill="#8e8e8e" fontSize={10}>
+          Actual
+        </text>
+      </svg>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-43");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(ForecastLinePanel));
+  } catch(e) {
+    const root = document.getElementById("root-43");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 43:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="39">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const ForecastBarPanel = () => {
+  const width = 700;
+  const height = 300;
+  const padL = 50;
+  const padR = 20;
+  const padT = 40;
+  const padB = 40;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  // 30-minute intervals from 5:00 to 18:00 = 26 intervals
+  const intervals = [];
+  for (let h = 5; h < 18; h++) {
+    intervals.push(`${String(h).padStart(2, '0')}:00`);
+    intervals.push(`${String(h).padStart(2, '0')}:30`);
+  }
+  intervals.push('18:00');
+
+  const n = intervals.length;
+
+  // Forecast (kWh per 30min interval)
+  const forecast = [
+    0, 0.05, 0.1, 0.2, 0.4, 0.7, 1.0, 1.3, 1.6, 1.9, 2.1, 2.3, 2.5, 2.5,
+    2.4, 2.3, 2.1, 1.8, 1.5, 1.2, 0.8, 0.5, 0.3, 0.1, 0.05, 0, 0,
+  ].slice(0, n);
+
+  // Actual generation
+  const generation = [
+    0, 0.04, 0.12, 0.25, 0.5, 0.8, 1.1, 1.4, 1.7, 2.0, 2.2, 2.4, 2.6, 2.3,
+    2.1, 2.0, 1.9, 1.6, 1.3, 1.0, 0.7, 0.4, 0.2, 0.08, 0.03, 0, 0,
+  ].slice(0, n);
+
+  const maxVal = 3;
+
+  function xPos(i) {
+    return padL + (i / (n - 1)) * chartW;
+  }
+  function yPos(v) {
+    return padT + chartH - (v / maxVal) * chartH;
+  }
+
+  const barGroupWidth = chartW / n;
+  const barW = barGroupWidth * 0.35;
+
+  const gridVals = [0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0];
+  const labelEvery = 4; // show label every 4 intervals (2 hours)
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 8,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 14,
+          fontWeight: 600,
+          padding: '4px 8px 8px',
+        }}
+      >
+        Power vs Forecast
+      </div>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        {/* Grid */}
+        {gridVals.map((v) => (
+          <g key={`gv-${v}`}>
+            <line x1={padL} y1={yPos(v)} x2={width - padR} y2={yPos(v)} stroke="#2a2e35" strokeWidth={1} />
+            <text x={padL - 8} y={yPos(v) + 4} fill="#8e8e8e" fontSize={10} textAnchor="end">
+              {v.toFixed(1)}
+            </text>
+          </g>
+        ))}
+        {intervals.map((label, i) => {
+          if (i % labelEvery !== 0) return null;
+          return (
+            <text
+              key={`lbl-${i}`}
+              x={xPos(i)}
+              y={height - padB + 16}
+              fill="#8e8e8e"
+              fontSize={10}
+              textAnchor="middle"
+            >
+              {label}
+            </text>
+          );
+        })}
+        {/* Bars */}
+        {intervals.map((_, i) => {
+          const cx = xPos(i);
+          const fVal = forecast[i] || 0;
+          const gVal = generation[i] || 0;
+          return (
+            <g key={`bars-${i}`}>
+              {/* Forecast bar (green) */}
+              <rect
+                x={cx - barW - 1}
+                y={yPos(fVal)}
+                width={barW}
+                height={yPos(0) - yPos(fVal)}
+                fill="#73BF69"
+                fillOpacity={0.8}
+                rx={1}
+              />
+              {/* Generation bar (blue) */}
+              <rect
+                x={cx + 1}
+                y={yPos(gVal)}
+                width={barW}
+                height={yPos(0) - yPos(gVal)}
+                fill="#5794F2"
+                fillOpacity={0.8}
+                rx={1}
+              />
+            </g>
+          );
+        })}
+        {/* Legend */}
+        <rect x={padL + 10} y={padT + 5} width={10} height={10} rx={2} fill="#73BF69" fillOpacity={0.8} />
+        <text x={padL + 24} y={padT + 14} fill="#8e8e8e" fontSize={10}>
+          Forecast
+        </text>
+        <rect x={padL + 90} y={padT + 5} width={10} height={10} rx={2} fill="#5794F2" fillOpacity={0.8} />
+        <text x={padL + 104} y={padT + 14} fill="#8e8e8e" fontSize={10}>
+          Generation
+        </text>
+      </svg>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-39");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(ForecastBarPanel));
+  } catch(e) {
+    const root = document.getElementById("root-39");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 39:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="50">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const FVEPhasesPanel = () => {
+  const phases = [
+    { label: 'Phase 1', desc: 'traktor, KL, pracka', value: 4.2, unit: 'A' },
+    { label: 'Phase 2', desc: 'mycka', value: 1.8, unit: 'A' },
+    { label: 'Phase 3', desc: 'AC, trouba', value: 6.1, unit: 'A' },
+  ];
+
+  const maxValue = 10; // max scale for bar gauge
+
+  // Continuous BlYlRd color mapping
+  function getColor(pct) {
+    if (pct < 0.33) {
+      // Blue to Yellow
+      const t = pct / 0.33;
+      const r = Math.round(50 + t * 205);
+      const g = Math.round(100 + t * 155);
+      const b = Math.round(200 - t * 180);
+      return `rgb(${r},${g},${b})`;
+    } else if (pct < 0.66) {
+      // Yellow to Red
+      const t = (pct - 0.33) / 0.33;
+      const r = Math.round(255);
+      const g = Math.round(255 - t * 180);
+      const b = Math.round(20 + t * 10);
+      return `rgb(${r},${g},${b})`;
+    } else {
+      // Deep red
+      const t = (pct - 0.66) / 0.34;
+      const r = Math.round(255 - t * 40);
+      const g = Math.round(75 - t * 50);
+      const b = Math.round(30);
+      return `rgb(${r},${g},${b})`;
+    }
+  }
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 16,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+        minWidth: 250,
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 14,
+          fontWeight: 600,
+          marginBottom: 16,
+        }}
+      >
+        FVE phases
+      </div>
+      {phases.map((phase) => {
+        const pct = phase.value / maxValue;
+        const barColor = getColor(pct);
+        const gradientStops = Array.from({ length: 20 }, (_, i) => {
+          const p = i / 19;
+          return `${getColor(p * pct)} ${(p * 100).toFixed(0)}%`;
+        }).join(', ');
+
+        return (
+          <div key={phase.label} style={{ marginBottom: 14 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'baseline',
+                marginBottom: 4,
+              }}
+            >
+              <div>
+                <span style={{ color: '#d8d9da', fontSize: 13, fontWeight: 500 }}>
+                  {phase.label}
+                </span>
+                <span style={{ color: '#8e8e8e', fontSize: 11, marginLeft: 8 }}>
+                  {phase.desc}
+                </span>
+              </div>
+              <span style={{ color: barColor, fontSize: 18, fontWeight: 700 }}>
+                {phase.value} {phase.unit}
+              </span>
+            </div>
+            <div
+              style={{
+                height: 10,
+                borderRadius: 5,
+                background: '#2a2e35',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${pct * 100}%`,
+                  borderRadius: 5,
+                  background: `linear-gradient(90deg, ${gradientStops})`,
+                  transition: 'width 0.3s ease',
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-50");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(FVEPhasesPanel));
+  } catch(e) {
+    const root = document.getElementById("root-50");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 50:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="24">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const BatteryLifePanel = () => {
+  const cycles = 342;
+  const soh = 98;
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 16,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+        textAlign: 'center',
+        minWidth: 140,
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 16,
+        }}
+      >
+        FVE Battery life
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ color: '#8e8e8e', fontSize: 11, marginBottom: 2 }}>Cycles</div>
+        <div style={{ color: '#d8d9da', fontSize: 28, fontWeight: 700 }}>{cycles}</div>
+      </div>
+      <div>
+        <div style={{ color: '#8e8e8e', fontSize: 11, marginBottom: 2 }}>SOH</div>
+        <div style={{ color: '#d8d9da', fontSize: 28, fontWeight: 700 }}>{soh}%</div>
+      </div>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-24");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(BatteryLifePanel));
+  } catch(e) {
+    const root = document.getElementById("root-24");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 24:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="20">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const SolarRadiationPanel = () => {
+  const value = 487;
+  const unit = 'W/m\u00B2';
+  const maxVal = 1000;
+  const pct = value / maxVal;
+
+  // Continuous BlYlRd
+  function getColor(p) {
+    if (p < 0.33) {
+      const t = p / 0.33;
+      const r = Math.round(50 + t * 205);
+      const g = Math.round(100 + t * 155);
+      const b = Math.round(200 - t * 180);
+      return `rgb(${r},${g},${b})`;
+    } else if (p < 0.66) {
+      const t = (p - 0.33) / 0.33;
+      return `rgb(255,${Math.round(255 - t * 180)},${Math.round(20 + t * 10)})`;
+    } else {
+      const t = (p - 0.66) / 0.34;
+      return `rgb(${Math.round(255 - t * 40)},${Math.round(75 - t * 50)},30)`;
+    }
+  }
+
+  const valueColor = getColor(pct);
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 16,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+        textAlign: 'center',
+        minWidth: 120,
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 16,
+        }}
+      >
+        Solar Radiation
+      </div>
+      <div
+        style={{
+          color: valueColor,
+          fontSize: 36,
+          fontWeight: 700,
+          lineHeight: 1.1,
+        }}
+      >
+        {value}
+      </div>
+      <div style={{ color: '#8e8e8e', fontSize: 12, marginTop: 4 }}>{unit}</div>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-20");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(SolarRadiationPanel));
+  } catch(e) {
+    const root = document.getElementById("root-20");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 20:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="57">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const HeatingTimelinePanel = () => {
+  const width = 700;
+  const height = 280;
+  const padL = 120;
+  const padR = 20;
+  const padT = 40;
+  const padB = 30;
+  const chartW = width - padL - padR;
+  const chartH = height - padT - padB;
+
+  const zones = [
+    'rehau_obyvak',
+    'rehau_kuchyn',
+    'netatmo_loznice',
+    'netatmo_detsky',
+    'rehau_koupelna',
+  ];
+
+  const zoneLabels = [
+    'Obyvak',
+    'Kuchyn',
+    'Loznice',
+    'Detsky',
+    'Koupelna',
+  ];
+
+  // Color thresholds: 0=red, 0.2=light-green, 0.5=green, 0.7=dark-green, 0.9=darker-green
+  function getStateColor(val) {
+    if (val >= 0.9) return '#1a6d1a';
+    if (val >= 0.7) return '#2d8c2d';
+    if (val >= 0.5) return '#37872D';
+    if (val >= 0.2) return '#96D98D';
+    return '#F2495C';
+  }
+
+  // Mock data: each zone has an array of {start, end, value} segments over 24h
+  const zoneData = [
+    // Obyvak
+    [
+      { s: 0, e: 6, v: 0 },
+      { s: 6, e: 8, v: 0.7 },
+      { s: 8, e: 10, v: 0.5 },
+      { s: 10, e: 14, v: 0.2 },
+      { s: 14, e: 17, v: 0.5 },
+      { s: 17, e: 21, v: 0.9 },
+      { s: 21, e: 24, v: 0 },
+    ],
+    // Kuchyn
+    [
+      { s: 0, e: 6, v: 0 },
+      { s: 6, e: 9, v: 0.9 },
+      { s: 9, e: 12, v: 0.5 },
+      { s: 12, e: 14, v: 0.7 },
+      { s: 14, e: 18, v: 0.2 },
+      { s: 18, e: 20, v: 0.7 },
+      { s: 20, e: 24, v: 0 },
+    ],
+    // Loznice
+    [
+      { s: 0, e: 7, v: 0.5 },
+      { s: 7, e: 9, v: 0 },
+      { s: 9, e: 16, v: 0 },
+      { s: 16, e: 22, v: 0 },
+      { s: 22, e: 24, v: 0.7 },
+    ],
+    // Detsky
+    [
+      { s: 0, e: 6, v: 0.5 },
+      { s: 6, e: 8, v: 0.2 },
+      { s: 8, e: 15, v: 0 },
+      { s: 15, e: 20, v: 0.5 },
+      { s: 20, e: 24, v: 0.7 },
+    ],
+    // Koupelna
+    [
+      { s: 0, e: 5, v: 0 },
+      { s: 5, e: 7, v: 0.9 },
+      { s: 7, e: 16, v: 0 },
+      { s: 16, e: 18, v: 0.7 },
+      { s: 18, e: 20, v: 0.9 },
+      { s: 20, e: 24, v: 0 },
+    ],
+  ];
+
+  const rowH = chartH / zones.length;
+  const rowPad = 3;
+
+  function xPos(h) {
+    return padL + (h / 24) * chartW;
+  }
+
+  const gridHours = [0, 3, 6, 9, 12, 15, 18, 21, 24];
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 8,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 14,
+          fontWeight: 600,
+          padding: '4px 8px 8px',
+        }}
+      >
+        Heating Timeline
+      </div>
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}>
+        {/* Grid lines */}
+        {gridHours.map((h) => (
+          <g key={`g-${h}`}>
+            <line
+              x1={xPos(h)}
+              y1={padT}
+              x2={xPos(h)}
+              y2={height - padB}
+              stroke="#2a2e35"
+              strokeWidth={1}
+            />
+            <text
+              x={xPos(h)}
+              y={height - padB + 16}
+              fill="#8e8e8e"
+              fontSize={10}
+              textAnchor="middle"
+            >
+              {String(h % 24).padStart(2, '0')}:00
+            </text>
+          </g>
+        ))}
+        {/* Zone rows */}
+        {zones.map((zone, zi) => {
+          const yBase = padT + zi * rowH;
+          return (
+            <g key={zone}>
+              {/* Zone label */}
+              <text
+                x={padL - 8}
+                y={yBase + rowH / 2 + 4}
+                fill="#d8d9da"
+                fontSize={11}
+                textAnchor="end"
+              >
+                {zoneLabels[zi]}
+              </text>
+              {/* State segments */}
+              {zoneData[zi].map((seg, si) => (
+                <rect
+                  key={`${zone}-${si}`}
+                  x={xPos(seg.s)}
+                  y={yBase + rowPad}
+                  width={xPos(seg.e) - xPos(seg.s)}
+                  height={rowH - rowPad * 2}
+                  fill={getStateColor(seg.v)}
+                  rx={2}
+                />
+              ))}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-57");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(HeatingTimelinePanel));
+  } catch(e) {
+    const root = document.getElementById("root-57");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 57:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="36">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const DiagnosticPanel = () => {
+  const message = 'Normal operation';
+  const value = 0; // threshold: 0=green, >=80=red
+  const isAlert = value >= 80;
+  const statusColor = isAlert ? '#F2495C' : '#73BF69';
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 16,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+        textAlign: 'center',
+        minWidth: 180,
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 16,
+        }}
+      >
+        Diagnostic message
+      </div>
+      <div
+        style={{
+          display: 'inline-block',
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          background: statusColor,
+          marginBottom: 8,
+          boxShadow: `0 0 8px ${statusColor}`,
+        }}
+      />
+      <div
+        style={{
+          color: statusColor,
+          fontSize: 22,
+          fontWeight: 600,
+          lineHeight: 1.3,
+        }}
+      >
+        {message}
+      </div>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-36");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(DiagnosticPanel));
+  } catch(e) {
+    const root = document.getElementById("root-36");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 36:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="49">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const COPPanel = () => {
+  const value = 3.21;
+  const maxCOP = 5;
+  const pct = value / maxCOP;
+
+  // Continuous RdYlGr (Red-Yellow-Green) - higher is better
+  function getColor(p) {
+    if (p < 0.33) {
+      // Red to Yellow
+      const t = p / 0.33;
+      return `rgb(${Math.round(242 - t * 20)},${Math.round(73 + t * 182)},${Math.round(92 - t * 72)})`;
+    } else if (p < 0.66) {
+      // Yellow to Green
+      const t = (p - 0.33) / 0.33;
+      return `rgb(${Math.round(222 - t * 107)},${Math.round(255 - t * 64)},${Math.round(20 + t * 49)})`;
+    } else {
+      // Deep green
+      const t = (p - 0.66) / 0.34;
+      return `rgb(${Math.round(115 - t * 60)},${Math.round(191 - t * 30)},${Math.round(69 - t * 24)})`;
+    }
+  }
+
+  const valueColor = getColor(pct);
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 16,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+        textAlign: 'center',
+        minWidth: 120,
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 16,
+        }}
+      >
+        COP timewindow
+      </div>
+      <div
+        style={{
+          color: valueColor,
+          fontSize: 36,
+          fontWeight: 700,
+          lineHeight: 1.1,
+        }}
+      >
+        {value.toFixed(2)}
+      </div>
+      <div style={{ color: '#8e8e8e', fontSize: 12, marginTop: 4 }}>COP</div>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-49");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(COPPanel));
+  } catch(e) {
+    const root = document.getElementById("root-49");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 49:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="10">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const TempStatPanel = () => {
+  const value = 18.4;
+  const unit = '\u00B0C';
+  const maxTemp = 40;
+  const minTemp = -10;
+  const pct = (value - minTemp) / (maxTemp - minTemp);
+
+  // Continuous BlYlRd
+  function getColor(p) {
+    if (p < 0.33) {
+      const t = p / 0.33;
+      const r = Math.round(50 + t * 205);
+      const g = Math.round(100 + t * 155);
+      const b = Math.round(200 - t * 180);
+      return `rgb(${r},${g},${b})`;
+    } else if (p < 0.66) {
+      const t = (p - 0.33) / 0.33;
+      return `rgb(255,${Math.round(255 - t * 180)},${Math.round(20 + t * 10)})`;
+    } else {
+      const t = (p - 0.66) / 0.34;
+      return `rgb(${Math.round(255 - t * 40)},${Math.round(75 - t * 50)},30)`;
+    }
+  }
+
+  const valueColor = getColor(pct);
+
+  return (
+    <div
+      style={{
+        background: '#181b1f',
+        borderRadius: 8,
+        padding: 16,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+        textAlign: 'center',
+        minWidth: 120,
+      }}
+    >
+      <div
+        style={{
+          color: '#d8d9da',
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 16,
+        }}
+      >
+        Temp
+      </div>
+      <div
+        style={{
+          color: valueColor,
+          fontSize: 36,
+          fontWeight: 700,
+          lineHeight: 1.1,
+        }}
+      >
+        {value.toFixed(1)}
+      </div>
+      <div style={{ color: '#8e8e8e', fontSize: 12, marginTop: 4 }}>{unit}</div>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-10");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(TempStatPanel));
+  } catch(e) {
+    const root = document.getElementById("root-10");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 10:", e);
+  }
+})();
+</script>
+
+<script type="text/babel" data-panel="66">
+(function() {
+  const { useState, useEffect, useRef } = React;
+  try {
+
+const RainSparklinePanel = () => {
+  const width = 200;
+  const height = 80;
+  const pad = 4;
+  const chartW = width - pad * 2;
+  const chartH = height - pad * 2;
+
+  // 24 hours of rain rate data with a few spikes
+  const data = [
+    0, 0, 0, 0, 0.1, 0.3, 0, 0, 0, 0.5, 1.2, 2.5, 1.8, 0.4, 0, 0, 0, 0.2,
+    0.8, 1.5, 3.0, 2.0, 0.6, 0,
+  ];
+
+  const maxVal = Math.max(...data) || 1;
+  const n = data.length;
+
+  function x(i) {
+    return pad + (i / (n - 1)) * chartW;
+  }
+  function y(v) {
+    return pad + chartH - (v / maxVal) * chartH;
+  }
+
+  const linePath = data
+    .map((v, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(v).toFixed(1)}`)
+    .join(' ');
+
+  const fillPath =
+    `M${x(0).toFixed(1)},${(pad + chartH).toFixed(1)} ` +
+    data.map((v, i) => `L${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ') +
+    ` L${x(n - 1).toFixed(1)},${(pad + chartH).toFixed(1)} Z`;
+
+  return (
+    <div
+      style={{
+        background: 'transparent',
+        borderRadius: 4,
+        fontFamily: "'Inter', 'Helvetica Neue', sans-serif",
+        overflow: 'hidden',
+      }}
+    >
+      <svg
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ display: 'block' }}
+      >
+        {/* Fill area */}
+        <path d={fillPath} fill="#B877D9" fillOpacity={0.1} />
+        {/* Line */}
+        <path d={linePath} fill="none" stroke="#B877D9" strokeWidth={1} />
+      </svg>
+    </div>
+  );
+};
+
+
+    const root = document.getElementById("root-66");
+    if (root) ReactDOM.createRoot(root).render(React.createElement(RainSparklinePanel));
+  } catch(e) {
+    const root = document.getElementById("root-66");
+    if (root) root.innerHTML = '<div class="panel-error">Error: ' + e.message + '</div>';
+    console.error("Panel 66:", e);
+  }
+})();
+</script>
+
+</body>
+</html>
