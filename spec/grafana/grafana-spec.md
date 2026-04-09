@@ -451,10 +451,15 @@ cons = cons_total - charge  (so House = pure house load, Wallbox is separate)
 self_suf = d_gen / d_cons * 100  (can exceed 100% on sunny days)
 vb_pct = vb_prod / vb_cons * 100
 
-// Battery time remaining
+// Battery time remaining (discharge)
 dod = ${InverterDepthOfDischarge}  // template variable
 usable_kwh = (soc - (100 - dod)) / 100 * 20.0  // 20 kWh battery
 bat_hours = usable_kwh / discharge_kw
+
+// Battery time to full (charge, capped at SoCStop)
+soc_stop = ${InverterStopChargingAt}  // template variable
+remaining_kwh = (soc_stop - soc) / 100 * 20.0
+bat_chg_hours = remaining_kwh / charge_kw
 
 // Output (all values converted to kW with 2 decimal places)
 array.from(rows: [{
@@ -467,23 +472,30 @@ array.from(rows: [{
 
 ### Canvas Rendering (afterRender JS)
 
-Each cell has a `<canvas>` element. The afterRender JS uses `requestAnimationFrame` for continuous animation.
+Each cell has a `<canvas>` element. The afterRender JS uses `requestAnimationFrame` with ~250ms frame skipping (~4fps) and **auto-stops after 3 seconds**. Since Grafana re-renders the panel every 10s (data refresh), `afterRender` re-triggers and animates for another 3s burst. Between bursts, zero CPU/memory cost.
 
-**Solar cell:** Radial glow, sun icon with animated rays (length proportional to power), solar panel graphic, kW value below. Color shifts green→blue with increasing power.
+**Performance optimizations (v6.1):**
+- No `shadowBlur` anywhere — glow effects use wider, lower-opacity duplicate strokes (10x cheaper on Safari)
+- Gradients (`createRadialGradient`, `createLinearGradient`) are created once per data refresh and cached, not per frame (fixes Chrome memory pressure causing tab reloads)
+- No CSS infinite `@keyframes` — shimmer/glow on energy bars are static gradient overlays
+- Grid direction uses a static colored wire overlay + bouncing arrow (no `lineDashOffset` animation, which is expensive in Safari)
+- `requestAnimationFrame` instead of `setInterval` — respects tab visibility, pauses when backgrounded
 
-**House cell:** House outline with animated glowing windows (number lit ∝ consumption). Glow hue shifts green→yellow→red with load. Value below.
+**Solar cell:** Radial glow (cached gradients), sun icon with animated rays (length proportional to power), solar panel graphic, kW value below. Color shifts green→blue with increasing power.
 
-**Battery cell:** Horizontal battery shape with fill bar (width = SoC%), bolt icon (pulsing when active), ±kW value. Time remaining shown below when charging/discharging. State color: green `#44ee44` when charging (bat < -0.25 kW), red `#ff4444` when discharging (bat > 0.25 kW), gray `#666` when idle. Border and bolt glow use the state color.
+**House cell:** House outline with animated glowing windows (number lit ∝ consumption). Glow via double-filled rects (no shadowBlur). Hue shifts green→yellow→red with load. Value below.
 
-**Grid cell:** Transmission line graphic with animated dashed line (direction shows import/export). Arrow bounces left/right. Value + IMPORT/EXPORT/BALANCED badge.
+**Battery cell:** Horizontal battery shape with fill bar (width = SoC%, cached gradient using 5-tier SoC colors), ±kW value. SoC% text is always white `#fff` for contrast against the colored fill. Time remaining shown below when charging/discharging. State color: green `#44ee44` when charging (bat < -0.25 kW), red `#ff4444` when discharging (bat > 0.25 kW), gray `#666` when idle. Border and terminal colored by state; pulsing border glow via wider stroke (no shadowBlur). No bolt icon — removed to keep SoC% readable.
+
+**Grid cell:** Transmission line graphic with static colored overlay (opacity ∝ power magnitude). Arrow bounces left/right. Value + IMPORT/EXPORT/BALANCED badge.
 
 **Wallbox cell:** Charger station with cable to car graphic. Charge level bars inside car (signal-bar style). Pulsing when actively charging. Greyed out when disconnected (`.pf6-off`).
 
-**Self-Sufficiency cell:** 270° arc gauge, percentage in center. Color: ≥80% green, ≥50% orange, <50% red.
+**Self-Sufficiency cell:** 270° arc gauge, percentage in center. Glow via wider lower-opacity stroke (no shadowBlur). Color: ≥80% green, ≥50% orange, <50% red.
 
-**Virtual Battery cell:** Smaller arc gauge + SOLD/BOUGHT footer with values.
+**Virtual Battery cell:** Smaller arc gauge + SOLD/BOUGHT footer with values. Same glow technique.
 
-**Today/Month cells:** Dual horizontal bar gauges with shimmer animation. Consumed (red gradient) and Produced (green gradient), proportional to max of both.
+**Today/Month cells:** Dual horizontal bar gauges with static shimmer overlay. Consumed (red gradient) and Produced (green gradient), proportional to max of both.
 
 ### Grid Badge Colors
 
@@ -618,9 +630,11 @@ A transparent spacer (width = SoC%) reveals the gradient, then:
 
 | SoC Range | Color | Hex |
 |-----------|-------|-----|
-| > 90% | Purple | `#B877D9` |
-| > 20% | Green | `#73bf69` |
-| ≤ 20% | Red | `#f2495c` |
+| > 90% | Blue | `#5794F2` |
+| 30–90% | Green | `#73BF69` |
+| 20–30% | Orange | `#FF9830` |
+| 10–20% | Orange-red | `#FF6B3D` |
+| < 10% | Red | `#F2495C` |
 
 ### Stats Row
 
@@ -1151,7 +1165,7 @@ from(bucket: "default")
 - Real DOM elements must be used instead of CSS pseudo-elements for overlays
 - Inline `style` attributes on Handlebars-generated elements work reliably
 - `disable_sanitize_html = true` required in `grafana.ini` `[panels]` section
-- Canvas rendering via `afterRender` JS works with `requestAnimationFrame`
+- Canvas rendering via `afterRender` JS uses `setInterval` at 250ms (~4fps), not `requestAnimationFrame` (Safari compatibility)
 - `handlebars` variable is available in the **helpers** editor (Before rendering content), NOT in afterRender
 - Custom helpers (`lt`, `abs`, `gte`) must be registered via `handlebars.registerHelper()` in the helpers editor
 - All sizes use `vw` units for responsive scaling across different screen sizes

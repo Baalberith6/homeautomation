@@ -1107,7 +1107,7 @@ const houseColor = (kW) => (kW < 2 ? "#73bf69" : kW < 4 ? "#ffaa00" : "#ff4444")
 const ssColor = (pct) =>
   pct >= 80 ? "#00cc66" : pct >= 50 ? "#ffaa00" : "#ff4444";
 const batteryFillColor = (pct) =>
-  pct >= 60 ? "#00cc66" : pct >= 30 ? "#ffaa00" : "#ff4444";
+  pct > 90 ? "#5794F2" : pct >= 30 ? "#73BF69" : pct >= 20 ? "#FF9830" : pct >= 10 ? "#FF6B3D" : "#F2495C";
 const gridBadge = (exporting) =>
   exporting
     ? { label: "EXPORT", bg: "#1c3a20", color: "#50ff78" }

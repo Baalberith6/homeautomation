@@ -8,6 +8,14 @@
  *
  * CSS scope: #pf6, .pf6-* prefixes to avoid collisions with the rest of
  * the Grafana dashboard.
+ *
+ * Performance notes (v6.1):
+ * - Canvas animations use requestAnimationFrame with auto-stop after 3s
+ *   (data refreshes every 10s via Grafana, which re-triggers afterRender)
+ * - No shadowBlur — glow effects use wider, lower-opacity strokes instead
+ * - Gradients cached once per data refresh, not created per frame
+ * - No CSS infinite @keyframes — shimmer/glow are static gradient overlays
+ * - Grid direction uses static colored overlay + bouncing arrow (no lineDash)
  */
 import React from "react";
 
@@ -34,7 +42,7 @@ const houseColor = (kW) => (kW < 2 ? "#73bf69" : kW < 4 ? "#ffaa00" : "#ff4444")
 const ssColor = (pct) =>
   pct >= 80 ? "#00cc66" : pct >= 50 ? "#ffaa00" : "#ff4444";
 const batteryFillColor = (pct) =>
-  pct >= 60 ? "#00cc66" : pct >= 30 ? "#ffaa00" : "#ff4444";
+  pct > 90 ? "#5794F2" : pct >= 30 ? "#73BF69" : pct >= 20 ? "#FF9830" : pct >= 10 ? "#FF6B3D" : "#F2495C";
 const gridBadge = (exporting) =>
   exporting
     ? { label: "EXPORT", bg: "#1c3a20", color: "#50ff78" }
@@ -254,14 +262,10 @@ function PowerFlowPanel() {
           flex-shrink: 0;
         }
 
-        /* ----- shimmer animation ----- */
-        @keyframes pf6shim {
-          0%   { background-position: -200% center; }
-          100% { background-position: 200% center; }
-        }
+        /* ----- shimmer (static gradient overlay, no animation) ----- */
         .pf6-shimmer {
-          background-size: 200% 100%;
-          animation: pf6shim 3s linear infinite;
+          background: linear-gradient(90deg, transparent 30%, rgba(255,255,255,0.08) 50%, transparent 70%);
+          pointer-events: none;
         }
 
         /* ----- virtual battery footer ----- */
