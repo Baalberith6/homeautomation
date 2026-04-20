@@ -48,7 +48,7 @@ This is a home energy automation system built around **MQTT as the central messa
 | `estia.py` | Continuous (60s) | Reads Toshiba Estia heat pump via HTTP API, publishes to MQTT |
 | `estia_energy.py` | Hourly at :22 | Calculates heat pump COP from temp history + hourly consumption, writes to InfluxDB |
 | `netatmo.py` | Continuous (60s) | Reads 7-room Netatmo thermostats via OAuth2, publishes room temps and heating % |
-| `car.py` / `skoda.py` | Continuous (120s) | Reads Skoda/VW vehicle data (SOC, range, charging status) via CarConnectivity |
+| `car.py` / `skoda.py` | Continuous (120s) | Reads Skoda/VW vehicle data (SOC, range, charging status, GPS position) via CarConnectivity; reverse-geocodes address via Nominatim |
 | `oteforecast.py` | Cron (hourly) | Fetches Czech electricity prices from OTE API, publishes to MQTT |
 | `solarforecast.py` | Cron (hourly) | Fetches Solcast PV generation forecast, writes to InfluxDB |
 | `cursor.py` | Cron (Mon 07:00 UTC) | Aggregates Cursor IDE analytics, writes to InfluxDB |
@@ -78,19 +78,16 @@ This is a home energy automation system built around **MQTT as the central messa
 ### Prdikov Dashboard Panel Map (UID `q50mEhf7k`)
 
 Dashboard: 24-column grid, 10s refresh, InfluxDB datasource (`ceyru5v6xg3r4b`).
-Two-column layout: col 1 = 15 units, col 2 = 9 units. Design: `spec/grafana/redesign-v5.html`.
+Two-column layout: col 1 = 14 units, col 2 = 10 units. Design: `spec/grafana/redesign-v5.html`.
 
 | ID | Title | Type | GridPos (x,y,w,h) | Notes |
 |----|-------|------|--------------------|-------|
-| 70 | Outdoor | `dynamictext` (canvas) | 0,0,15,12 | Weather widget with sparkline |
-| 67 | Indoor | `dynamictext` | 15,0,9,12 | 5 rooms + CO2 stat-bar |
-| 80 | Energy Topology | `dynamictext` (SVG) | 0,12,15,7 | Solar/Grid → Inverter → Battery/House/Wallbox |
-| 81 | Energy Chart | `timeseries` | 0,19,15,13 | Solar/House/Battery/Bojlery |
-| 82 | Energy Stats | `dynamictext` | 0,32,15,5 | Today/Month diverging bars, Self-suff, Virt.batt |
-| 83 | Heat Tiles | `dynamictext` | 15,12,9,5 | Krb + COP + Heat Pump tiles |
-| 84 | TC Chart | `timeseries` | 15,17,9,5 | Target (green) + Water (yellow) |
-| 85 | Heat Stats | `dynamictext` | 15,22,9,5 | Target, Water, Δ, Trend stat-bar |
-| 86 | Vehicles | `dynamictext` | 15,27,9,10 | Enyaq + ID.3 SoC bars + status pills |
+| 70 | Outdoor | `dynamictext` (canvas) | 0,0,14,7 | Weather widget with sparkline |
+| 67 | Indoor | `dynamictext` | 14,0,10,7 | 5 rooms + CO2 stat-bar |
+| 80 | Energy Topology | `dynamictext` (SVG) | 0,7,14,9 | Solar/Grid → Inverter → Battery/House/Wallbox |
+| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,16,14,11 | Chart (Solar/House/Battery/Bojlery + OTE bars) + Energy Stats (Today/Month, Self-suff, Virt.batt) |
+| 83 | Heat Tiles + TC + Stats | `dynamictext` | 14,7,10,11 | Krb + COP + Heat Pump tiles + TC chart + stat-bar |
+| 86 | Vehicles | `dynamictext` | 14,18,10,10 | Enyaq + ID.3 SoC bars + per-car plug status pills (Connected/Charging/Disconnected) + GPS address |
 
 Old panel designs archived in `spec/grafana/old/`.
 

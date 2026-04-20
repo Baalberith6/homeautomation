@@ -1,5 +1,7 @@
 import asyncio
+import json
 import sys
+import urllib.request
 from datetime import datetime
 
 sys.stdout.reconfigure(line_buffering=True)
@@ -48,6 +50,38 @@ def calculate_charging_time_remaining(vehicle):
 
 FETCH_TIMEOUT = 60  # seconds — kill and retry if fetch_all() hangs
 
+_geo_cache = {}
+
+
+def get_address(lat, lon):
+    """Reverse geocode lat/lon to short address via Nominatim."""
+    key = (round(lat, 3), round(lon, 3))
+    if key in _geo_cache:
+        return _geo_cache[key]
+    try:
+        url = (f"https://nominatim.openstreetmap.org/reverse"
+               f"?lat={lat}&lon={lon}&format=json&addressdetails=1")
+        req = urllib.request.Request(
+            url, headers={"User-Agent": "homeautomation/1.0"})
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        a = data.get("address", {})
+        road = a.get("road", "")
+        house = a.get("house_number", "")
+        city = (a.get("city") or a.get("town")
+                or a.get("village") or a.get("suburb", ""))
+        parts = []
+        if road:
+            parts.append(f"{road} {house}".strip() if house else road)
+        if city:
+            parts.append(city)
+        result = ", ".join(parts) if parts else ""
+        _geo_cache[key] = result
+        return result
+    except Exception as e:
+        print(f"[skoda] Geocode error: {e}")
+        return ""
+
 
 async def main():
     client = connect_mqtt("skoda5")
@@ -88,8 +122,22 @@ async def main():
                         if target_soc is not None:
                             client.publish("home/Car/target_soc_enyaq", int(target_soc), qos=2, properties=publishProperties).wait_for_publish()
 
+                        try:
+                            lat = float(vehicle.position.latitude.value)
+                            lon = float(vehicle.position.longitude.value)
+                        except (AttributeError, TypeError, ValueError):
+                            lat = None
+                            lon = None
+                        address = ""
+                        if lat is not None and lon is not None:
+                            client.publish("home/Car/lat_enyaq", lat, qos=2, properties=publishProperties).wait_for_publish()
+                            client.publish("home/Car/lon_enyaq", lon, qos=2, properties=publishProperties).wait_for_publish()
+                            address = get_address(lat, lon)
+                        if address:
+                            client.publish("diag/Car/address_enyaq", address, qos=2, properties=publishProperties).wait_for_publish()
+
                         charging_state = vehicle.charging.state.value
-                        print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}")
+                        print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, addr={address}")
                     if vehicle.vin.value == skodaConfig["vin_vw"]:
                         soc = vehicle.drives.drives["primary"].level.value
                         range_km = vehicle.drives.total_range.value
@@ -110,8 +158,22 @@ async def main():
                         if target_soc is not None:
                             client.publish("home/Car/target_soc_vw", int(target_soc), qos=2, properties=publishProperties).wait_for_publish()
 
+                        try:
+                            lat = float(vehicle.position.latitude.value)
+                            lon = float(vehicle.position.longitude.value)
+                        except (AttributeError, TypeError, ValueError):
+                            lat = None
+                            lon = None
+                        address = ""
+                        if lat is not None and lon is not None:
+                            client.publish("home/Car/lat_vw", lat, qos=2, properties=publishProperties).wait_for_publish()
+                            client.publish("home/Car/lon_vw", lon, qos=2, properties=publishProperties).wait_for_publish()
+                            address = get_address(lat, lon)
+                        if address:
+                            client.publish("diag/Car/address_vw", address, qos=2, properties=publishProperties).wait_for_publish()
+
                         charging_state = vehicle.charging.state.value
-                        print(f"[skoda] VW: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}")
+                        print(f"[skoda] VW: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, addr={address}")
             except asyncio.TimeoutError:
                 print(f"[skoda] fetch_all() timed out after"
                       f" {FETCH_TIMEOUT}s, reconnecting...")
