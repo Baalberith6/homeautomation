@@ -74,12 +74,15 @@ async def main():
                 out_temp = previous_out_temp
             target_temp = data["autoHeatingTemp"]
             compressor_active = data["waterActiveCompressor"] or data["heatingActiveCompressor"]
+            coil_active = data["waterActiveCoil"] or data["heatingActiveCoil"]
 
             client.publish("home/estia/in_temp", in_temp, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/estia/out_temp", out_temp, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/estia/target_temp", target_temp, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/estia/outside_temp", hex_to_number_2(sensors["TO_Temp"]), qos=2, properties=publishProperties).wait_for_publish()
             client.publish("bool/estia/compressor_active", compressor_active, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/estia/compressor_on", 1.0 if compressor_active else 0.0, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/estia/coil_on", 1.0 if coil_active else 0.0, qos=2, properties=publishProperties).wait_for_publish()
 
             previous_in_temp = in_temp
             previous_out_temp = out_temp

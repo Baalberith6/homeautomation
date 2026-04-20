@@ -4,6 +4,13 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
+# Ensure pyatmo has the classes the tests need to patch, even if
+# the locally-installed version is too old/new.
+import pyatmo
+for _cls in ('NetatmoOAuth2', 'HomeStatus'):
+    if not hasattr(pyatmo, _cls):
+        setattr(pyatmo, _cls, MagicMock())
+
 import netatmo
 
 
@@ -76,6 +83,7 @@ class TestHeatingPowerNormalization(unittest.TestCase):
         home.rooms.get.return_value = {
             'therm_measured_temperature': 22.0,
             'heating_power_request': 100,
+            'therm_setpoint_temperature': 21.5,
         }
 
         with self.assertRaises(LoopBreak):
@@ -104,6 +112,7 @@ class TestHeatingPowerNormalization(unittest.TestCase):
         home.rooms.get.return_value = {
             'therm_measured_temperature': 18.0,
             'heating_power_request': 0,
+            'therm_setpoint_temperature': 20.0,
         }
 
         with self.assertRaises(LoopBreak):
@@ -131,6 +140,7 @@ class TestHeatingPowerNormalization(unittest.TestCase):
         home.rooms.get.return_value = {
             'therm_measured_temperature': 20.0,
             'heating_power_request': 50,
+            'therm_setpoint_temperature': 21.0,
         }
 
         with self.assertRaises(LoopBreak):
@@ -144,6 +154,66 @@ class TestHeatingPowerNormalization(unittest.TestCase):
                           "julinka", "kubo", "spalna"}
         actual_rooms = {t.split("/")[-1] for t in temp_topics}
         self.assertEqual(expected_rooms, actual_rooms)
+
+    @patch('netatmo.time.sleep', side_effect=LoopBreak)
+    @patch('netatmo.pyatmo.HomeStatus')
+    @patch('netatmo.pyatmo.NetatmoOAuth2')
+    @patch('netatmo.read_string_from_file', return_value="fake")
+    @patch('netatmo.connect_mqtt')
+    def test_target_temp_published_for_all_rooms(
+            self, mock_mqtt, mock_read, mock_oauth, mock_home,
+            mock_sleep):
+        mock_client = MagicMock()
+        mock_client.publish.return_value = MagicMock()
+        mock_mqtt.return_value = mock_client
+        home = MagicMock()
+        mock_home.return_value = home
+        home.rooms.get.return_value = {
+            'therm_measured_temperature': 20.0,
+            'heating_power_request': 50,
+            'therm_setpoint_temperature': 21.0,
+        }
+
+        with self.assertRaises(LoopBreak):
+            asyncio.run(netatmo.main())
+
+        target_calls = [
+            call for call in mock_client.publish.call_args_list
+            if "home/netatmo/temp_target/" in call[0][0]
+        ]
+        target_rooms = {c[0][0].split("/")[-1] for c in target_calls}
+        expected_rooms = {"hala", "kupelna", "chodba", "hostovska",
+                          "julinka", "kubo", "spalna"}
+        self.assertEqual(expected_rooms, target_rooms)
+        for call in target_calls:
+            self.assertEqual(21.0, call[0][1])
+
+    @patch('netatmo.time.sleep', side_effect=LoopBreak)
+    @patch('netatmo.pyatmo.HomeStatus')
+    @patch('netatmo.pyatmo.NetatmoOAuth2')
+    @patch('netatmo.read_string_from_file', return_value="fake")
+    @patch('netatmo.connect_mqtt')
+    def test_target_temp_skipped_when_missing(
+            self, mock_mqtt, mock_read, mock_oauth, mock_home,
+            mock_sleep):
+        mock_client = MagicMock()
+        mock_client.publish.return_value = MagicMock()
+        mock_mqtt.return_value = mock_client
+        home = MagicMock()
+        mock_home.return_value = home
+        home.rooms.get.return_value = {
+            'therm_measured_temperature': 20.0,
+            'heating_power_request': 50,
+        }
+
+        with self.assertRaises(LoopBreak):
+            asyncio.run(netatmo.main())
+
+        target_calls = [
+            call for call in mock_client.publish.call_args_list
+            if "home/netatmo/temp_target/" in call[0][0]
+        ]
+        self.assertEqual(0, len(target_calls))
 
 
 # NOTE: netatmo.py has a likely bug — tokenRefresher is initialized to 0

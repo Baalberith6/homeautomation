@@ -1,7 +1,11 @@
 import asyncio
 import json
+import sys
 import unittest
 from unittest.mock import patch, MagicMock, AsyncMock
+
+# Mock heavy external dependency that may not be installed locally
+sys.modules.setdefault('goodwe', MagicMock())
 
 
 class LoopBreak(Exception):
@@ -97,6 +101,20 @@ class TestDiagnosticsFiltering(unittest.TestCase):
         label = ", Discharge Driver On, Real error, Battery SOC low, "
         client = _run_one_iteration(label)
         self.assertEqual("Real error", _get_diag_publish(client))
+
+
+class TestLoadPPublish(unittest.TestCase):
+    def test_load_p_published_per_phase(self):
+        client = _run_one_iteration("")
+        published = {}
+        for call in client.publish.call_args_list:
+            topic = call[0][0]
+            if topic.startswith("home/FVE/load_p/"):
+                published[topic] = call[0][1]
+
+        self.assertEqual(200, published["home/FVE/load_p/1"])
+        self.assertEqual(150, published["home/FVE/load_p/2"])
+        self.assertEqual(150, published["home/FVE/load_p/3"])
 
 
 class TestWallboxDataExtraction(unittest.TestCase):

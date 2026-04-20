@@ -12,7 +12,10 @@ class LoopBreak(Exception):
 # Mock hardware/unavailable modules before any test imports them.
 # yr.py needs metno_locationforecast (may not be installed in all envs)
 # co2.py needs seeed_sgp30 and grove (Raspberry Pi hardware libraries)
-for _mod in ['metno_locationforecast', 'seeed_sgp30', 'grove', 'grove.i2c']:
+for _mod in ['metno_locationforecast', 'seeed_sgp30', 'grove', 'grove.i2c',
+             'goodwe', 'lxml', 'lxml.html',
+             'carconnectivity', 'carconnectivity.carconnectivity',
+             'carconnectivity.charging', 'carconnectivity.vehicle']:
     if _mod not in sys.modules:
         sys.modules[_mod] = MagicMock()
 

@@ -1,4 +1,11 @@
+import sys
 import unittest
+from unittest.mock import MagicMock
+
+# Mock heavy external dependencies that may not be installed locally
+for _mod in ('influxdb_client', 'influxdb_client.client',
+             'influxdb_client.client.write_api'):
+    sys.modules.setdefault(_mod, MagicMock())
 
 from estia_energy import calculate_cop, merge_arrays
 from estia_energy import replace_two_highest_with

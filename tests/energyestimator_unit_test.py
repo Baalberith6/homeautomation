@@ -1,5 +1,12 @@
 import datetime
+import sys
 import unittest
+from unittest.mock import MagicMock
+
+# Mock heavy external dependencies that may not be installed locally
+for _mod in ('influxdb_client', 'influxdb_client.client',
+             'influxdb_client.client.write_api'):
+    sys.modules.setdefault(_mod, MagicMock())
 
 from energyestimator import calculate
 

@@ -8,7 +8,8 @@ Dashboard UID: `q50mEhf7k` | Datasource: InfluxDB (`ceyru5v6xg3r4b`) | Refresh: 
 
 1. [Dashboard Architecture](#dashboard-architecture)
 2. [Color Scheme](#color-scheme)
-3. [Query Patterns](#query-patterns)
+3. [Typography Scale](#typography-scale)
+4. [Query Patterns](#query-patterns)
 4. [Panel 70 — Weather Widget](#panel-70--weather-widget)
 5. [Panel 67 — Indoor / Rooms](#panel-67--indoor--rooms)
 6. [Panel 68 — Power Flow v6](#panel-68--power-flow-v6)
@@ -39,39 +40,34 @@ Home automation dashboard built with Grafana + InfluxDB (Flux queries) + Busines
 
 Grafana config requires `disable_sanitize_html = true` in grafana.ini under `[panels]`.
 
-### Grid Layout
+### Grid Layout (v5)
+
+Two-column layout: column 1 = 15 units (62.5%), column 2 = 9 units (37.5%).
 
 ```
-Row 0-6:   [70 Weather+Clock (0,0,14,7)]  [67 Indoor/Rooms (14,0,10,7)]
-Row 7-12:  [68 Power Flow (0,7,10,12)]  [47 TC-TEMP (10,7,7,6)]  [61 Cars (17,7,7,6)]
-Row 13-18: [68 cont'd]  [2 Power (10,13,10,6)]  [69 OTE (20,13,4,6)]
-Row 19-27: [43 Forecast Line (0,19,6,9)]  [39 Forecast Bar (6,19,10,9)]  [50 FVE Phases (17,19,7,7)]
-           [24 Battery Life (17,26,2,6)]  [20 Solar Rad (19,26,2,6)]
-Row 28+:   [57 Heating Timeline (0,28,13,11)]  [36 Diagnostic (13,32,8,4)]
-           [49 COP (17,36,2,7)]  [10 Temp (0,39,4,6)]  [66 Rain Sparkline (0,45,4,2)]
+Row  0-11:  [70 Outdoor (0,0,15,12)]           [67 Indoor (15,0,9,12)]
+Row 12-18:  [80 Energy Topology (0,12,15,7)]    [83 Heat Tiles (15,12,9,5)]
+Row 17-21:  ┃                                   [84 TC Chart (15,17,9,5)]
+Row 19-31:  [81 Energy Chart (0,19,15,13)]      [85 Heat Stats (15,22,9,5)]
+Row 27-36:  ┃                                   [86 Vehicles (15,27,9,10)]
+Row 32-36:  [82 Energy Stats (0,32,15,5)]
 ```
 
 ### Panel Map
 
-| ID | Title | Type | Grid (x,y,w,h) | JSX File |
-|----|-------|------|-----------------|----------|
-| 70 | Weather Widget | `dynamictext` (canvas) | 0,0,14,7 | `panel-70-weather.jsx` |
-| 67 | Indoor / Rooms | `dynamictext` | 14,0,10,7 | `panel-67-indoor.jsx` |
-| 68 | Power Flow v6 | `dynamictext` (canvas) | 0,7,10,12 | `panel-68-power-flow.jsx` |
-| 47 | TC - TEMP | `timeseries` | 10,7,7,6 | `panel-47-tc-temp.jsx` |
-| 61 | Cars | `library-panel-ref` | 17,7,7,6 | `panel-61-cars.jsx` |
-| 2 | Power | `timeseries` | 10,13,10,6 | `panel-2-power.jsx` |
-| 69 | OTE Price | `dynamictext` | 20,13,4,6 | `panel-69-ote.jsx` |
-| 43 | Power vs Forecast | `timeseries` | 0,19,6,9 | `panel-43-forecast-line.jsx` |
-| 39 | Power vs Forecast | `barchart` | 6,19,10,9 | `panel-39-forecast-bar.jsx` |
-| 50 | FVE phases | `bargauge` | 17,19,7,7 | `panel-50-fve-phases.jsx` |
-| 24 | FVE Battery life | `stat` | 17,26,2,6 | `panel-24-battery-life.jsx` |
-| 20 | Solar Radiation | `stat` | 19,26,2,6 | `panel-20-solar-radiation.jsx` |
-| 57 | Heating Timeline | `state-timeline` | 0,28,13,11 | `panel-57-heating-timeline.jsx` |
-| 36 | Diagnostic message | `stat` | 13,32,8,4 | `panel-36-diagnostic.jsx` |
-| 49 | COP timewindow | `stat` | 17,36,2,7 | `panel-49-cop.jsx` |
-| 10 | Temp | `stat` | 0,39,4,6 | `panel-10-temp.jsx` |
-| 66 | Rain Sparkline | `timeseries` | 0,45,4,2 | `panel-66-rain-sparkline.jsx` |
+| ID | Title | Type | Grid (x,y,w,h) | Notes |
+|----|-------|------|-----------------|-------|
+| 70 | Outdoor | `dynamictext` (canvas) | 0,0,15,12 | Weather widget with sparkline (afterRender JS) |
+| 67 | Indoor | `dynamictext` | 15,0,9,12 | 5 rooms + CO2 stat-bar |
+| 80 | Energy Topology | `dynamictext` (SVG) | 0,12,15,7 | Horizontal flow: Solar/Grid → Inverter → Battery/House/Wallbox |
+| 81 | Energy Chart | `timeseries` | 0,19,15,13 | Solar/House/Battery/Bojlery time series |
+| 82 | Energy Stats | `dynamictext` | 0,32,15,5 | Diverging bars (Today/Month), Self-suff, Virt.batt |
+| 83 | Heat Tiles | `dynamictext` | 15,12,9,5 | Krb + COP + Heat Pump tiles |
+| 84 | TC Chart | `timeseries` | 15,17,9,5 | Target temp (green) + Water temp (yellow) |
+| 85 | Heat Stats | `dynamictext` | 15,22,9,5 | Target, Water, Δ, Trend stat-bar |
+| 86 | Vehicles | `dynamictext` | 15,27,9,10 | Enyaq + ID.3 with SoC bars and status pills |
+
+Old panels (70, 67, 68, 47, 61, 2, 69, 43, 39, 50, 24, 20, 57, 36, 49, 10, 66) are archived in `spec/grafana/old/`.
 
 ### Template Variables
 
@@ -98,7 +94,8 @@ These variables are read by `grafana_setter.py` and published to MQTT, where ser
 
 | Data | Color | Hex | Used In |
 |------|-------|-----|---------|
-| Temperature (outdoor) | Yellow | `#f2cc0c` / `#FADE2A` | Panel 70 |
+| Temperature (outdoor) — hero value | Yellow | `#FADE2A` | Panel 70 hero number |
+| Temperature (outdoor) — gradient anchor @ 10 °C | Yellow | `#F2CC0C` | C4 outdoor ladder stop only |
 | Temp Hi (forecast) | Orange | `#FF9830` | Panel 70 |
 | Temp Lo (forecast) | Blue | `#5794F2` | Panel 70 |
 | Humidity | Blue | `#5794F2` | Panels 67, 70 |
@@ -106,6 +103,7 @@ These variables are read by `grafana_setter.py` and published to MQTT, where ser
 | Wind sustained | White | `#d8d9da` | Panel 70 |
 | Wind 30m max | Orange | `#FF9830` | Panel 70 |
 | Wind forecast line | Blue | `#5794F2` | Panel 70 sparkline |
+| Solar radiation | BlYlRd gradient | 0→1000 W/m² | Panel 70 stats bar |
 
 ### Indoor Temperature Color Gradient
 
@@ -169,11 +167,400 @@ Applied to each room temperature value in panel 67:
 | Labels / units | `#8e8e8e` | All panels |
 | Default text | `#d8d9da` | Values |
 | Dividers | `#2c3035` | Vertical separators |
-| Krb ON | `#73bf69` | Fireplace active |
-| Krb OFF | `#f2495c` | Fireplace inactive |
 | CO2 < 800 | `#73bf69` | Good air quality |
 | CO2 800–1000 | `#FF9830` | Moderate |
 | CO2 > 1000 | `#f2495c` | Poor air quality |
+
+---
+
+## Redesign v5 — Consolidated Color Decisions
+
+This section locks the canonical color mapping for the v5 dashboard redesign (`redesign-v5.html`). It supersedes any ad-hoc color choices in the redesign HTML and resolves conflicts across the original panels. Decisions approved by @matej.pristak on 2026-04-19.
+
+### Semantic tokens
+
+| Token | Hex | Canonical role |
+|---|---|---|
+| `--red` | `#f2495c` | Error / over-threshold / discharge-alarm |
+| `--orange` | `#FF9830` | Warning / bojlery (hot water) / return temp / wallbox active |
+| `--orange-red` | `#FF6B3D` | Battery/Car SoC 10–20% tier |
+| `--yellow` | `#FADE2A` | Battery kW (charge/discharge) / inverter-temp 40–50 °C |
+| `--green` | `#73bf69` | House consumption / SoC green tier (30–90) / OK / OTE cheap |
+| `--green-dark` | `#37872D` | Heat-pump flow / target temp |
+| `--green-deep` | `#4a9e3f` | Solar production tier 2–4 kW |
+| `--green-light` | `#a6e09e` | Solar production tier 0–2 kW |
+| `--blue` | `#5794F2` | Solar identity / humidity / SoC top tier (>90) / forecast low |
+| `--blue-light` | `#73C0F5` | Solar production tier 4–6 kW / grid export mild |
+| `--blue-dark` | `#3d6fd4` | Solar production tier >8 kW |
+| `--purple` | `#B877D9` | Rain (only — not reused) |
+| `--dim` | `#8e8e8e` | Dim labels / idle values |
+| `--muted` | `#555` | Zero-line / heavily muted decoration |
+| `--text` | `#d8d9da` | Primary text |
+| `--bg` | `#181b1f` | Panel background |
+| `--card` / `--card-2` / `--card-3` | `#1e2228` / `#1a1d22` / `#15181c` | Card fills |
+
+### Solar / PV production — 6-tier ladder (C1)
+
+**Visualization:** 20-bar ladder at the card background (1 bar = 500 W, max 10 kW). Each bar is colored by its own tier; lit bars (≤ current output) at opacity .32, partial bar at .18, dim at .06.
+
+| kW range | Hex | Tier |
+|---|---|---|
+| 0–1 kW | `#a6e09e` | Tier 1 — light green |
+| 1–2 kW | `#73bf69` | Tier 2 — green |
+| 2–4 kW | `#4a9e3f` | Tier 3 — deep green |
+| 4–6 kW | `#73C0F5` | Tier 4 — light blue |
+| 6–8 kW | `#5794F2` | Tier 5 — blue |
+| > 8 kW | `#3d6fd4` | Tier 6 — dark blue |
+
+Solar **identity color** (card stroke, icon, kW value, flow arrow) = `#5794F2`. Only the ladder bars change with intensity.
+
+### Battery flow (kW, signed) (C2)
+
+Canonical yellow for battery-direction visualization: **`#FADE2A`**. Retires panel-2's `#F2CC0C`. Applies to: battery card stroke, battery kW value, flow arrow Inverter→Battery, inverter allocation-bar battery segment.
+
+### Battery SoC ramp (earlier decision, C12)
+
+20-piece strip inside battery card (each piece = 5%). Lit pieces use the current-tier color from the ramp below; dim pieces use the same hue at low opacity.
+
+| SoC | Hex |
+|---|---|
+| > 90% | `#5794F2` |
+| 30–90% | `#73bf69` |
+| 20–30% | `#FF9830` |
+| 10–20% | `#FF6B3D` |
+| < 10% | `#f2495c` |
+
+### Grid state coloring (C3)
+
+| State | Text / value color | When |
+|---|---|---|
+| Idle / balanced | `#a8a9aa` (neutral) | \|kW\| < 0.1 |
+| Import (buying) | `#f2495c` | kW > +0.1 |
+| Export (selling) | `#73bf69` | kW < −0.1 |
+
+Card stroke stays neutral `#a8a9aa` at .45 opacity to preserve card identity.
+
+### Grid — 20-bar diverging ladder
+
+10 bars left of a zero-marker (export) + 10 bars right (import). 1 bar = 1 kW, range ±10 kW. Bars color-coded by their own tier regardless of current kW; lit bars (between zero and current draw) at opacity .32, partial bar at .18, rest dim at .06. Zero marker is a 1 px `#d8d9da` line at opacity .35.
+
+**Export half (left, greens, mild → heavy):**
+
+| kW range | Hex |
+|---|---|
+| 0 – 2 kW | `#a6e09e` light green |
+| 2 – 4 kW | `#73bf69` green |
+| 4 – 6 kW | `#4a9e3f` deep green |
+| > 6 kW | `#37872D` dark green |
+
+**Import half (right, yellow → red, mild → heavy):**
+
+| kW range | Hex |
+|---|---|
+| 0 – 2 kW | `#FADE2A` yellow |
+| 2 – 4 kW | `#FF9830` orange |
+| 4 – 6 kW | `#FF6B3D` orange-red |
+| > 6 kW | `#f2495c` red |
+
+Approved 2026-04-19 — supersedes the older 3-band "mild/moderate/heavy" spec at lines 148-153.
+
+### Outdoor temperature — 5-tier ladder (C4)
+
+From panel 70, adopted verbatim:
+
+| Range | Hex |
+|---|---|
+| ≤ −10 °C | `#1565C0` |
+| 0 °C | `#4fc3f7` |
+| 10 °C | `#f2cc0c` |
+| 20 °C | `#FF9830` |
+| ≥ 30 °C | `#f2495c` |
+
+Interpolate linearly between anchors.
+
+### Indoor temperature — 10-step ramp (C5)
+
+From panel 67, adopted verbatim (see "Indoor Temperature Color Gradient" table above).
+
+### CO₂ thresholds (C6)
+
+Bug fix: 1025 ppm must render `#f2495c` red (was rendering orange in redesign). Thresholds remain per the UI Colors table above: `<800 #73bf69 · 800–1000 #FF9830 · >1000 #f2495c`.
+
+### Humidity (C7)
+
+Unified to **`#5794F2`** across all panels (indoor + weather). Retires panel-67's `#6e9fff`.
+
+### Solar radiation — 4-tier thresholds (C8)
+
+New tiering:
+
+| W/m² | Hex |
+|---|---|
+| < 200 | `#73bf69` (green) |
+| 200–399 | `#FADE2A` (yellow) |
+| 400–599 | `#FF9830` (orange) |
+| ≥ 600 | `#f2495c` (red) |
+
+### Heat-pump / TC temperatures (C9, revised for Heating panel)
+
+| Metric | Hex | Source | Notes |
+|---|---|---|---|
+| Target temp | `#73bf69` (green) | panel 47 | Shown in Heat-Pump tile as "out" value and in the stat-bar below the chart |
+| Water temp (bečka) | `#FADE2A` (yellow) | panel 47 | Shown in Heat-Pump tile as "in" value and in the stat-bar; also used for the lower line in the TC chart |
+
+Chart legend above the TC graph has been removed; the stat-bar carries the series identity. Orange was retired here to avoid a three-way collision with wallbox and consumption oranges, and to lock "water temp = yellow" as a panel-wide convention.
+
+### Car / EV SoC — 5-tier ramp + fixed-band bar (C10)
+
+Mirrors the Battery SoC ramp exactly:
+
+| SoC | Hex |
+|---|---|
+| > 90% | `#5794F2` |
+| 30–90% | `#73bf69` |
+| 20–30% | `#FF9830` |
+| 10–20% | `#FF6B3D` |
+| < 10% | `#f2495c` |
+
+Retires panel-61's 3-step ramp. Purple `#B877D9` no longer used for cars — reserved exclusively for rain.
+
+**Bar rendering (panel-61 technique, hard bands):** the SoC bar carries a full-width gradient with **hard stops** at 10 / 20 / 30 / 90 %, so each tier occupies a fixed width of the track regardless of current SoC. An opaque cover (width = 100 − SoC %) is drawn on top of the unfilled right portion. This prevents the earlier behaviour where the whole red-orange-green ramp stretched to fit the fill width; instead, each colour band has a constant on-screen length and the current SoC is communicated by where the cover starts.
+
+CSS stops:
+```
+linear-gradient(90deg,
+  #f2495c 0%,  #f2495c 10%,
+  #FF6B3D 10%, #FF6B3D 20%,
+  #FF9830 20%, #FF9830 30%,
+  #73bf69 30%, #73bf69 90%,
+  #5794F2 90%, #5794F2 100%);
+```
+
+**Charging pulse:** `@keyframes car-pulse { 0,100% {opacity:1} 50% {opacity:.4} }`, 2 s ease-in-out, ported from `panel-61-cars.jsx`. Applied to the gradient layer only so the target marker and label stay static.
+
+### Hot water (bojlery) (C11)
+
+Reserved color: **`#FF9830`** (same as panel 2). No other metric uses this hue in the boiler context.
+
+### House — 20-bar consumption ladder
+
+1 bar = 500 W, 20 bars = 10 kW max. Same rendering mechanics as Solar (lit .32 / partial .18 / dim .06). Tier colors verbatim from the "House consumption" table above:
+
+| kW range | Bars (0-indexed) | Hex |
+|---|---|---|
+| 0 – 2 kW | 0 – 3 | `#73bf69` green |
+| 2 – 4 kW | 4 – 7 | `#FADE2A` yellow |
+| 4 – 6 kW | 8 – 11 | `#FF9830` orange |
+| > 6 kW | 12 – 19 | `#f2495c` red |
+
+House identity (card stroke, icon, kW value) stays `#73bf69`.
+
+### Wallbox — 20-bar charging ladder
+
+1 bar = 500 W, 20 bars = 10 kW max (covers 3-phase 16 A ≈ 11 kW). Approved 2026-04-19 — original panels only defined active/inactive, so this is a new decision.
+
+| kW range | Bars (0-indexed) | Hex |
+|---|---|---|
+| 0 – 4 kW | 0 – 7 | `#FADE2A` yellow |
+| 4 – 8 kW | 8 – 15 | `#FF9830` orange |
+| > 8 kW | 16 – 19 | `#f2495c` red |
+
+**Disconnected state:** when no car is connected, render all 20 bars at `#4a4a4a` opacity .06 (overrides tier colors entirely). Card stroke `#6a6a6a` at opacity .5 when idle / disconnected; flips to `#FF9830` when charging draw > 0.
+
+### Inverter alerts & temperature (earlier decisions, revised)
+
+**Header** — only the `⚙ INVERTER` caption. The `hybrid 10 kW` capacity sub-label has been removed; alert-state semantics now live entirely in the phase-balance bar (where the offending phase is colour-coded red) and in the diagnostic-message stripe at the bottom of the card.
+
+**Inverter temperature thresholds** — bottom-left of card:
+| Range | Hex |
+|---|---|
+| ≤ 40 °C | `#73bf69` |
+| 41–50 °C | `#FADE2A` |
+| 51–60 °C | `#FF9830` |
+| > 60 °C | `#f2495c` |
+
+**Diagnostic message** — bottom-right of card, adjacent to temperature. Source: **Panel 36 FVE.diag**.
+- Normal operation (code < 80): `#73BF69` green, pulsing LED-style status dot, message text e.g. "Normal operation"
+- Fault (code ≥ 80): `#f2495c` red, same pulse, diagnostic string from inverter
+- Font: 15 px, weight 700
+- LED dot: `r=4.5`, 2.4 s opacity pulse animation (1 → 0.4 → 1)
+
+### Inverter — Phase Balance Bar (big bar, 3 segments)
+
+Replaces the earlier BATT/HOUSE allocation bar. Source: **Panel 50 FVE Phases** (L1/L2/L3 live load in kW).
+
+**Layout** — three equal segments inside a `324 × 48` container:
+
+| Seg | x | width | corners |
+|---|---|---|---|
+| L1 | 0 | 106 | `rx=6` (outer left) |
+| L2 | 109 | 106 | no rx (middle) |
+| L3 | 218 | 106 | `rx=6` (outer right) |
+
+3-px visual gaps at x=106–109 and x=215–218 create natural "chip" separation at the seams. Each segment is independently color-coded by its own kW load.
+
+**Per-phase tier (each of L1/L2/L3 evaluated independently):**
+| kW | Hex |
+|---|---|
+| ≤ 1 kW | `#73bf69` green |
+| 1 – 2 kW | `#FADE2A` yellow |
+| 2 – 3 kW | `#FF9830` orange |
+| > 3 kW | `#f2495c` red — over-threshold; phase visually flagged in the bar |
+
+**Per-segment text (dark `#0a0c0e` on bright tier fills, centered):**
+- Phase label at y=21, font-size 12, letter-spacing 1.4, weight 800 ("L1" / "L2" / "L3")
+- kW value at y=40, font-size 17 weight 800, with inline 10-px " kW" tspan
+
+**Rationale:** surfaces which phase is the source of an overcurrent condition at a glance, and preserves the operator's ability to spot heavy-phase asymmetry at a distance on the tablet. Over-threshold colouring lives in the bar itself — there is no separate capacity title string (the v5 header is just `⚙ INVERTER`).
+
+### Heating panel — top-row tiles (revised)
+
+Three tiles, left to right: **Krb · COP · Heat Pump**. Chart legend above the TC graph is removed; identity is carried by the stat-bar below the chart.
+
+**Krb tile** (fireplace):
+- Caption: `Krb` (no "Fireplace ·" prefix)
+- Status pill top-right — 4-state colour per the **Status pills → Krb (fireplace)** table below (gray/red/green/orange by ON/OFF × body-temp band). The simple 2-colour "green when `krb_w > 20`, red otherwise" rule is retired.
+- Current body temp: big green value (e.g. 21.1°)
+- Rate of change ("per hour" cool/heat): prominent 28 px blue, right of the temp, arrow glyph (`↓` cooling, `↑` heating) + value + `°/h` unit
+- `last fire` timestamp **removed** — not available in current data setup
+
+**COP tile:**
+- Caption: `COP · 24h`
+- Big value coloured from the continuous Red→Yellow→Green gradient of Panel 49 (`panel-49-cop.jsx`), mapped 0…5. 4.49 → `--green-deep` (#4a9e3f)
+- Inline 3-hour delta to the right of the big value: 20 px arrow + value (↑ 0.18) followed by muted `last 3h` caption. Arrow colour tracks direction (↑ green, ↓ red, flat dim)
+- Other subtext (target / "excellent") removed
+
+**Heat Pump tile:**
+- Caption: `Heat Pump`, Running/Idle pill top-right
+- Two paired temps, 32 px each, separated by slash:
+  - `out` (heated feed going out to the loop) — always **yellow** `#FADE2A`
+  - `in` (cooler water returning from the loop) — always **blue** `#5794F2`
+- These colours are **fixed** to the in/out semantic and are deliberately independent of the chart series below (which uses green = target temp, yellow = water temp)
+- All other subtext removed
+
+**TC water-temp chart:**
+- No legend, no title bar
+- Two lines: green `#73bf69` (target temp, upper band) and yellow `#FADE2A` (water temp, lower band)
+
+**Stat-bar below chart:**
+| Slot | Label | Color |
+|---|---|---|
+| 1 | `Target temp` | `#73bf69` green |
+| 2 | `Water temp` | `#FADE2A` yellow |
+| 3 | `Δ` | default text |
+| 4 | `Trend 1h` | `#5794F2` blue |
+
+Both trend indicators on this panel — the Krb rate-of-change (`↓ 0.3 °/h`) and the TC water `Trend 1h` — are hourly trends, sourced over the same 1-hour window, so their formatting and cadence stay in sync.
+
+### OTE price tiers (earlier, C-lock)
+
+Discrete 3-tier (retains panel-69 gradient endpoints):
+| Kč/kWh | Hex |
+|---|---|
+| < 0.5 | `#73bf69` (cheap) |
+| 0.5–2.0 | `#FF9830` (medium) |
+| ≥ 2.0 | `#f2495c` (expensive) |
+
+### Rain (locked)
+
+`#B877D9` — used only for rain volume / rain sparkline. Not reused for any other role.
+
+### Status pills — canonical per-entity states
+
+Consolidated state vocabulary and colours for the status pills used across the redesign. Approved by @matej.pristak 2026-04-19. All pills follow the standard `.pill` chip shape; the coloured dot to the left of the label matches the pill tint.
+
+**Cars (wallbox / EV)**
+| State | Colour | Hex | Trigger |
+|---|---|---|---|
+| `CHARGING` | Orange | `#FF9830` | `charging_wallbox_power > 0` |
+| `CONNECTED` | Green | `#73bf69` | Cable plugged, not drawing power |
+| `DISCONNECTED` | Gray | `#6a6a6a` | No cable / idle |
+
+**Heat pump**
+| State | Colour | Hex | Trigger |
+|---|---|---|---|
+| `ON` | Green | `#73bf69` | Compressor running |
+| `OFF` | Gray | `#6a6a6a` | Idle / standby |
+
+**Krb (fireplace)** — colour depends on both ON/OFF state and body temperature:
+| State | Condition | Colour | Hex |
+|---|---|---|---|
+| `OFF` | body temp < 30 °C | Gray | `#6a6a6a` |
+| `OFF` | body temp ≥ 30 °C | Red | `#f2495c` |
+| `ON` | body temp < 65 °C | Green | `#73bf69` |
+| `ON` | body temp ≥ 65 °C | Orange | `#FF9830` |
+
+Rationale: residual hot mass after shutdown (OFF + hot) is surfaced in red as a safety cue; running hot (ON + ≥ 65 °C) is surfaced in orange so it's visibly distinct from steady-state green.
+
+**Rooms (indoor heating zones)**
+| State | Colour | Hex | Trigger |
+|---|---|---|---|
+| `IDLE` | Gray | `#6a6a6a` | Zone at/above setpoint, no call for heat |
+| `HEATING` | Orange | `#FF9830` | Zone below setpoint, actively calling for heat |
+
+Supersedes the earlier `Krb ON/OFF` pair in the UI Colors table (which used a simple two-colour mapping without the temperature bands).
+
+---
+
+## Typography Scale
+
+Six-tier scale derived from the Outdoor panel. Use these tokens consistently across every panel; do not introduce one-off sizes.
+
+### Scale tokens
+
+| Token | px | Canonical source | Role |
+|-------|----|------------------|------|
+| **XL** | 110 | Outdoor hero temperature (`.wx-temp-group .num`) | Dashboard-wide hero — one per dashboard |
+| **L**  | 64  | Outdoor clock (`.wx-clock .time`) | Primary panel metric |
+| **M**  | 44  | Outdoor stats value (`.wx-stats .val`, e.g. humidity) | Key stat / secondary hero |
+| **S**  | 30  | Car SoC (`.car-soc`), generic stat-bar value (`.stat-bar .s .val`) | Tertiary stat / stat-bar values |
+| **XS** | 22  | Room humidity (`.room .hum`) | Inline values, big captions, deltas |
+| **micro** | 11 | Graph tick labels, stat-bar labels (`.stat-bar .s .lab`) | Axis ticks, uppercase captions |
+
+**Rules**
+- **XL is reserved for the Outdoor temperature hero.** No other panel should use XL.
+- Each panel has at most one L-sized number (the panel hero).
+- Numbers below micro (9–10px) are only acceptable for inline markers/badges on charts (e.g. the `TARGET 80%` chip above the car SoC bar).
+- Line-height 1.0 for XL/L; 1.15 for M; default for S and below.
+- Units (`°`, `%`, `kWh`, etc.) next to a big number render ~40–50 % of the parent size, in `--dim`.
+
+### Per-panel mapping
+
+**Outdoor (reference panel)**
+- Temperature hero `12.3°` → **XL** (110)
+- Clock `16:16` → **L** (64)
+- Humidity / Wind / Rain stat values → **M** (44)
+- Hi / Lo temperatures → **S** (30)
+- Date under clock → **S** (30)
+- Stat sub-values (`/2`, `6/7`) → **XS** (22)
+
+**Indoor / Rooms**
+- Room temperature `21.3°` → **M** (44)
+- Room name → **S** (30)
+- Room humidity → **S** (30)
+- Target chip → **micro** (~11)
+- CO₂ stat footer → **S** (30)
+
+**Energy — topology + chart + stat-bar**
+- Inverter / topology node values (solar kW, batt kW, house kW) → **M** (44)
+- Stat-bar Self-suff / Virt.batt values → **S** (30)
+- Diverging cons / prod numbers → **S** (30)
+- Diverging delta `+3.3 / −61` → **XS** (22)
+- Chart axis ticks, legends → **micro** (11)
+
+**Heating**
+- Heat-tile primary (`21.1°`, `44.9`, Pump pill) → **L** (64)
+- Stat-bar flow / return / Δ → **S** (30)
+- Sub-captions / trend labels → **micro** (~11–13)
+
+**Vehicles**
+- Car name (`Enyaq`, `ID.3`) → **M** (44)
+- SoC `67%` → **S** (30)
+- Range / max / status / timeleft → **S** (30) — bumped from micro for tablet-in-sunlight legibility
+- Charge timeleft is rendered **unconverted in minutes** (e.g. `~640 min`), matching the raw `charging_time_left_*` field unit — no hours/minutes split, no amperage, no "to full" prefix
+- Target label above marker → **micro** (~9–11)
+
+Any new panel must declare its mapping against this scale before being implemented.
 
 ---
 
@@ -213,8 +600,8 @@ All Business Text panels use the same Flux pattern:
 │  wind line (blue), now marker (yellow dot + dashed line),       │
 │  hi/lo labels (orange/blue)]                                    │
 ├─────────────────────────────────────────────────────────────────┤
-│ Humidity  │  Wind    km/h  30m   km/h  │  Rain                  │
-│ 72%       │  12 / 18      15 / 22      │  0.0 mm/h  2.1 fc  4.2 tot │
+│ Humidity  │  Wind    km/h  30m   km/h  │  Rain                        │ Solar │
+│ 72%       │  12 / 18      15 / 22      │  0.0 mm/h  2.1 fc  4.2 tot  │ 487 W/m² │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
@@ -238,11 +625,15 @@ hourly_data   — TempForecast.temperature (today, sorted by hour)
 rain_data     — RainForecast.precipitation (today)
 wind_data     — WindForecast.wind_speed (today)
 
+// Solar radiation (current)
+solarRad — weather.solarRadiation (last)
+
 // Output: single row
 array.from(rows: [{
   temp, hi, lo, humidity, rain_fc, rain_rate, rain_total,
   wind, gust, wind_30m, gust_30m,
-  hourly (string), rain_hourly (string), wind_hourly (string)
+  hourly (string), rain_hourly (string), wind_hourly (string),
+  solar_radiation
 }])
 ```
 
@@ -259,10 +650,10 @@ Data attributes are set on the root div (`data-temp`, `data-hourly`, etc.) and r
 
 - **Hero row:** Weather icon (dynamic SVG: sun+cloud for day, cloud for night/rain, rain drops for >1mm/h), big temperature, hi/lo, live clock (updated every 1s via setInterval)
 - **Sparkline:** SVG rendered in afterRender JS using Catmull-Rom spline interpolation for smooth curves
-  - Yellow temperature line (#f2cc0c) with gradient fill
+  - Temperature line with continuous color gradient (dark blue → light blue → yellow → orange → red) based on hourly temperature values, area fill uses same gradient at 15% opacity
   - Purple rain bars (#B877D9) with opacity proportional to amount
   - Blue wind line (#5794F2, opacity 0.6)
-  - Now marker: yellow dot + dashed vertical line
+  - Now marker: temperature-colored dot + dashed vertical line (color matches current interpolated temperature)
   - Hi/Lo peak labels (orange/blue)
   - Hour labels every 3h
 - **Stats bar:** 3-section flex layout with separators
@@ -274,9 +665,13 @@ Data attributes are set on the root div (`data-temp`, `data-hourly`, etc.) and r
 
 | Element | Condition | Color |
 |---------|-----------|-------|
-| Temperature text | ≤ 0°C | `#4fc3f7` (cold blue) |
+| Temperature text | ≤ -10°C | `#1565C0` (dark blue) |
+| Temperature text | 0°C | `#4fc3f7` (light blue) |
+| Temperature text | 10°C | `#f2cc0c` (yellow) |
+| Temperature text | 20°C | `#FF9830` (orange) |
 | Temperature text | ≥ 30°C | `#f2495c` (red) |
-| Temperature text | default | `#f2cc0c` (yellow) |
+| Temperature text | intermediate | continuous RGB interpolation between stops |
+| Temp sparkline | per-hour | horizontal SVG gradient using same 5-stop scale |
 | Weather icon | rain rate > 1 | Cloud with rain drops |
 | Weather icon | rain rate > 0 | Double cloud (overcast) |
 | Weather icon | day (7-19h) | Sun + cloud |
@@ -589,17 +984,24 @@ array.from(rows: [{
 **Type:** Business Text (Handlebars), Library Panel UID: `ffhemurxfumf4a`
 **Grid:** (17,7,7,6) — rendered per row (2 rows: Enyaq, ID.3)
 
-### Layout
+This section describes the v5 target state. It supersedes the original Grafana library panel (3-stop red-green-purple soft gradient, in-bar 2-line layout). The implementation in `redesign-v5.html` is authoritative.
+
+### Layout (v5)
+
+Each car renders as a two-row card:
 
 ```
-┌──────────────────────────────────────────────┐
-│ Enyaq  [████████████████░░░░░░░░] 78%        │
-│        Range 285 km   Max 365 km             │
-├──────────────────────────────────────────────┤
-│ ID.3   [█████████░░░░░░░░░░░░░░░] 45%        │
-│        Range 142 km   Max 315 km  Left 47 min│
-└──────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│ Enyaq   [████████████████░░░░░░░░] ▌TARGET 80%       67%    │
+│         277 km   max 413 km                  [DISCONNECTED] │
+├─────────────────────────────────────────────────────────────┤
+│ ID.3    [████▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒] ▌TARGET 80%       30%    │
+│         152 km   max 507 km   ~640 min         [CHARGING]   │
+└─────────────────────────────────────────────────────────────┘
 ```
+
+Row 1: car name · SoC bar (with TARGET marker + label) · SoC %.
+Row 2: range · max range · optional charge time-left · status pill.
 
 ### Flux Query
 
@@ -618,15 +1020,26 @@ import "array"
 // Output: 2 rows with car, soc, range, max_range, charge_w, time_left
 ```
 
-### SoC Bar Design
+### SoC Bar Design (v5, fixed-band technique)
 
-The gradient is on `.car-bar-track`: `linear-gradient(90deg, #f2495c 0%, #73bf69 20%, #73bf69 90%, #B877D9 100%)`.
+The bar track is full width (100 %) and carries a hard-stop gradient — each tier has a fixed on-screen width regardless of SoC. An opaque cover sits on the right (width = 100 − SoC %) and hides the unfilled portion. Hard stops at 10 / 20 / 30 / 90 %:
 
-A transparent spacer (width = SoC%) reveals the gradient, then:
-- **Not charging:** dark cover (`#1e2228`) hides the rest
-- **Charging (time_left > 0):** pulsing green animation (`#2a3a2a` ↔ `#3d5c3d`, 1.5s cycle)
+```
+linear-gradient(90deg,
+  #f2495c 0%,  #f2495c 10%,
+  #FF6B3D 10%, #FF6B3D 20%,
+  #FF9830 20%, #FF9830 30%,
+  #73bf69 30%, #73bf69 90%,
+  #5794F2 90%, #5794F2 100%);
+```
 
-### SoC Color Logic
+A yellow TARGET marker (`#FADE2A`, 3 × 26 px, overflows the bar top/bottom) sits at the target-SoC position, with a 9 px `TARGET 80%` chip above.
+
+**Charging animation** (ported from `panel-61-cars.jsx`): `@keyframes car-pulse { 0%,100% { opacity:1; } 50% { opacity:.4; } }`, 2 s ease-in-out, applied to the gradient layer only so the cover, target marker, and target label stay static.
+
+### SoC text colour (C10)
+
+The SoC % number follows the same 5-tier ramp as the bar:
 
 | SoC Range | Color | Hex |
 |-----------|-------|-----|
@@ -636,11 +1049,25 @@ A transparent spacer (width = SoC%) reveals the gradient, then:
 | 10–20% | Orange-red | `#FF6B3D` |
 | < 10% | Red | `#F2495C` |
 
-### Stats Row
+### Status pill (row 2, right-aligned)
 
-- **Range** and **Max** always shown
-- **Left** (minutes, orange `#FF9830`) shown only when `time_left > 0`
+Per the **Status pills → Cars (wallbox / EV)** table: `CHARGING` (orange), `CONNECTED` (green), `DISCONNECTED` (gray). Pill uses the standard `.pill` chip with a coloured dot.
+
+### Stats row (row 2)
+
+- **Range** always shown (plain text colour)
+- **Max range** always shown, dim (`#8e8e8e`)
+- **Time left** shown only when `time_left > 0`, orange (`#FF9830`), rendered **unconverted in minutes** (e.g. `~640 min`) — no hours/minutes split, no amperage, no "to full" prefix
 - `charge_w` is in query output but not displayed (used by power flow panel)
+
+### Typography (v5)
+
+| Element | Token | px |
+|---|---|---|
+| Car name (`Enyaq`, `ID.3`) | M | 44 |
+| SoC `67%` | S | 30 |
+| Range / max / status / timeleft | S | 30 |
+| `TARGET 80%` label | micro | ~9 |
 
 ---
 
@@ -1078,6 +1505,11 @@ from(bucket: "default")
 | `consumption_24h` | 24-hour energy consumption | kWh |
 | `target_temp` | Target water temperature | °C |
 | `outside_temp` | Heat pump outside temperature sensor | °C |
+| `in_temp` | Return water temperature (cooler, from loop) | °C |
+| `out_temp` | Supply water temperature (heated, to loop) | °C |
+| `compressor_on` | Compressor running — water or heating circuit (float 0/1) | 0/1 |
+| `coil_on` | Backup coil/heater running — water or heating circuit (float 0/1) | 0/1 |
+| `compressor_active` | Compressor running (boolean via `bool/` prefix, legacy) | bool |
 
 ### Fireplace sensor (measurement: `becka`)
 
@@ -1112,7 +1544,10 @@ from(bucket: "default")
 | `battery_charged` | `sum="total"` | Lifetime battery charged energy | kWh |
 | `soh` | — | Battery state of health | % |
 | `diag` | — | Diagnostic message string | text |
-| `curr` | (tag: 1/2/3) | Phase current | A |
+| `curr` | `phase` (1/2/3) | Phase current | A |
+| `load_p` | `phase` (1/2/3) | Phase load power | W |
+| `inverter_temp_air` | — | Inverter air temperature | °C |
+| `inverter_temp_rad` | — | Inverter radiator temperature | °C |
 | `bojlery` | `pretoky="pretoky"` | Hot water heater overflow power | W |
 
 ### Solar Forecast (measurement: `SolarForecast`)

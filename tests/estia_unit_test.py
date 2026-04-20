@@ -206,6 +206,75 @@ class TestACStateDataParsing(unittest.TestCase):
         self.assertFalse(published["bool/estia/compressor_active"])
 
 
+class TestCompressorAndCoilStatus(unittest.TestCase):
+    """Verify compressor_on and coil_on float publishes."""
+
+    def _build_state(self, **overrides):
+        fields = {
+            "water_mode": "0c", "water_temp": "80",
+            "tuv_comp": "00", "tuv_coil": "00",
+            "heating": "03", "f1112": "00",
+            "manual_temp": "60", "auto_temp": "58",
+            "heat_comp": "00", "heat_coil": "00",
+            "f2122": "00", "f2324": "00", "f2526": "00",
+            "temp_min": "50", "f2930": "50",
+            "f3132": "00", "f3334": "00",
+        }
+        fields.update(overrides)
+        return "".join(fields.values())
+
+    def _run(self, **state_overrides):
+        mock_client = MagicMock()
+        mock_client.publish.return_value = MagicMock()
+        state = self._build_state(**state_overrides)
+        with patch('estia.time.sleep', side_effect=LoopBreak), \
+             patch('estia.connect_mqtt', return_value=mock_client), \
+             patch('estia.ToshibaAcHttpApi') as mock_api_cls:
+            mock_api = AsyncMock()
+            mock_api_cls.return_value = mock_api
+            mock_api.get_device_detail = AsyncMock(return_value={
+                "ACStateData": state,
+                "TWI_Temp": "80", "TWO_Temp": "70", "TO_Temp": "60",
+            })
+            import estia
+            with self.assertRaises(LoopBreak):
+                asyncio.run(estia.main())
+        return {
+            call[0][0]: call[0][1]
+            for call in mock_client.publish.call_args_list
+        }
+
+    def test_all_off(self):
+        pub = self._run()
+        self.assertEqual(0.0, pub["home/estia/compressor_on"])
+        self.assertEqual(0.0, pub["home/estia/coil_on"])
+
+    def test_water_compressor_on(self):
+        pub = self._run(tuv_comp="01")
+        self.assertEqual(1.0, pub["home/estia/compressor_on"])
+        self.assertEqual(0.0, pub["home/estia/coil_on"])
+
+    def test_heating_compressor_on(self):
+        pub = self._run(heat_comp="01")
+        self.assertEqual(1.0, pub["home/estia/compressor_on"])
+        self.assertEqual(0.0, pub["home/estia/coil_on"])
+
+    def test_water_coil_on(self):
+        pub = self._run(tuv_coil="01")
+        self.assertEqual(0.0, pub["home/estia/compressor_on"])
+        self.assertEqual(1.0, pub["home/estia/coil_on"])
+
+    def test_heating_coil_on(self):
+        pub = self._run(heat_coil="01")
+        self.assertEqual(0.0, pub["home/estia/compressor_on"])
+        self.assertEqual(1.0, pub["home/estia/coil_on"])
+
+    def test_compressor_and_coil_both_on(self):
+        pub = self._run(tuv_comp="01", heat_coil="01")
+        self.assertEqual(1.0, pub["home/estia/compressor_on"])
+        self.assertEqual(1.0, pub["home/estia/coil_on"])
+
+
 class TestTUVSuppression(unittest.TestCase):
     """When TUV (hot water) is active, in/out temps use previous values."""
 

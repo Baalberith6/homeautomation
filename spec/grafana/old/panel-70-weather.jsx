@@ -13,6 +13,7 @@ const MOCK = {
   gust: 18,
   wind_30m: 15,
   gust_30m: 22,
+  solar_radiation: 487,
 };
 
 // Hourly temperature forecast (0-23h): rises from 14 to 23 at 14h, falls to 16 at 23h
@@ -87,9 +88,42 @@ function pad02(n) {
 }
 
 function tempColor(temp) {
-  if (temp <= 0) return "#4fc3f7";
-  if (temp >= 30) return "#f2495c";
+  const stops = [
+    [-10, 21, 101, 192],   // dark blue #1565C0
+    [0, 79, 195, 247],     // light blue #4fc3f7
+    [10, 242, 204, 12],    // yellow #f2cc0c
+    [20, 255, 152, 48],    // orange #FF9830
+    [30, 242, 73, 92],     // red #f2495c
+  ];
+  if (temp <= stops[0][0])
+    return `rgb(${stops[0][1]},${stops[0][2]},${stops[0][3]})`;
+  if (temp >= stops[stops.length - 1][0])
+    return `rgb(${stops[stops.length - 1][1]},${stops[stops.length - 1][2]},${stops[stops.length - 1][3]})`;
+  for (let i = 0; i < stops.length - 1; i++) {
+    if (temp >= stops[i][0] && temp <= stops[i + 1][0]) {
+      const f = (temp - stops[i][0]) / (stops[i + 1][0] - stops[i][0]);
+      const r = Math.round(stops[i][1] + (stops[i + 1][1] - stops[i][1]) * f);
+      const g = Math.round(stops[i][2] + (stops[i + 1][2] - stops[i][2]) * f);
+      const b = Math.round(stops[i][3] + (stops[i + 1][3] - stops[i][3]) * f);
+      return `rgb(${r},${g},${b})`;
+    }
+  }
   return "#f2cc0c";
+}
+
+// Solar radiation BlYlRd color (0–1000 W/m²)
+function solarColor(val) {
+  const p = Math.min(val / 1000, 1);
+  if (p < 0.33) {
+    const t = p / 0.33;
+    return `rgb(${Math.round(50 + t * 205)},${Math.round(100 + t * 155)},${Math.round(200 - t * 180)})`;
+  } else if (p < 0.66) {
+    const t = (p - 0.33) / 0.33;
+    return `rgb(255,${Math.round(255 - t * 180)},${Math.round(20 + t * 10)})`;
+  } else {
+    const t = (p - 0.66) / 0.34;
+    return `rgb(${Math.round(255 - t * 40)},${Math.round(75 - t * 50)},30)`;
+  }
 }
 
 // Weather icon selection based on rain rate (matches panel 70 afterRender logic)
@@ -220,10 +254,28 @@ const rainBarMaxH = (H - PAD_Y - PAD_BOT) * 0.6;
 const hourLabels = HOURLY_TEMP.filter((p) => p.h % 3 === 0);
 
 // ---------- Sparkline SVG component ----------
+// Gradient stops for temperature color
+const x0 = xS(HOURLY_TEMP[0].h);
+const xEnd = xS(HOURLY_TEMP[HOURLY_TEMP.length - 1].h);
+const gradientStops = HOURLY_TEMP.map((p) => {
+  const pct = ((xS(p.h) - x0) / (xEnd - x0)) * 100;
+  return { offset: `${pct.toFixed(1)}%`, color: tempColor(p.v) };
+});
+
 function SparklineSVG({ nowH }) {
   const nowX = xS(nowH);
   const nowTempY = interpolateY(nowH, HOURLY_TEMP, yS);
   const nowWindY = interpolateY(nowH, HOURLY_WIND, yW);
+  // Interpolate temperature at current time for dot color
+  let nowTemp = HOURLY_TEMP[0].v;
+  for (let i = 0; i < HOURLY_TEMP.length - 1; i++) {
+    if (nowH >= HOURLY_TEMP[i].h && nowH <= HOURLY_TEMP[i + 1].h) {
+      const f = (nowH - HOURLY_TEMP[i].h) / (HOURLY_TEMP[i + 1].h - HOURLY_TEMP[i].h);
+      nowTemp = HOURLY_TEMP[i].v + (HOURLY_TEMP[i + 1].v - HOURLY_TEMP[i].v) * f;
+      break;
+    }
+  }
+  const nowDotColor = tempColor(nowTemp);
 
   return (
     <svg
@@ -233,9 +285,17 @@ function SparklineSVG({ nowH }) {
       style={{ display: "block", width: "100%", height: "100%" }}
     >
       <defs>
-        <linearGradient id="wwGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#f2cc0c" stopOpacity="0.2" />
-          <stop offset="100%" stopColor="#f2cc0c" stopOpacity="0" />
+        <linearGradient
+          id="tempGrad"
+          x1={x0}
+          y1="0"
+          x2={xEnd}
+          y2="0"
+          gradientUnits="userSpaceOnUse"
+        >
+          {gradientStops.map((s, i) => (
+            <stop key={i} offset={s.offset} stopColor={s.color} />
+          ))}
         </linearGradient>
       </defs>
 
@@ -272,13 +332,13 @@ function SparklineSVG({ nowH }) {
       />
 
       {/* Temp area gradient fill */}
-      <path d={tempAreaD} fill="url(#wwGrad)" />
+      <path d={tempAreaD} fill="url(#tempGrad)" fillOpacity="0.15" />
 
-      {/* Temp line (yellow) */}
+      {/* Temp line (temperature gradient) */}
       <path
         d={tempLineD}
         fill="none"
-        stroke="#f2cc0c"
+        stroke="url(#tempGrad)"
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -290,15 +350,15 @@ function SparklineSVG({ nowH }) {
         y1={PAD_Y}
         x2={nowX}
         y2={H - PAD_BOT}
-        stroke="#f2cc0c"
+        stroke={nowDotColor}
         strokeWidth="0.5"
         strokeDasharray="2,2"
         opacity="0.4"
       />
 
-      {/* Temp now dot (yellow) */}
-      <circle cx={nowX} cy={nowTempY} r="8" fill="#f2cc0c" opacity="0.15" />
-      <circle cx={nowX} cy={nowTempY} r="4.5" fill="#f2cc0c" />
+      {/* Temp now dot (temperature-colored) */}
+      <circle cx={nowX} cy={nowTempY} r="8" fill={nowDotColor} opacity="0.15" />
+      <circle cx={nowX} cy={nowTempY} r="4.5" fill={nowDotColor} />
 
       {/* Wind now dot (blue) */}
       <circle cx={nowX} cy={nowWindY} r="6" fill="#5794F2" opacity="0.12" />
@@ -541,6 +601,28 @@ function WeatherPanel() {
               </span>
               <span className="ww-rain-unit" style={styles.rainUnit}>
                 tot
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="ww-sep" style={styles.sep} />
+
+        {/* Solar radiation (rain-style compact) */}
+        <div className="ww-stat" style={{ ...styles.stat, flex: 0.5 }}>
+          <span className="ww-label" style={styles.label}>
+            Solar
+          </span>
+          <div className="ww-rain-row" style={styles.rainRow}>
+            <div className="ww-rain-item" style={styles.rainItem}>
+              <span
+                className="ww-rain-val"
+                style={{ ...styles.rainVal, color: solarColor(MOCK.solar_radiation) }}
+              >
+                {MOCK.solar_radiation}
+              </span>
+              <span className="ww-rain-unit" style={styles.rainUnit}>
+                W/m²
               </span>
             </div>
           </div>
