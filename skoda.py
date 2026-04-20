@@ -68,11 +68,16 @@ def get_address(lat, lon):
         a = data.get("address", {})
         road = a.get("road", "")
         house = a.get("house_number", "")
+        suburb = (a.get("suburb") or a.get("quarter")
+                  or a.get("city_district")
+                  or a.get("neighbourhood", ""))
         city = (a.get("city") or a.get("town")
-                or a.get("village") or a.get("suburb", ""))
+                or a.get("village", ""))
         parts = []
         if road:
             parts.append(f"{road} {house}".strip() if house else road)
+        if suburb and suburb != city:
+            parts.append(suburb)
         if city:
             parts.append(city)
         result = ", ".join(parts) if parts else ""
