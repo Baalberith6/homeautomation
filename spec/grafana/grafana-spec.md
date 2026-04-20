@@ -41,15 +41,15 @@ Home automation dashboard built with Grafana + InfluxDB (Flux queries) + Busines
 
 Grafana config requires `disable_sanitize_html = true` in grafana.ini under `[panels]`.
 
-### Grid Layout (v5)
+### Grid Layout (live 2026-04-20)
 
 Two-column layout: column 1 = 14 units (58%), column 2 = 10 units (42%).
 
 ```
-Row  0-6:   [70 Outdoor (0,0,14,7)]               [67 Indoor (14,0,10,7)]
-Row  7-15:  [80 Energy Topology (0,7,14,9)]        [83 Heat Tiles (14,7,10,11)]
-Row 16-26:  [81 Energy Chart+Stats (0,16,14,11)]   ┃
-Row 18-25:  ┃                                      [86 Vehicles (14,18,10,8)]
+Row  0-6:   [70 Outdoor (0,0,14,7)]               [67 Indoor (14,0,10,8)]
+Row  7-14:  [80 Energy Topology (0,7,14,8)]        [83 Heat Tiles (14,8,10,10)]
+Row 15-25:  [81 Energy Chart+Stats (0,15,14,11)]   ┃
+Row 18-27:  ┃                                      [86 Vehicles (14,18,10,10)]
 ```
 
 ### Panel Map
@@ -57,11 +57,11 @@ Row 18-25:  ┃                                      [86 Vehicles (14,18,10,8)]
 | ID | Title | Type | Grid (x,y,w,h) | Notes |
 |----|-------|------|-----------------|-------|
 | 70 | Outdoor | `dynamictext` (canvas) | 0,0,14,7 | Weather widget with sparkline (afterRender JS) |
-| 67 | Indoor | `dynamictext` | 14,0,10,7 | 5 rooms + CO2 stat-bar |
-| 80 | Energy Topology | `dynamictext` (SVG) | 0,7,14,9 | Horizontal flow: Solar/Grid → Inverter → Battery/House/Wallbox |
-| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,16,14,11 | Chart (Solar/House/Battery/Bojlery + OTE + forecast) + Energy Stats (Today/Month bars, Self-suff, Virt.batt) |
-| 83 | Heat Tiles | `dynamictext` | 14,7,10,11 | Krb + COP + Heat Pump tiles + TC chart + stat-bar |
-| 86 | Vehicles | `dynamictext` | 14,18,10,8 | Enyaq + ID.3 with SoC bars and per-car plug status pills (Connected/Charging/Disconnected) |
+| 67 | Indoor | `dynamictext` | 14,0,10,8 | 5 rooms + CO2 stat-bar |
+| 80 | Energy Topology | `dynamictext` (SVG) | 0,7,14,8 | Horizontal flow: Solar/Grid → Inverter → Battery/House/Wallbox |
+| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,15,14,11 | Chart (Solar/House/Battery/Bojlery + OTE + forecast) + Energy Stats (Today/Month bars, Self-suff, Virt.batt) |
+| 83 | Heat Tiles | `dynamictext` | 14,8,10,10 | Krb + COP + Heat Pump tiles + TC chart + stat-bar |
+| 86 | Vehicles | `dynamictext` | 14,18,10,10 | Enyaq + ID.3 with SoC bars and per-car plug status pills (Connected/Charging/Disconnected) + GPS address |
 
 Old panels (70, 67, 68, 47, 61, 2, 69, 43, 39, 50, 24, 20, 57, 36, 49, 10, 66) are archived in `spec/grafana/old/`.
 
@@ -171,7 +171,7 @@ Applied to each room temperature value in panel 67:
 
 ## Redesign v5 — Consolidated Color Decisions
 
-This section locks the canonical color mapping for the v5 dashboard redesign (`redesign-v5.html`). It supersedes any ad-hoc color choices in the redesign HTML and resolves conflicts across the original panels. Decisions approved by @matej.pristak on 2026-04-19.
+This section locks the canonical color mapping for the dashboard (visual reference: `design.html`). It supersedes any ad-hoc color choices in the design HTML and resolves conflicts across the original panels. Decisions approved by @matej.pristak on 2026-04-19.
 
 ### Semantic tokens
 
@@ -381,19 +381,19 @@ House identity (card stroke, icon, kW value) stays `#73bf69`.
 - Font: 15 px, weight 700
 - LED dot: `r=4.5`, 2.4 s opacity pulse animation (1 → 0.4 → 1)
 
-### Inverter — Phase Balance Bar (big bar, 3 segments)
+### Inverter — Phase Balance Bar (slim footer strip, 3 segments)
 
-Replaces the earlier BATT/HOUSE allocation bar. Source: **Panel 50 FVE Phases** (L1/L2/L3 live load in kW).
+Replaces the earlier BATT/HOUSE allocation bar. Source: **Panel 50 FVE Phases** (L1/L2/L3 live load in kW). De-emphasized as a footer strip so endpoints (Solar/Grid/Battery/House/Wallbox) carry the visual focus.
 
-**Layout** — three equal segments inside a `324 × 48` container:
+**Layout** — three equal segments inside a `324 × 30` container at y=182 (slim footer strip):
 
 | Seg | x | width | corners |
 |---|---|---|---|
-| L1 | 0 | 106 | `rx=6` (outer left) |
+| L1 | 0 | 106 | `rx=5` (outer left) |
 | L2 | 109 | 106 | no rx (middle) |
-| L3 | 218 | 106 | `rx=6` (outer right) |
+| L3 | 218 | 106 | `rx=5` (outer right) |
 
-3-px visual gaps at x=106–109 and x=215–218 create natural "chip" separation at the seams. Each segment is independently color-coded by its own kW load.
+3-px visual gaps at x=106–109 and x=215–218 create natural "chip" separation at the seams. Each segment is independently color-coded by its own kW load at **opacity .35** (desaturated).
 
 **Per-phase tier (each of L1/L2/L3 evaluated independently):**
 | kW | Hex |
@@ -403,11 +403,14 @@ Replaces the earlier BATT/HOUSE allocation bar. Source: **Panel 50 FVE Phases** 
 | 2 – 3 kW | `#FF9830` orange |
 | > 3 kW | `#f2495c` red — over-threshold; phase visually flagged in the bar |
 
-**Per-segment text (dark `#0a0c0e` on bright tier fills, centered):**
-- Phase label at y=21, font-size 12, letter-spacing 1.4, weight 800 ("L1" / "L2" / "L3")
-- kW value at y=40, font-size 17 weight 800, with inline 10-px " kW" tspan
+**Per-segment text (light `#e8e8e8` on desaturated fills, single line at y=20):**
+- Combined "L1 3.12 kW" on one line: label 10px weight 700, value 12px weight 800, unit 9px `#a8a9aa` weight 600
 
-**Rationale:** surfaces which phase is the source of an overcurrent condition at a glance, and preserves the operator's ability to spot heavy-phase asymmetry at a distance on the tablet. Over-threshold colouring lives in the bar itself — there is no separate capacity title string (the v5 header is just `⚙ INVERTER`).
+**Inverter hero content** — temp + diagnostic moved up to y=118 (center of inverter card):
+- Temperature: 15px label + 30px value, color-coded by temp tier
+- Diagnostic: pulsing LED dot (r=5.5, 2.4s opacity pulse) + 17px status text
+
+**Rationale:** endpoints (Solar/Grid/Battery/House/Wallbox) are the primary information; phase balance is secondary monitoring. Stronger card borders (stroke-opacity .7–.8, width 1.6), bigger endpoint values (40px for Battery/House, 30px for Wallbox), and brighter lit bars (opacity .85) reinforce the endpoint-first hierarchy.
 
 ### Heating panel — top-row tiles (revised)
 
@@ -785,7 +788,7 @@ Layout: label inline (same row) with value. Value at 40px, label at 11px upperca
 ## Panel 80 — Energy Topology
 
 **Type:** Business Text (SVG via afterRender JS)
-**Grid:** (0,7,14,9) — left column, below weather
+**Grid:** (0,7,14,8) — left column, below weather
 
 ### Layout
 
@@ -794,18 +797,18 @@ Horizontal flow diagram: sources on left, inverter hub in center, consumers on r
 ```
 ┌──────────┐          ┌──────────────────────┐          ┌──────────────┐
 │  SOLAR   │  ──▶──▶  │      INVERTER        │  ──▶──▶  │   BATTERY    │
-│  8.81 kW │          │  ┌────┬────┬────┐    │          │ -7.1 kW  39% │
-└──────────┘          │  │ L1 │ L2 │ L3 │    │          └──────────────┘
-┌──────────┐          │  └────┴────┴────┘    │          ┌──────────────┐
-│   GRID   │  ──▶──▶  │                      │  ──▶──▶  │    HOUSE     │
-│  0.06 kW │          │  temp 48°C ● Normal   │          │   1.57 kW    │
+│  8.81 kW │          │                      │          │ -7.1 kW  39% │
+└──────────┘          │  temp 48°C ● Normal   │          └──────────────┘
+┌──────────┐          │  ┌────┬────┬────┐    │          ┌──────────────┐
+│   GRID   │  ──▶──▶  │  │ L1 │ L2 │ L3 │    │  ──▶──▶  │    HOUSE     │
+│  0.06 kW │          │  └────┴────┴────┘    │          │   1.57 kW    │
 └──────────┘          └──────────────────────┘          ┌──────────────┐
                                                 ──▶──▶  │   WALLBOX    │
                                                         │    0 kW      │
                                                         └──────────────┘
 ```
 
-### SVG Structure (viewBox 870×248)
+### SVG Structure (viewBox 0 2 870 237)
 
 **Cards** — rounded `<rect>` with dark fill `#1b1e22` and colored borders:
 - Solar (x=10, y=8, 200×102) — border `#5794F2`
@@ -821,18 +824,18 @@ Horizontal flow diagram: sources on left, inverter hub in center, consumers on r
 - Battery: uniform color from 5-tier SoC scale (lit count = `soc / 5`)
 - House: green→yellow→orange→red gradient (lit count = `cons * 2`)
 - Wallbox: yellow→orange→red gradient (lit count = `charge * 2`)
-- Lit opacity: `0.6`, unlit: `0.07`
+- Lit opacity: `0.85`, unlit: `0.07`
 
 **Text positioning** — all labels and values use `text-anchor="middle"` centered on card:
 - Solar/Grid: centered at x=110 (card center of x=10..210)
-- Battery label: centered at x=750; kW left-aligned x=654, SoC right-aligned x=848
+- Battery label: centered at x=750; kW left-aligned x=654, SoC right-aligned x=850
 - House/Wallbox: centered at x=750 (card center of x=640..860)
 
 **Text contrast** — value text uses `paint-order="stroke fill"` with dark outline to stay readable against lit bars:
 ```
-paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3" stroke-linejoin="round"
+paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3.5" stroke-linejoin="round"
 ```
-Applied to: Solar value (48px), Grid value (48px), Battery kW (33px), Battery SoC (33px), House value (33px), Wallbox value (20px, stroke-width 2.5).
+Applied to: Solar value (48px), Grid value (48px), Battery kW (40px), Battery SoC (40px), House value (40px), Wallbox value (30px).
 
 **Animated arrows** — dashed `<path>` lines between cards with `<marker>` arrowheads:
 - Solar→Inverter: blue `#5794F2`, `flow-solar` animation (0.75s march)
@@ -840,11 +843,11 @@ Applied to: Solar value (48px), Grid value (48px), Battery kW (33px), Battery So
 - Inverter→Battery: yellow `#FADE2A`, `flow-batt` animation (0.70s march), direction flips when charging
 - Inverter→House: green `#73bf69`, `flow-house` animation (1.10s march)
 - Inverter→Wallbox: orange `#FF9830` when active, muted `#6a6a6a` when idle
-- Stroke width scales with power: `min(2 + kW * 1.5, 12)`
+- Stroke width scales with power: `min(2 + kW * 1, 7)` — capped at 7px to avoid oversized arrows
 
 **Inverter hub** — contains:
-- Phase balance bar: 3 adjacent `<rect>` (L1/L2/L3), colored by kW tier (green <1, yellow <2, orange <3, red ≥3)
-- Temperature + diagnostic status line at bottom
+- Phase balance bar: slim footer strip (30px tall) at y=182, 3 adjacent `<rect>` (L1/L2/L3), colored by kW tier with opacity .35, light text (#e8e8e8), each showing "L1 3.12 kW" on a single line
+- Temperature (30px, hero position at y=118) + diagnostic status with pulsing LED dot
 
 ### Phase Color Tiers
 

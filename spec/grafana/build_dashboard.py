@@ -152,7 +152,7 @@ def build_panel_70(existing_panels):
             break
     if p70 is None:
         raise ValueError("Panel 70 not found in existing dashboard")
-    p70["gridPos"] = {"x": 0, "y": 0, "w": 14, "h": 10}
+    p70["gridPos"] = {"x": 0, "y": 0, "w": 14, "h": 7}
     p70["transparent"] = True
     # Patch global CSS: cascade height:100% through all Grafana wrapper divs
     content = p70["options"]["content"]
@@ -184,7 +184,7 @@ def build_panel_70(existing_panels):
     # Make sparkline grow to fill space
     content = content.replace(
         ".ww-spark{margin:0 -4px 2px;height:80px}",
-        ".ww-spark{margin:0 -4px 2px;flex:1;min-height:60px}"
+        ".ww-spark{margin:0 -4px 2px;flex:1;min-height:40px}"
     )
     p70["options"]["content"] = content
     return p70
@@ -196,22 +196,22 @@ def build_panel_70(existing_panels):
 
 PANEL_67_CONTENT = r"""<style>
 .indoor-wrap{display:flex;flex-direction:column;flex:1;min-height:0;height:100%}
-.rooms{display:flex;flex-direction:column;padding:10px 10px 6px;gap:5px;flex:1;min-height:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif}
-.room{flex:1;display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;column-gap:14px;padding:4px 16px;border-radius:8px;background:#1a1d22;border:1px solid rgba(255,255,255,0.06);min-height:0}
-.room .name{font-size:16px;font-weight:600;color:#d8d9da}
-.room .pill{min-width:72px;justify-content:center;display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border:1px solid transparent}
+.rooms{display:flex;flex-direction:column;padding:6px 10px 4px;gap:5px;flex:1;min-height:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif}
+.room{flex:1;display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;column-gap:14px;padding:4px 14px;border-radius:8px;background:#1a1d22;border:1px solid rgba(255,255,255,0.06);min-height:0}
+.room .name{font-size:18px;font-weight:600;color:#d8d9da}
+.room .pill{min-width:72px;justify-content:center;display:inline-flex;align-items:center;gap:6px;padding:3px 8px;border-radius:4px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border:1px solid transparent}
 .pill-heat{background:rgba(255,152,48,.14);color:#FF9830;border-color:rgba(255,152,48,.28)}
 .pill-idle{background:rgba(142,142,142,.10);color:#8e8e8e;border-color:rgba(142,142,142,.18)}
 .pill .dot{width:7px;height:7px;border-radius:50%;background:currentColor}
 .room .temp{font-size:28px;font-weight:700;line-height:1;min-width:70px;text-align:right}
-.room .target{font-size:14px;color:#8e8e8e;display:flex;align-items:center;gap:3px;min-width:50px;justify-content:flex-end;font-weight:600}
+.room .target{font-size:16px;color:#8e8e8e;display:flex;align-items:center;gap:3px;min-width:50px;justify-content:flex-end;font-weight:600}
 .room .target::before{content:"\25b8";color:#555;margin-right:3px}
-.room .hum{font-size:18px;color:#5794F2;min-width:50px;text-align:right;font-weight:700}
+.room .hum{font-size:22px;color:#5794F2;min-width:50px;text-align:right;font-weight:700}
 .room .hum.none{color:transparent;user-select:none}
 .stat-bar{display:flex;background:#111217;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0}
-.stat-bar .s{flex:1;padding:8px 14px;display:flex;flex-direction:column;gap:3px}
+.stat-bar .s{flex:1;padding:8px 10px;display:flex;align-items:baseline;gap:8px}
 .stat-bar .s .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
-.stat-bar .s .val{font-size:36px;font-weight:700;line-height:1}
+.stat-bar .s .val{font-size:34px;font-weight:700;line-height:1;white-space:nowrap}
 .stat-bar .s .val .unit{font-size:12px;color:#8e8e8e;margin-left:3px;font-weight:400}
 </style>
 <div class="indoor-wrap">
@@ -275,7 +275,7 @@ def build_panel_67(existing_panels):
 
     return business_text_panel(
         panel_id=67,
-        grid_pos={"x": 14, "y": 0, "w": 10, "h": 10},
+        grid_pos={"x": 14, "y": 0, "w": 10, "h": 8},
         targets=targets,
         content=PANEL_67_CONTENT,
         helpers=PANEL_67_HELPERS,
@@ -513,7 +513,7 @@ PANEL_80_QUERY_B = r"""from(bucket: "default")
 PANEL_80_CONTENT = r"""<style>
 .topo-wrap{display:flex;flex-direction:column;height:100%;min-height:0}
 .topo{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#d8d9da;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
-.topo svg{display:block;width:100%;height:auto}
+.topo svg{display:block;width:100%;height:100%}
 @keyframes flow-march-16{from{stroke-dashoffset:16}to{stroke-dashoffset:0}}
 @keyframes flow-march-11{from{stroke-dashoffset:11}to{stroke-dashoffset:0}}
 .flow-solar{animation:flow-march-16 0.75s linear infinite}
@@ -527,7 +527,7 @@ PANEL_80_CONTENT = r"""<style>
   data-car-conn="{{car_conn}}"
   data-load-p1="{{load_p1}}" data-load-p2="{{load_p2}}" data-load-p3="{{load_p3}}"
   data-inv-temp="{{inv_temp}}">
-<svg viewBox="0 0 1160 205" preserveAspectRatio="xMidYMid meet">
+<svg viewBox="0 2 870 237" preserveAspectRatio="xMidYMin meet">
   <defs>
     <marker id="arr-yellow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#FADE2A"/></marker>
     <marker id="arr-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#5794F2"/></marker>
@@ -537,187 +537,181 @@ PANEL_80_CONTENT = r"""<style>
 
   <!-- SOLAR card -->
   <g id="topo-solar">
-    <rect x="20" y="12" width="200" height="82" rx="8" fill="#1b1e22" stroke="#5794F2" stroke-opacity=".55" stroke-width="1.3"/>
-    <g id="topo-solar-bars" transform="translate(30, 17)">
-      <rect x="0"   y="0" width="8" height="72" rx="2" fill="#a6e09e" opacity=".14"/>
-      <rect x="9"   y="0" width="8" height="72" rx="2" fill="#a6e09e" opacity=".14"/>
-      <rect x="18"  y="0" width="8" height="72" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="27"  y="0" width="8" height="72" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="36"  y="0" width="8" height="72" rx="2" fill="#4a9e3f" opacity=".14"/>
-      <rect x="45"  y="0" width="8" height="72" rx="2" fill="#4a9e3f" opacity=".14"/>
-      <rect x="54"  y="0" width="8" height="72" rx="2" fill="#4a9e3f" opacity=".14"/>
-      <rect x="63"  y="0" width="8" height="72" rx="2" fill="#4a9e3f" opacity=".14"/>
-      <rect x="72"  y="0" width="8" height="72" rx="2" fill="#73C0F5" opacity=".14"/>
-      <rect x="81"  y="0" width="8" height="72" rx="2" fill="#73C0F5" opacity=".14"/>
-      <rect x="90"  y="0" width="8" height="72" rx="2" fill="#73C0F5" opacity=".14"/>
-      <rect x="99"  y="0" width="8" height="72" rx="2" fill="#73C0F5" opacity=".14"/>
-      <rect x="108" y="0" width="8" height="72" rx="2" fill="#5794F2" opacity=".14"/>
-      <rect x="117" y="0" width="8" height="72" rx="2" fill="#5794F2" opacity=".14"/>
-      <rect x="126" y="0" width="8" height="72" rx="2" fill="#5794F2" opacity=".14"/>
-      <rect x="135" y="0" width="8" height="72" rx="2" fill="#5794F2" opacity=".14"/>
-      <rect x="144" y="0" width="8" height="72" rx="2" fill="#3d6fd4" opacity=".14"/>
-      <rect x="153" y="0" width="8" height="72" rx="2" fill="#3d6fd4" opacity=".14"/>
-      <rect x="162" y="0" width="8" height="72" rx="2" fill="#3d6fd4" opacity=".14"/>
-      <rect x="171" y="0" width="8" height="72" rx="2" fill="#3d6fd4" opacity=".14"/>
+    <rect x="10" y="8" width="200" height="102" rx="8" fill="#1b1e22" stroke="#5794F2" stroke-opacity=".8" stroke-width="1.6"/>
+    <g id="topo-solar-bars" transform="translate(20, 12)">
+      <rect x="0" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
+      <rect x="9" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
+      <rect x="18" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="27" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="36" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="45" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="54" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="63" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="72" y="0" width="8" height="90" rx="2" fill="#73C0F5" opacity=".07"/>
+      <rect x="81" y="0" width="8" height="90" rx="2" fill="#73C0F5" opacity=".07"/>
+      <rect x="90" y="0" width="8" height="90" rx="2" fill="#73C0F5" opacity=".07"/>
+      <rect x="99" y="0" width="8" height="90" rx="2" fill="#73C0F5" opacity=".07"/>
+      <rect x="108" y="0" width="8" height="90" rx="2" fill="#5794F2" opacity=".07"/>
+      <rect x="117" y="0" width="8" height="90" rx="2" fill="#5794F2" opacity=".07"/>
+      <rect x="126" y="0" width="8" height="90" rx="2" fill="#5794F2" opacity=".07"/>
+      <rect x="135" y="0" width="8" height="90" rx="2" fill="#5794F2" opacity=".07"/>
+      <rect x="144" y="0" width="8" height="90" rx="2" fill="#3d6fd4" opacity=".07"/>
+      <rect x="153" y="0" width="8" height="90" rx="2" fill="#3d6fd4" opacity=".07"/>
+      <rect x="162" y="0" width="8" height="90" rx="2" fill="#3d6fd4" opacity=".07"/>
+      <rect x="171" y="0" width="8" height="90" rx="2" fill="#3d6fd4" opacity=".07"/>
     </g>
-    <text x="82" y="34" fill="#a8a9aa" font-size="11" font-weight="700" letter-spacing="1">SOLAR</text>
-    <text x="82" y="74" id="topo-solar-val" fill="#5794F2" font-size="44" font-weight="800">{{prod}}<tspan fill="#8e8e8e" font-size="14" font-weight="600"> kW</tspan></text>
+    <text x="110" y="35" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">SOLAR</text>
+    <text x="110" y="85" id="topo-solar-val" fill="#5794F2" font-size="48" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3" stroke-linejoin="round">{{prod}}<tspan fill="#8e8e8e" font-size="15" font-weight="600"> kW</tspan></text>
   </g>
 
   <!-- GRID card -->
   <g id="topo-grid">
-    <rect x="20" y="108" width="200" height="82" rx="8" fill="#1b1e22" stroke="#a8a9aa" stroke-opacity=".45" stroke-width="1.3"/>
-    <g id="topo-grid-bars" transform="translate(28, 113)">
-      <rect x="0"   y="0" width="8" height="72" rx="2" fill="#37872D" opacity=".14"/>
-      <rect x="9"   y="0" width="8" height="72" rx="2" fill="#37872D" opacity=".14"/>
-      <rect x="18"  y="0" width="8" height="72" rx="2" fill="#37872D" opacity=".14"/>
-      <rect x="27"  y="0" width="8" height="72" rx="2" fill="#37872D" opacity=".14"/>
-      <rect x="36"  y="0" width="8" height="72" rx="2" fill="#4a9e3f" opacity=".14"/>
-      <rect x="45"  y="0" width="8" height="72" rx="2" fill="#4a9e3f" opacity=".14"/>
-      <rect x="54"  y="0" width="8" height="72" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="63"  y="0" width="8" height="72" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="72"  y="0" width="8" height="72" rx="2" fill="#a6e09e" opacity=".14"/>
-      <rect x="81"  y="0" width="8" height="72" rx="2" fill="#a6e09e" opacity=".14"/>
-      <line x1="91.5" y1="-2" x2="91.5" y2="74" stroke="#d8d9da" stroke-width="1" opacity=".35"/>
-      <rect x="94"  y="0" width="8" height="72" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="103" y="0" width="8" height="72" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="112" y="0" width="8" height="72" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="121" y="0" width="8" height="72" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="130" y="0" width="8" height="72" rx="2" fill="#FF6B3D" opacity=".14"/>
-      <rect x="139" y="0" width="8" height="72" rx="2" fill="#FF6B3D" opacity=".14"/>
-      <rect x="148" y="0" width="8" height="72" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="157" y="0" width="8" height="72" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="166" y="0" width="8" height="72" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="175" y="0" width="8" height="72" rx="2" fill="#f2495c" opacity=".14"/>
+    <rect x="10" y="130" width="200" height="102" rx="8" fill="#1b1e22" stroke="#a8a9aa" stroke-opacity=".7" stroke-width="1.6"/>
+    <g id="topo-grid-bars" transform="translate(18, 134)">
+      <rect x="0" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="9" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="18" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="27" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="36" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="45" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="54" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="63" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="72" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
+      <rect x="81" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
+      <line x1="91.5" y1="-2" x2="91.5" y2="92" stroke="#d8d9da" stroke-width="1" opacity=".35"/>
+      <rect x="94" y="0" width="8" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="103" y="0" width="8" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="112" y="0" width="8" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="121" y="0" width="8" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="130" y="0" width="8" height="90" rx="2" fill="#FF6B3D" opacity=".07"/>
+      <rect x="139" y="0" width="8" height="90" rx="2" fill="#FF6B3D" opacity=".07"/>
+      <rect x="148" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="157" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="166" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="175" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
     </g>
-    <text x="82" y="130" fill="#a8a9aa" font-size="11" font-weight="700" letter-spacing="1">GRID</text>
-    <text x="82" y="170" id="topo-grid-val" fill="#a8a9aa" font-size="44" font-weight="800">{{meter}}<tspan fill="#8e8e8e" font-size="14" font-weight="600"> kW</tspan></text>
+    <text x="110" y="157" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">GRID</text>
+    <text x="110" y="207" id="topo-grid-val" fill="#a8a9aa" font-size="48" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3" stroke-linejoin="round">{{meter}}<tspan fill="#8e8e8e" font-size="15" font-weight="600"> kW</tspan></text>
   </g>
 
   <!-- Arrow: Solar -> Inverter -->
-  <path id="topo-arr-solar" d="M222,52 L400,65" stroke="#5794F2" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-blue)" stroke-opacity=".45"/>
-
+  <path id="topo-arr-solar" d="M212,59 L248,68" stroke="#5794F2" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-blue)" stroke-opacity=".45"/>
   <!-- Arrow: Grid -> Inverter -->
-  <path id="topo-arr-grid" d="M222,149 L400,140" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
+  <path id="topo-arr-grid" d="M212,181 L248,172" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
 
   <!-- INVERTER hub -->
   <g id="topo-inverter">
-    <rect x="400" y="28" width="360" height="148" rx="10" fill="#15181c" stroke="#a8a9aa" stroke-opacity=".55" stroke-width="1.4"/>
-    <text x="418" y="52" fill="#a8a9aa" font-size="12" font-weight="700" letter-spacing="1.6">INVERTER</text>
+    <rect x="250" y="20" width="350" height="210" rx="10" fill="#15181c" stroke="#a8a9aa" stroke-opacity=".55" stroke-width="1.4"/>
+    <text x="268" y="46" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.6">INVERTER</text>
     <!-- Phase balance bar -->
-    <g transform="translate(418, 74)" id="topo-phases">
-      <rect x="0" y="0" width="324" height="48" rx="6" fill="#0f1115" stroke="#2c3035" stroke-width="0.8"/>
-      <rect id="topo-phase-l1" x="0" y="0" width="106" height="48" rx="6" fill="#73bf69"/>
-      <text x="53" y="21" fill="#0a0c0e" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1.4">L1</text>
-      <text x="53" y="40" id="topo-phase-l1-val" fill="#0a0c0e" font-size="17" font-weight="800" text-anchor="middle">{{load_p1}}<tspan font-size="10" font-weight="700"> kW</tspan></text>
-      <rect id="topo-phase-l2" x="109" y="0" width="106" height="48" fill="#73bf69"/>
-      <text x="162" y="21" fill="#0a0c0e" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1.4">L2</text>
-      <text x="162" y="40" id="topo-phase-l2-val" fill="#0a0c0e" font-size="17" font-weight="800" text-anchor="middle">{{load_p2}}<tspan font-size="10" font-weight="700"> kW</tspan></text>
-      <rect id="topo-phase-l3" x="218" y="0" width="106" height="48" rx="6" fill="#73bf69"/>
-      <text x="271" y="21" fill="#0a0c0e" font-size="12" font-weight="800" text-anchor="middle" letter-spacing="1.4">L3</text>
-      <text x="271" y="40" id="topo-phase-l3-val" fill="#0a0c0e" font-size="17" font-weight="800" text-anchor="middle">{{load_p3}}<tspan font-size="10" font-weight="700"> kW</tspan></text>
+    <g transform="translate(263, 182)" id="topo-phases">
+      <rect x="0" y="0" width="324" height="30" rx="5" fill="#0f1115" stroke="#2c3035" stroke-width="0.8"/>
+      <rect id="topo-phase-l1" x="0" y="0" width="106" height="30" rx="5" fill="#73bf69" opacity=".35"/>
+      <text x="53" y="20" fill="#e8e8e8" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.4">L1 <tspan font-size="12" font-weight="800">{{load_p1}}</tspan><tspan font-size="9" fill="#a8a9aa" font-weight="600"> kW</tspan></text>
+      <rect id="topo-phase-l2" x="109" y="0" width="106" height="30" fill="#73bf69" opacity=".35"/>
+      <text x="162" y="20" fill="#e8e8e8" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.4">L2 <tspan font-size="12" font-weight="800">{{load_p2}}</tspan><tspan font-size="9" fill="#a8a9aa" font-weight="600"> kW</tspan></text>
+      <rect id="topo-phase-l3" x="218" y="0" width="106" height="30" rx="5" fill="#73bf69" opacity=".35"/>
+      <text x="271" y="20" fill="#e8e8e8" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.4">L3 <tspan font-size="12" font-weight="800">{{load_p3}}</tspan><tspan font-size="9" fill="#a8a9aa" font-weight="600"> kW</tspan></text>
     </g>
     <!-- Temp + diag -->
-    <text x="418" y="162" fill="#8e8e8e" font-size="13" font-weight="600" letter-spacing="0.3">temp <tspan id="topo-temp-val" fill="#73bf69" font-size="22" font-weight="800">{{inv_temp}} &deg;C</tspan></text>
-    <circle id="topo-diag-dot" cx="560" cy="156" r="4.5" fill="#73BF69"/>
-    <text id="topo-diag-text" x="572" y="162" fill="#73BF69" font-size="15" font-weight="700" letter-spacing="0.2">Normal operation</text>
+    <text x="268" y="118" fill="#8e8e8e" font-size="15" font-weight="600" letter-spacing="0.3">temp <tspan id="topo-temp-val" fill="#73bf69" font-size="30" font-weight="800">{{inv_temp}} &deg;C</tspan></text>
+    <circle id="topo-diag-dot" cx="408" cy="111" r="5.5" fill="#73BF69"><animate attributeName="opacity" values="1;0.4;1" dur="2.4s" repeatCount="indefinite"/></circle>
+    <text id="topo-diag-text" x="420" y="118" fill="#73BF69" font-size="17" font-weight="700" letter-spacing="0.2">Normal operation</text>
   </g>
 
   <!-- Arrow: Inverter -> Battery -->
-  <path id="topo-arr-bat" d="M762,72 L940,52" stroke="#FADE2A" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-yellow)" stroke-opacity=".45"/>
-
+  <path id="topo-arr-bat" d="M602,55 L638,43" stroke="#FADE2A" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-yellow)" stroke-opacity=".45"/>
   <!-- Arrow: Inverter -> House -->
-  <path id="topo-arr-house" d="M762,102 L940,110" stroke="#73bf69" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-green)" stroke-opacity=".45"/>
-
+  <path id="topo-arr-house" d="M602,126 L638,123" stroke="#73bf69" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-green)" stroke-opacity=".45"/>
   <!-- Arrow: Inverter -> Wallbox -->
-  <path id="topo-arr-wb" d="M762,150 L940,168" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
+  <path id="topo-arr-wb" d="M602,200 L638,203" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
 
   <!-- BATTERY card -->
   <g id="topo-battery">
-    <rect x="940" y="12" width="210" height="56" rx="8" fill="#1b1e22" stroke="#FADE2A" stroke-opacity=".55" stroke-width="1.3"/>
-    <g id="topo-bat-bars" transform="translate(945, 15)" fill="#73BF69">
-      <rect x="0"   y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="10"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="20"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="30"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="40"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="50"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="60"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="70"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="80"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="90"  y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="100" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="110" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="120" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="130" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="140" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="150" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="160" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="170" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="180" y="0" width="9" height="50" rx="2" opacity=".14"/>
-      <rect x="190" y="0" width="9" height="50" rx="2" opacity=".14"/>
+    <rect x="640" y="8" width="220" height="70" rx="8" fill="#1b1e22" stroke="#FADE2A" stroke-opacity=".8" stroke-width="1.6"/>
+    <g id="topo-bat-bars" transform="translate(645, 11)" fill="#73BF69">
+      <rect x="0" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="10" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="20" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="30" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="40" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="50" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="60" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="70" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="80" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="90" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="100" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="110" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="120" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="130" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="140" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="150" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="160" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="170" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="180" y="0" width="9" height="62" rx="2" opacity=".07"/>
+      <rect x="190" y="0" width="9" height="62" rx="2" opacity=".07"/>
     </g>
-    <text x="954" y="22" fill="#a8a9aa" font-size="11" font-weight="700" letter-spacing="1">BATTERY</text>
-    <text x="954" y="52" id="topo-bat-kw" fill="#FADE2A" font-size="30" font-weight="800">{{bat}}<tspan fill="#8e8e8e" font-size="13" font-weight="600"> kW</tspan></text>
-    <text x="1136" y="52" id="topo-bat-soc" fill="#73BF69" font-size="30" font-weight="800" text-anchor="end">{{soc}}%</text>
+    <text x="750" y="25" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">BATTERY</text>
+    <text x="654" y="62" id="topo-bat-kw" fill="#FADE2A" font-size="40" font-weight="800" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3.5" stroke-linejoin="round">{{bat}}<tspan fill="#8e8e8e" font-size="14" font-weight="600"> kW</tspan></text>
+    <text x="850" y="62" id="topo-bat-soc" fill="#73BF69" font-size="40" font-weight="800" text-anchor="end" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3.5" stroke-linejoin="round">{{soc}}%</text>
   </g>
 
   <!-- HOUSE card -->
   <g id="topo-house">
-    <rect x="940" y="76" width="210" height="56" rx="8" fill="#1b1e22" stroke="#73bf69" stroke-opacity=".55" stroke-width="1.3"/>
-    <g id="topo-house-bars" transform="translate(945, 79)">
-      <rect x="0"   y="0" width="9" height="50" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="10"  y="0" width="9" height="50" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="20"  y="0" width="9" height="50" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="30"  y="0" width="9" height="50" rx="2" fill="#73bf69" opacity=".14"/>
-      <rect x="40"  y="0" width="9" height="50" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="50"  y="0" width="9" height="50" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="60"  y="0" width="9" height="50" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="70"  y="0" width="9" height="50" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="80"  y="0" width="9" height="50" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="90"  y="0" width="9" height="50" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="100" y="0" width="9" height="50" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="110" y="0" width="9" height="50" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="120" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="130" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="140" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="150" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="160" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="170" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="180" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="190" y="0" width="9" height="50" rx="2" fill="#f2495c" opacity=".14"/>
+    <rect x="640" y="88" width="220" height="70" rx="8" fill="#1b1e22" stroke="#73bf69" stroke-opacity=".8" stroke-width="1.6"/>
+    <g id="topo-house-bars" transform="translate(645, 91)">
+      <rect x="0" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="10" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="20" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="30" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="40" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="50" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="60" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="70" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="80" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="90" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="100" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="110" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="120" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="130" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="140" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="150" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="160" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="170" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="180" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="190" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
     </g>
-    <text x="1000" y="92" fill="#a8a9aa" font-size="11" font-weight="700" letter-spacing="1">HOUSE</text>
-    <text x="1000" y="121" id="topo-house-val" fill="#73bf69" font-size="30" font-weight="800">{{cons}}<tspan fill="#8e8e8e" font-size="13" font-weight="600"> kW</tspan></text>
+    <text x="750" y="108" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">HOUSE</text>
+    <text x="750" y="146" id="topo-house-val" fill="#73bf69" font-size="40" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3.5" stroke-linejoin="round">{{cons}}<tspan fill="#8e8e8e" font-size="14" font-weight="600"> kW</tspan></text>
   </g>
 
   <!-- WALLBOX card -->
   <g id="topo-wallbox">
-    <rect x="940" y="140" width="210" height="50" rx="8" fill="#1b1e22" id="topo-wb-border" stroke="#6a6a6a" stroke-opacity=".5" stroke-width="1.3"/>
-    <g id="topo-wb-bars" transform="translate(945, 143)">
-      <rect x="0"   y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="10"  y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="20"  y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="30"  y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="40"  y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="50"  y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="60"  y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="70"  y="0" width="9" height="44" rx="2" fill="#FADE2A" opacity=".14"/>
-      <rect x="80"  y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="90"  y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="100" y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="110" y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="120" y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="130" y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="140" y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="150" y="0" width="9" height="44" rx="2" fill="#FF9830" opacity=".14"/>
-      <rect x="160" y="0" width="9" height="44" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="170" y="0" width="9" height="44" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="180" y="0" width="9" height="44" rx="2" fill="#f2495c" opacity=".14"/>
-      <rect x="190" y="0" width="9" height="44" rx="2" fill="#f2495c" opacity=".14"/>
+    <rect x="640" y="168" width="220" height="70" rx="8" fill="#1b1e22" id="topo-wb-border" stroke="#6a6a6a" stroke-opacity=".7" stroke-width="1.6"/>
+    <g id="topo-wb-bars" transform="translate(645, 171)">
+      <rect x="0" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="10" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="20" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="30" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="40" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="50" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="60" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="70" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="80" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="90" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="100" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="110" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="120" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="130" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="140" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="150" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="160" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="170" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="180" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="190" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
     </g>
-    <text x="1000" y="158" fill="#a8a9aa" font-size="11" font-weight="700" letter-spacing="1">WALLBOX</text>
-    <text x="1000" y="178" id="topo-wb-val" fill="#8e8e8e" font-size="17" font-weight="800">{{charge_w}}<tspan font-size="10" font-weight="600"> kW</tspan></text>
+    <text x="750" y="188" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">WALLBOX</text>
+    <text x="750" y="224" id="topo-wb-val" fill="#8e8e8e" font-size="30" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3" stroke-linejoin="round">{{charge_w}}<tspan font-size="13" font-weight="600"> kW</tspan></text>
   </g>
 </svg>
 </div>
@@ -764,7 +758,7 @@ if(tEl){
 var arrS=document.getElementById("topo-arr-solar");
 if(arrS){
   if(D.prod>0.1){
-    var sw=Math.min(2+D.prod*1.5,12);
+    var sw=Math.min(2+D.prod*1,7);
     arrS.setAttribute("stroke-width",sw);
     arrS.setAttribute("stroke-opacity","1");
     arrS.setAttribute("stroke-dasharray","10 6");
@@ -777,12 +771,12 @@ var arrG=document.getElementById("topo-arr-grid");
 if(arrG){
   var mAbs=Math.abs(D.meter);
   if(mAbs>0.1){
-    var gw=Math.min(2+mAbs*1.5,12);
+    var gw=Math.min(2+mAbs*1,7);
     arrG.setAttribute("stroke-width",gw);
     arrG.setAttribute("stroke-opacity","1");
     arrG.setAttribute("stroke-dasharray","10 6");
     if(D.meter>0){
-      arrG.setAttribute("d","M400,140 L222,149");
+      arrG.setAttribute("d","M248,172 L212,181");
       arrG.setAttribute("stroke","#73bf69");
       arrG.setAttribute("marker-end","url(#arr-green)");
     }else{
@@ -797,13 +791,13 @@ var arrB=document.getElementById("topo-arr-bat");
 if(arrB){
   var bAbs=Math.abs(D.bat);
   if(bAbs>0.1){
-    var bw=Math.min(2+bAbs*1.5,12);
+    var bw=Math.min(2+bAbs*1,7);
     arrB.setAttribute("stroke-width",bw);
     arrB.setAttribute("stroke-opacity","1");
     arrB.setAttribute("stroke-dasharray","10 6");
     arrB.classList.add("flow-batt");
     if(D.bat>0){
-      arrB.setAttribute("d","M940,52 L762,72");
+      arrB.setAttribute("d","M638,43 L602,55");
     }
   }
 }
@@ -812,7 +806,7 @@ if(arrB){
 var arrH=document.getElementById("topo-arr-house");
 if(arrH){
   if(D.cons>0.1){
-    var hw=Math.min(2+D.cons*1.2,10);
+    var hw=Math.min(2+D.cons*1,7);
     arrH.setAttribute("stroke-width",hw);
     arrH.setAttribute("stroke-opacity","1");
     arrH.setAttribute("stroke-dasharray","7 4");
@@ -823,7 +817,7 @@ if(arrH){
 // Wallbox arrow
 var arrW=document.getElementById("topo-arr-wb");
 if(arrW&&D.charge>0.1){
-  var ww=Math.min(2+D.charge*1.5,12);
+  var ww=Math.min(2+D.charge*1,7);
   arrW.setAttribute("stroke-width",ww);
   arrW.setAttribute("stroke-opacity","1");
   arrW.setAttribute("stroke","#FF9830");
@@ -835,19 +829,18 @@ var solarBars=document.querySelectorAll("#topo-solar-bars rect");
 if(solarBars.length===20){
   var nLit=Math.floor(D.prod*2);
   for(var i=0;i<20;i++){
-    solarBars[i].setAttribute("opacity",i<nLit?"0.5":"0.14");
+    solarBars[i].setAttribute("opacity",i<nLit?"0.85":"0.07");
   }
 }
 
-// Battery SoC bars
+// Battery SoC bars — per-bar tier coloring
 var batBars=document.querySelectorAll("#topo-bat-bars rect");
 if(batBars.length===20){
   var nBat=Math.floor(D.soc/5);
-  var batCol=D.soc>90?"#5794F2":D.soc>=30?"#73BF69":D.soc>=20?"#FF9830":D.soc>=10?"#FF6B3D":"#F2495C";
-  var batG=document.getElementById("topo-bat-bars");
-  if(batG)batG.setAttribute("fill",batCol);
+  var batTier=["#F2495C","#F2495C","#FF6B3D","#FF6B3D","#FF9830","#FF9830","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#5794F2","#5794F2"];
   for(var i=0;i<20;i++){
-    batBars[i].setAttribute("opacity",i<nBat?"0.4":"0.14");
+    batBars[i].setAttribute("fill",batTier[i]);
+    batBars[i].setAttribute("opacity",i<nBat?"0.8":"0.07");
   }
 }
 
@@ -856,7 +849,7 @@ var houseBars=document.querySelectorAll("#topo-house-bars rect");
 if(houseBars.length===20){
   var nH=Math.floor(D.cons*2);
   for(var i=0;i<20;i++){
-    houseBars[i].setAttribute("opacity",i<nH?"0.5":"0.14");
+    houseBars[i].setAttribute("opacity",i<nH?"0.85":"0.07");
   }
 }
 
@@ -865,7 +858,7 @@ var wbBars=document.querySelectorAll("#topo-wb-bars rect");
 if(wbBars.length===20){
   var nW=Math.floor(D.charge*2);
   for(var i=0;i<20;i++){
-    wbBars[i].setAttribute("opacity",i<nW?"0.5":"0.14");
+    wbBars[i].setAttribute("opacity",i<nW?"0.85":"0.07");
   }
 }
 
@@ -882,12 +875,12 @@ if(gridBars.length===20){
   var mKw=D.meter;
   if(mKw>0.1){
     var nExp=Math.min(Math.floor(mKw),10);
-    for(var i=0;i<10;i++){gridBars[9-i].setAttribute("opacity",i<nExp?"0.5":"0.14");}
-    for(var i=10;i<20;i++){gridBars[i].setAttribute("opacity","0.14");}
+    for(var i=0;i<10;i++){gridBars[9-i].setAttribute("opacity",i<nExp?"0.85":"0.07");}
+    for(var i=10;i<20;i++){gridBars[i].setAttribute("opacity","0.07");}
   }else if(mKw<-0.1){
     var nImp=Math.min(Math.floor(Math.abs(mKw)),10);
-    for(var i=0;i<10;i++){gridBars[i].setAttribute("opacity","0.14");}
-    for(var i=0;i<nImp;i++){gridBars[10+i].setAttribute("opacity","0.5");}
+    for(var i=0;i<10;i++){gridBars[i].setAttribute("opacity","0.07");}
+    for(var i=0;i<nImp;i++){gridBars[10+i].setAttribute("opacity","0.85");}
   }
 }"""
 
@@ -900,7 +893,7 @@ def build_panel_80():
     ]
     return business_text_panel(
         panel_id=80,
-        grid_pos={"x": 0, "y": 10, "w": 14, "h": 7},
+        grid_pos={"x": 0, "y": 7, "w": 14, "h": 8},
         targets=targets,
         content=PANEL_80_CONTENT,
         helpers=PANEL_80_HELPERS,
@@ -1056,17 +1049,17 @@ PANEL_81_CONTENT = r"""<style>
 .ec{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;flex-direction:column;flex:1;min-height:0}
 .ec-svg{flex:1;min-height:0;padding:0 2px}
 .estat{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;background:#111217;overflow:hidden;flex-shrink:0}
-.estat .s{flex:1;padding:8px 14px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px;justify-content:center}
+.estat .s{flex:1;padding:6px 12px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px;justify-content:center}
 .estat .s:last-child{border-right:none}
 .estat .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
-.estat .val{font-size:28px;font-weight:700;line-height:1}
+.estat .val{font-size:24px;font-weight:700;line-height:1}
 .estat .val .unit{font-size:12px;color:#8e8e8e;margin-left:3px;font-weight:400}
-.estat .s-diverge{flex:2;padding:8px 14px 10px;gap:4px}
+.estat .s-diverge{flex:2;padding:6px 12px 8px;gap:4px}
 .s-diverge .dv-head{display:flex;justify-content:space-between;align-items:baseline}
 .s-diverge .dv-delta{font-size:18px;font-weight:800;line-height:1}
 .s-diverge .dv-delta .unit{font-size:11px;color:#8e8e8e;font-weight:500;margin-left:2px}
 .s-diverge .dv-row{display:grid;grid-template-columns:50px 1fr 50px;align-items:center;column-gap:8px}
-.s-diverge .dv-cons,.s-diverge .dv-prod{font-size:24px;font-weight:700;line-height:1}
+.s-diverge .dv-cons,.s-diverge .dv-prod{font-size:20px;font-weight:700;line-height:1}
 .s-diverge .dv-cons{text-align:right}
 .s-diverge .dv-prod{text-align:left}
 .s-diverge .dv-bar{display:grid;grid-template-columns:1fr 1fr;height:8px;position:relative}
@@ -1080,6 +1073,8 @@ PANEL_81_CONTENT = r"""<style>
 </style>
 <div class="ec-wrap">
 <div class="ec" id="ec-root"
+  data-range-start="{{range_start_min}}"
+  data-range-dur="{{range_dur_min}}"
   data-solar="{{solar_str}}"
   data-house="{{house_str}}"
   data-bat="{{bat_str}}"
@@ -1161,36 +1156,46 @@ var now=new Date(),nowM=now.getHours()*60+now.getMinutes(),nowHr=now.getHours();
 var cO=0;
 for(var i=0;i<ote.length;i++){if(ote[i].h===nowHr){cO=ote[i].v;break;}}
 
-// Filter forecast to only points after NOW
+// Compute chart time window from dashboard picker
+var wS=parseInt(root.dataset.rangeStart)||0;
+var wDur=parseInt(root.dataset.rangeDur)||720;
+var wE=Math.min(nowM+wDur,1440);
+
+// Filter forecast to points after NOW and within window
 var fcFut=[];
-for(var i=0;i<fc.length;i++){if(fc[i].m>=nowM)fcFut.push(fc[i]);}
+for(var i=0;i<fc.length;i++){if(fc[i].m>=nowM&&fc[i].m<=wE)fcFut.push(fc[i]);}
 
 // Chart dimensions (fixed viewBox)
-var VW=1160,VH=460,PL=48,PR=52,PT=16,PB=22;
+var VW=1160,VH=400,PL=48,PR=52,PT=10,PB=16;
 var CW=VW-PL-PR,CH=VH-PT-PB;
 
-// Y-axis range (auto from data)
+// Y-axis range from visible points only
+function fv(pts){var r=[];for(var i=0;i<pts.length;i++){if(pts[i].m>=wS&&pts[i].m<=wE)r.push(pts[i]);}return r;}
 var allV=[3,-1];
 function aV(pts){for(var i=0;i<pts.length;i++)allV.push(pts[i].v);}
-aV(sol);aV(hou);aV(bat);aV(boj);aV(fcFut);
-for(var i=0;i<ote.length;i++)allV.push(ote[i].v);
-var yMax=Math.ceil(Math.max.apply(null,allV))+1;
-var yMin=Math.floor(Math.min.apply(null,allV))-1;
-if(yMax%2!==0)yMax++;
-if(yMin%2!==0)yMin--;
+aV(fv(sol));aV(fv(hou));aV(fv(bat));aV(fv(boj));aV(fcFut);
+for(var i=0;i<ote.length;i++){if(ote[i].h*60>=wS&&ote[i].h*60<wE)allV.push(ote[i].v);}
+var yMax=Math.ceil(Math.max.apply(null,allV));
+var yMin=Math.floor(Math.min.apply(null,allV));
 var yR=yMax-yMin;
 
-function xP(m){return PL+(m/1440)*CW;}
+function xP(m){return PL+((m-wS)/(wE-wS))*CW;}
 function yP(v){return PT+((yMax-v)/yR)*CH;}
 var y0=yP(0);
 
 // OTE bar color by price tier
 function oc(v){return v>=2?"#F2495C":v>=0.5?"#FF9830":"#73BF69";}
 
+// Grid step based on window size
+var wHrs=(wE-wS)/60;
+var gStep=wHrs<=4?1:wHrs<=8?2:3;
+var gStartH=Math.ceil(wS/(gStep*60))*gStep;
+
 var s='<svg viewBox="0 0 '+VW+' '+VH+'" width="100%" height="100%" preserveAspectRatio="none" style="display:block">';
 
-// Defs: gradients
+// Defs: clip path + gradients
 s+='<defs>';
+s+='<clipPath id="ec81clip"><rect x="'+PL+'" y="'+(PT-1)+'" width="'+CW+'" height="'+(CH+2)+'"/></clipPath>';
 s+='<linearGradient id="ec81sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5794F2" stop-opacity=".28"/><stop offset="100%" stop-color="#5794F2" stop-opacity="0"/></linearGradient>';
 s+='<linearGradient id="ec81bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FADE2A" stop-opacity="0"/><stop offset="100%" stop-color="#FADE2A" stop-opacity=".22"/></linearGradient>';
 s+='<linearGradient id="ec81fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5794F2" stop-opacity=".16"/><stop offset="100%" stop-color="#5794F2" stop-opacity="0"/></linearGradient>';
@@ -1207,21 +1212,21 @@ s+='</g>';
 // Zero line
 s+='<line x1="'+PL+'" y1="'+y0.toFixed(1)+'" x2="'+(VW-PR)+'" y2="'+y0.toFixed(1)+'" stroke="#5a5f66" stroke-width="1.3"/>';
 
-// Vertical grid every 3h
+// Vertical grid (dynamic step)
 s+='<g stroke="#24272c" stroke-width="0.5">';
-for(var h=3;h<24;h+=3){s+='<line x1="'+xP(h*60).toFixed(1)+'" y1="'+PT+'" x2="'+xP(h*60).toFixed(1)+'" y2="'+(VH-PB)+'"/>';}
+for(var h=gStartH;h*60<=wE;h+=gStep){if(h*60>wS)s+='<line x1="'+xP(h*60).toFixed(1)+'" y1="'+PT+'" x2="'+xP(h*60).toFixed(1)+'" y2="'+(VH-PB)+'"/>';}
 s+='</g>';
 
 // Left Y-axis labels (kW)
 s+='<g font-size="11" fill="#8e8e8e" text-anchor="end" font-weight="500" font-family="Inter,sans-serif">';
 for(var g=yMin;g<=yMax;g+=2){
-  var lbl=(g>0?"+":"")+g,fw=g===0?"700":"500",fc=g===0?"#b8b9ba":"#8e8e8e";
-  s+='<text x="'+(PL-5)+'" y="'+(yP(g)+4).toFixed(1)+'" fill="'+fc+'" font-weight="'+fw+'">'+lbl+'</text>';
+  var lbl=(g>0?"+":"")+g,fw=g===0?"700":"500",fcc=g===0?"#b8b9ba":"#8e8e8e";
+  s+='<text x="'+(PL-5)+'" y="'+(yP(g)+4).toFixed(1)+'" fill="'+fcc+'" font-weight="'+fw+'">'+lbl+'</text>';
 }
 s+='<text x="'+(PL-5)+'" y="'+(PT-2)+'" fill="#d8d9da" font-size="10" font-weight="800" letter-spacing=".05em">kW</text>';
 s+='</g>';
 
-// Right Y-axis labels (Kc/kWh) — same scale, OTE tier colors
+// Right Y-axis labels (Kc/kWh)
 s+='<g font-size="11" text-anchor="start" font-weight="600" font-family="Inter,sans-serif">';
 for(var g=yMin;g<=yMax;g+=2){
   var lbl=(g>0?"+":"")+g,fw=g===0?"700":"600";
@@ -1230,22 +1235,27 @@ for(var g=yMin;g<=yMax;g+=2){
 s+='<text x="'+(VW-PR+5)+'" y="'+(PT-2)+'" fill="#d8d9da" font-size="10" font-weight="800" letter-spacing=".05em">K\u010d</text>';
 s+='</g>';
 
-// X-axis labels (every 3h, skip near NOW)
-var nearH=Math.round(nowHr/3)*3;
+// X-axis labels (dynamic step, skip near NOW)
+var nearH=Math.round(nowHr/gStep)*gStep;
 s+='<g font-size="11" fill="#8e8e8e" text-anchor="middle" font-weight="500" font-family="Inter,sans-serif">';
-for(var h=0;h<=24;h+=3){
-  if(h===nearH&&h>0&&h<24)continue;
-  var lbl=h===24?"23:59":String(h).padStart(2,"0")+":00";
+for(var h=gStartH;h*60<=wE;h+=gStep){
+  if(h===nearH)continue;
+  if(h*60<wS)continue;
+  var lbl=h>=24?"23:59":String(h).padStart(2,"0")+":00";
   s+='<text x="'+xP(h*60).toFixed(1)+'" y="'+(VH-4)+'">'+lbl+'</text>';
 }
 s+='<text x="'+xP(nowM).toFixed(1)+'" y="'+(VH-4)+'" fill="#FADE2A" font-weight="800">NOW '+String(nowHr).padStart(2,"0")+':'+String(now.getMinutes()).padStart(2,"0")+'</text>';
 s+='</g>';
 
+// All series clipped to chart area
+s+='<g clip-path="url(#ec81clip)">';
+
 // OTE price bars (low opacity background)
 if(ote.length>0){
-  var bSlot=CW/24,bW=bSlot*0.45;
+  var bSlot=CW/((wE-wS)/60),bW=bSlot*0.45;
   s+='<g opacity=".22">';
   for(var i=0;i<ote.length;i++){
+    if(ote[i].h*60+60<=wS||ote[i].h*60>=wE)continue;
     var bx=xP(ote[i].h*60+30)-bW/2,bv=ote[i].v,by,bh;
     if(bv>=0){by=yP(bv);bh=y0-by;}else{by=y0;bh=yP(bv)-y0;}
     if(bh>0.5)s+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bW.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+oc(bv)+'"/>';
@@ -1268,7 +1278,7 @@ if(sol.length>=2){
   s+='<path d="'+sl+'" fill="none" stroke="#5794F2" stroke-width="2" stroke-linejoin="round"/>';
 }
 
-// Solar forecast: dashed line + lighter fill (from last actual point onward)
+// Solar forecast: dashed line + lighter fill
 if(fcFut.length>=1){
   var fcPts=[];
   if(sol.length>0){fcPts.push({m:sol[sol.length-1].m,v:sol[sol.length-1].v});}
@@ -1297,6 +1307,8 @@ if(boj.length>=2){
   s+='<path d="'+bp(boj)+'" fill="none" stroke="#FF9830" stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>';
 }
 
+s+='</g>'; // close clip group
+
 // NOW marker
 var nx=xP(nowM);
 s+='<line x1="'+nx.toFixed(1)+'" y1="'+PT+'" x2="'+nx.toFixed(1)+'" y2="'+(VH-PB)+'" stroke="#FADE2A" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>';
@@ -1308,7 +1320,7 @@ if(nS!==null)s+='<circle cx="'+nx.toFixed(1)+'" cy="'+yP(nS).toFixed(1)+'" r="4.
 if(nH!==null)s+='<circle cx="'+nx.toFixed(1)+'" cy="'+yP(nH).toFixed(1)+'" r="4.5" fill="#73bf69" stroke="#0f1013" stroke-width="1.5"/>';
 if(nB!==null)s+='<circle cx="'+nx.toFixed(1)+'" cy="'+yP(nB).toFixed(1)+'" r="4.5" fill="#FADE2A" stroke="#0f1013" stroke-width="1.5"/>';
 
-// OTE NOW chip (bottom of chart)
+// OTE NOW chip
 if(cO!==0){
   var occ=oc(cO);
   s+='<g transform="translate('+(nx-45).toFixed(0)+','+(VH-PB-22).toFixed(0)+')">';
@@ -1316,14 +1328,18 @@ if(cO!==0){
   s+='<text x="45" y="13" fill="'+occ+'" font-size="11" font-weight="800" text-anchor="middle" font-family="Inter,sans-serif">'+cO.toFixed(2)+' K\u010d NOW</text></g>';
 }
 
-// OTE min/max annotations
+// OTE min/max annotations (visible bars only)
 if(ote.length>1){
-  var oMin=ote[0],oMax=ote[0];
-  for(var i=1;i<ote.length;i++){if(ote[i].v<oMin.v)oMin=ote[i];if(ote[i].v>oMax.v)oMax=ote[i];}
-  if(oMax.v>0.1){
-    s+='<text x="'+xP(oMax.h*60+30).toFixed(1)+'" y="'+(yP(oMax.v)-6).toFixed(1)+'" text-anchor="middle" fill="'+oc(oMax.v)+'" font-size="10" font-weight="700" font-family="Inter,sans-serif">max '+oMax.v.toFixed(2)+' K\u010d @'+String(oMax.h).padStart(2,"0")+':00</text>';
+  var visOte=[];
+  for(var i=0;i<ote.length;i++){if(ote[i].h*60>=wS&&ote[i].h*60<wE)visOte.push(ote[i]);}
+  if(visOte.length>1){
+    var oMin=visOte[0],oMax=visOte[0];
+    for(var i=1;i<visOte.length;i++){if(visOte[i].v<oMin.v)oMin=visOte[i];if(visOte[i].v>oMax.v)oMax=visOte[i];}
+    if(oMax.v>0.1){
+      s+='<text x="'+xP(oMax.h*60+30).toFixed(1)+'" y="'+(yP(oMax.v)-6).toFixed(1)+'" text-anchor="middle" fill="'+oc(oMax.v)+'" font-size="10" font-weight="700" font-family="Inter,sans-serif">max '+oMax.v.toFixed(2)+' K\u010d @'+String(oMax.h).padStart(2,"0")+':00</text>';
+    }
+    s+='<text x="'+xP(oMin.h*60+30).toFixed(1)+'" y="'+(yP(oMin.v)+16).toFixed(1)+'" text-anchor="middle" fill="'+oc(oMin.v)+'" font-size="10" font-weight="700" font-family="Inter,sans-serif">min '+oMin.v.toFixed(2)+' K\u010d @'+String(oMin.h).padStart(2,"0")+':00</text>';
   }
-  s+='<text x="'+xP(oMin.h*60+30).toFixed(1)+'" y="'+(yP(oMin.v)+16).toFixed(1)+'" text-anchor="middle" fill="'+oc(oMin.v)+'" font-size="10" font-weight="700" font-family="Inter,sans-serif">min '+oMin.v.toFixed(2)+' K\u010d @'+String(oMin.h).padStart(2,"0")+':00</text>';
 }
 
 s+='</svg>';
@@ -1357,7 +1373,7 @@ def build_panel_81():
     targets = [flux_target(PANEL_81_QUERY, "A")]
     panel = business_text_panel(
         panel_id=81,
-        grid_pos={"x": 0, "y": 17, "w": 14, "h": 16},
+        grid_pos={"x": 0, "y": 15, "w": 14, "h": 11},
         targets=targets,
         content=PANEL_81_CONTENT,
         after_render=PANEL_81_AFTER_RENDER,
@@ -1545,10 +1561,10 @@ array.from(rows: [{
 
 PANEL_83_CONTENT = r"""<style>
 .htiles-wrap{display:flex;flex-direction:column;height:100%;min-height:0}
-.htiles{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px;padding:8px 10px;flex:1;min-height:0}
-.htile{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.htiles{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:4px;padding:4px 8px;flex:0 0 auto}
+.htile{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:4px 10px;display:flex;flex-direction:column;gap:1px}
 .htile .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
-.htile .big{font-size:36px;font-weight:700;line-height:1}
+.htile .big{font-size:28px;font-weight:700;line-height:1}
 .htile .sub{font-size:12px;color:#8e8e8e}
 .htile .sub b{color:#d8d9da;font-weight:700}
 .htile-head{display:flex;align-items:center;justify-content:space-between}
@@ -1558,9 +1574,9 @@ PANEL_83_CONTENT = r"""<style>
 .pill-sm-off{background:rgba(142,142,142,.10);color:#6a6a6a;border-color:rgba(142,142,142,.18)}
 .pill-sm .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 .htile-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-.tc-chart{height:160px;margin:0 -4px}
+.tc-chart{flex:1;min-height:80px;margin:0 -4px}
 .hstats{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;background:#111217;overflow:hidden;flex-shrink:0}
-.hstats .s{flex:1;padding:8px 14px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px;justify-content:center}
+.hstats .s{flex:1;padding:6px 12px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px;justify-content:center}
 .hstats .s:last-child{border-right:none}
 .hstats .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
 .hstats .val{font-size:28px;font-weight:700;line-height:1}
@@ -1575,7 +1591,7 @@ PANEL_83_CONTENT = r"""<style>
     </div>
     <div class="htile-row">
       <span class="big" style="color:{{#if (gt krb_t 60)}}#f2495c{{else if (gt krb_t 40)}}#FF9830{{else if (gt krb_t 15)}}#73bf69{{else}}#5794F2{{/if}}">{{krb_t}}&deg;</span>
-      <span style="font-size:20px;font-weight:700;line-height:1;color:#5794F2">{{#if (gt krb_trend 0)}}&uarr;{{else if (gt 0 krb_trend)}}&darr;{{else}}&mdash;{{/if}} {{krb_trend}}<span style="font-size:12px;font-weight:600;color:#8e8e8e"> &deg;/h</span></span>
+      <span style="font-size:16px;font-weight:700;line-height:1;color:#5794F2">{{#if (gt krb_trend 0)}}&uarr;{{else if (gt 0 krb_trend)}}&darr;{{else}}&mdash;{{/if}} {{krb_trend}}<span style="font-size:12px;font-weight:600;color:#8e8e8e"> &deg;/h</span></span>
     </div>
   </div>
   <div class="htile">
@@ -1591,9 +1607,9 @@ PANEL_83_CONTENT = r"""<style>
       {{#if (gt compressor 0)}}<span class="pill-sm pill-sm-comp"><span class="dot"></span>Compressor</span>{{else if (gt coil 0)}}<span class="pill-sm pill-sm-coil"><span class="dot"></span>Heat coil</span>{{else}}<span class="pill-sm pill-sm-off"><span class="dot"></span>Off</span>{{/if}}
     </div>
     <div class="htile-row">
-      <span style="font-size:24px;font-weight:700;line-height:1;color:#FADE2A">{{out_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">out</span></span>
+      <span style="font-size:28px;font-weight:700;line-height:1;color:#FADE2A">{{out_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">out</span></span>
       <span style="font-size:14px;color:#555;font-weight:500">/</span>
-      <span style="font-size:24px;font-weight:700;line-height:1;color:#5794F2">{{in_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">in</span></span>
+      <span style="font-size:28px;font-weight:700;line-height:1;color:#5794F2">{{in_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">in</span></span>
     </div>
   </div>
 </div>
@@ -1602,7 +1618,7 @@ PANEL_83_CONTENT = r"""<style>
   <div class="s"><span class="lab">Target</span><span class="val" style="color:#73bf69">{{target_t}}<span class="unit">&deg;C</span></span></div>
   <div class="s"><span class="lab">Water</span><span class="val" style="color:#FADE2A">{{water_t}}<span class="unit">&deg;C</span></span></div>
   <div class="s"><span class="lab">&Delta;</span><span class="val" style="color:#d8d9da">{{delta_t}}<span class="unit">K</span></span></div>
-  <div class="s"><span class="lab">Trend 1h</span><span class="val" style="color:#5794F2">{{water_trend}}<span class="unit">K/h</span></span></div>
+  <div class="s"><span class="lab">Trend 1h</span><span class="val" style="color:{{#if (gt water_trend 0)}}#73bf69{{else if (gt 0 water_trend)}}#f2495c{{else}}#8e8e8e{{/if}}">{{#if (gt water_trend 0)}}&uarr;{{else if (gt 0 water_trend)}}&darr;{{else}}&mdash;{{/if}} {{water_trend}}<span class="unit">K/h</span></span></div>
 </div>
 </div>"""
 
@@ -1715,7 +1731,7 @@ def build_panel_83():
     targets = [flux_target(PANEL_83_QUERY, "A")]
     return business_text_panel(
         panel_id=83,
-        grid_pos={"x": 14, "y": 10, "w": 10, "h": 13},
+        grid_pos={"x": 14, "y": 8, "w": 10, "h": 10},
         targets=targets,
         content=PANEL_83_CONTENT,
         helpers=PANEL_80_HELPERS,  # same lt/gt/gte/abs helpers
@@ -1852,18 +1868,18 @@ array.from(rows: [{
 }])"""
 
 PANEL_86_CONTENT = r"""<style>
-.cars{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1fr;grid-auto-rows:1fr;gap:10px;padding:10px 14px 0;height:100%;min-height:0}
-.car-card{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:8px;justify-content:center}
-.car-row1{display:flex;align-items:center;gap:14px}
-.car-name{font-size:28px;font-weight:700;min-width:80px;flex-shrink:0;white-space:nowrap;line-height:1;letter-spacing:-0.01em;color:#d8d9da}
-.car-soc-bar{flex:1;height:14px;background:#0e1013;border-radius:7px;overflow:visible;position:relative}
-.car-soc-bar .gradient{position:absolute;inset:0;border-radius:7px;background:linear-gradient(90deg,#f2495c 0%,#f2495c 10%,#FF6B3D 10%,#FF6B3D 20%,#FF9830 20%,#FF9830 30%,#73bf69 30%,#73bf69 90%,#5794F2 90%,#5794F2 100%)}
-.car-soc-bar .cover{position:absolute;top:0;right:0;height:100%;background:#0e1013;border-radius:0 7px 7px 0}
-.car-soc-bar .target-marker{position:absolute;top:-5px;width:3px;height:26px;background:#FADE2A;opacity:0.9;border-radius:1.5px;transform:translateX(-50%);display:none}
-.car-soc-bar .target-label{position:absolute;top:-18px;font-size:9px;font-weight:700;color:#FADE2A;letter-spacing:.05em;transform:translateX(-50%);white-space:nowrap;display:none}
-.car-soc{font-size:22px;font-weight:700;min-width:60px;text-align:right;line-height:1;white-space:nowrap}
-.car-row2{display:flex;align-items:baseline;gap:14px;font-size:18px;padding-left:94px}
-.car-row2 .car-range{color:#d8d9da;font-weight:700;font-size:18px}
+.cars{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1fr;grid-auto-rows:1fr;gap:6px;padding:6px 12px 0;height:100%;min-height:0}
+.car-card{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:8px 14px;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.car-row1{display:flex;align-items:center;gap:10px}
+.car-name{font-size:24px;font-weight:700;flex-shrink:0;white-space:nowrap;line-height:1;letter-spacing:-0.01em;color:#d8d9da}
+.car-soc-bar{flex:1;height:20px;background:#0e1013;border-radius:10px;overflow:visible;position:relative}
+.car-soc-bar .gradient{position:absolute;inset:0;border-radius:10px;background:linear-gradient(90deg,#f2495c 0%,#f2495c 10%,#FF6B3D 10%,#FF6B3D 20%,#FF9830 20%,#FF9830 30%,#73bf69 30%,#73bf69 90%,#5794F2 90%,#5794F2 100%)}
+.car-soc-bar .cover{position:absolute;top:0;right:0;height:100%;background:#0e1013;border-radius:0 10px 10px 0}
+.car-soc-bar .target-marker{position:absolute;top:-4px;width:3px;height:28px;background:#FADE2A;opacity:0.9;border-radius:1.5px;transform:translateX(-50%);display:none}
+.car-soc-bar .target-label{position:absolute;top:-20px;font-size:9px;font-weight:700;color:#FADE2A;letter-spacing:.05em;transform:translateX(-50%);white-space:nowrap;display:none}
+.car-soc{font-size:20px;font-weight:700;min-width:60px;text-align:right;line-height:1;white-space:nowrap}
+.car-row2{display:flex;align-items:baseline;gap:14px;font-size:22px}
+.car-row2 .car-range{color:#d8d9da;font-weight:700;font-size:22px}
 .car-row2 .car-maxrange{color:#8e8e8e}
 .car-row2 .car-timeleft{color:#FF9830;font-weight:600}
 .car-row2 .car-status{margin-left:auto}
@@ -1874,6 +1890,7 @@ PANEL_86_CONTENT = r"""<style>
 .pill-car .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 @keyframes car-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .car-card.charging .car-soc-bar .gradient{animation:car-pulse 2s ease-in-out infinite}
+.car-row3{font-size:18px;color:#8e8e8e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 </style>
 <div class="cars" id="cars-root"
   data-enyaq-soc="{{enyaq_soc}}" data-enyaq-range="{{enyaq_range}}" data-enyaq-max="{{enyaq_max}}" data-enyaq-time="{{enyaq_time}}" data-enyaq-target="{{enyaq_target}}"
@@ -1882,7 +1899,6 @@ PANEL_86_CONTENT = r"""<style>
 
   <div class="car-card" id="car-enyaq">
     <div class="car-row1">
-      <div class="car-name">Enyaq</div>
       <div class="car-soc-bar">
         <div class="gradient"></div>
         <div class="cover" id="enyaq-cover"></div>
@@ -1892,16 +1908,17 @@ PANEL_86_CONTENT = r"""<style>
       <div class="car-soc" id="enyaq-soc-text">{{enyaq_soc}}%</div>
     </div>
     <div class="car-row2">
+      <span class="car-name">Enyaq</span>
       <span class="car-range">{{enyaq_range}} km</span>
       <span class="car-maxrange">max {{enyaq_max}} km</span>
       <span class="car-timeleft" id="enyaq-time"></span>
       <span class="car-status" id="enyaq-status"></span>
     </div>
+    {{#if enyaq_addr}}<div class="car-row3">{{enyaq_addr}}</div>{{/if}}
   </div>
 
   <div class="car-card" id="car-vw">
     <div class="car-row1">
-      <div class="car-name">ID.3</div>
       <div class="car-soc-bar">
         <div class="gradient"></div>
         <div class="cover" id="vw-cover"></div>
@@ -1911,11 +1928,13 @@ PANEL_86_CONTENT = r"""<style>
       <div class="car-soc" id="vw-soc-text">{{vw_soc}}%</div>
     </div>
     <div class="car-row2">
+      <span class="car-name">ID.3</span>
       <span class="car-range">{{vw_range}} km</span>
       <span class="car-maxrange">max {{vw_max}} km</span>
       <span class="car-timeleft" id="vw-time"></span>
       <span class="car-status" id="vw-status"></span>
     </div>
+    {{#if vw_addr}}<div class="car-row3">{{vw_addr}}</div>{{/if}}
   </div>
 </div>"""
 
@@ -1998,7 +2017,7 @@ def build_panel_86():
     targets = [flux_target(PANEL_86_QUERY, "A")]
     return business_text_panel(
         panel_id=86,
-        grid_pos={"x": 14, "y": 23, "w": 10, "h": 10},
+        grid_pos={"x": 14, "y": 18, "w": 10, "h": 10},
         targets=targets,
         content=PANEL_86_CONTENT,
         after_render=PANEL_86_AFTER_RENDER,
