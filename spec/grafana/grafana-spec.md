@@ -42,30 +42,25 @@ Grafana config requires `disable_sanitize_html = true` in grafana.ini under `[pa
 
 ### Grid Layout (v5)
 
-Two-column layout: column 1 = 15 units (62.5%), column 2 = 9 units (37.5%).
+Two-column layout: column 1 = 14 units (58%), column 2 = 10 units (42%).
 
 ```
-Row  0-11:  [70 Outdoor (0,0,15,12)]           [67 Indoor (15,0,9,12)]
-Row 12-18:  [80 Energy Topology (0,12,15,7)]    [83 Heat Tiles (15,12,9,5)]
-Row 17-21:  ┃                                   [84 TC Chart (15,17,9,5)]
-Row 19-31:  [81 Energy Chart (0,19,15,13)]      [85 Heat Stats (15,22,9,5)]
-Row 27-36:  ┃                                   [86 Vehicles (15,27,9,10)]
-Row 32-36:  [82 Energy Stats (0,32,15,5)]
+Row  0-9:   [70 Outdoor (0,0,14,10)]              [67 Indoor (14,0,10,10)]
+Row 10-16:  [80 Energy Topology (0,10,14,7)]       [83 Heat Tiles (14,10,10,13)]
+Row 17-32:  [81 Energy Chart+Stats (0,17,14,16)]   ┃
+Row 23-32:  ┃                                      [86 Vehicles (14,23,10,10)]
 ```
 
 ### Panel Map
 
 | ID | Title | Type | Grid (x,y,w,h) | Notes |
 |----|-------|------|-----------------|-------|
-| 70 | Outdoor | `dynamictext` (canvas) | 0,0,15,12 | Weather widget with sparkline (afterRender JS) |
-| 67 | Indoor | `dynamictext` | 15,0,9,12 | 5 rooms + CO2 stat-bar |
-| 80 | Energy Topology | `dynamictext` (SVG) | 0,12,15,7 | Horizontal flow: Solar/Grid → Inverter → Battery/House/Wallbox |
-| 81 | Energy Chart | `timeseries` | 0,19,15,13 | Solar/House/Battery/Bojlery time series |
-| 82 | Energy Stats | `dynamictext` | 0,32,15,5 | Diverging bars (Today/Month), Self-suff, Virt.batt |
-| 83 | Heat Tiles | `dynamictext` | 15,12,9,5 | Krb + COP + Heat Pump tiles |
-| 84 | TC Chart | `timeseries` | 15,17,9,5 | Target temp (green) + Water temp (yellow) |
-| 85 | Heat Stats | `dynamictext` | 15,22,9,5 | Target, Water, Δ, Trend stat-bar |
-| 86 | Vehicles | `dynamictext` | 15,27,9,10 | Enyaq + ID.3 with SoC bars and status pills |
+| 70 | Outdoor | `dynamictext` (canvas) | 0,0,14,10 | Weather widget with sparkline (afterRender JS) |
+| 67 | Indoor | `dynamictext` | 14,0,10,10 | 5 rooms + CO2 stat-bar |
+| 80 | Energy Topology | `dynamictext` (SVG) | 0,10,14,7 | Horizontal flow: Solar/Grid → Inverter → Battery/House/Wallbox |
+| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,17,14,16 | Chart (Solar/House/Battery/Bojlery + OTE + forecast) + Energy Stats (Today/Month bars, Self-suff, Virt.batt) |
+| 83 | Heat Tiles | `dynamictext` | 14,10,10,13 | Krb + COP + Heat Pump tiles + TC chart + stat-bar |
+| 86 | Vehicles | `dynamictext` | 14,23,10,10 | Enyaq + ID.3 with SoC bars and per-car plug status pills (Connected/Charging/Disconnected) |
 
 Old panels (70, 67, 68, 47, 61, 2, 69, 43, 39, 50, 24, 20, 57, 36, 49, 10, 66) are archived in `spec/grafana/old/`.
 
@@ -558,6 +553,7 @@ Six-tier scale derived from the Outdoor panel. Use these tokens consistently acr
 - SoC `67%` → **S** (30)
 - Range / max / status / timeleft → **S** (30) — bumped from micro for tablet-in-sunlight legibility
 - Charge timeleft is rendered **unconverted in minutes** (e.g. `~640 min`), matching the raw `charging_time_left_*` field unit — no hours/minutes split, no amperage, no "to full" prefix
+- Status pills use **per-car plug state** from vehicle API (`plug_connected_enyaq`, `plug_connected_vw`): Charging (orange `pill-car-chg`), Connected (green `pill-car-conn`), Disconnected (gray `pill-car-disc`)
 - Target label above marker → **micro** (~9–11)
 
 Any new panel must declare its mapping against this scale before being implemented.
@@ -1017,7 +1013,7 @@ import "array"
 
 // Computed: max_range = range / soc * 100
 
-// Output: 2 rows with car, soc, range, max_range, charge_w, time_left
+// Output: 2 rows with car, soc, range, max_range, charge_w, time_left, target_soc
 ```
 
 ### SoC Bar Design (v5, fixed-band technique)
@@ -1527,8 +1523,12 @@ from(bucket: "default")
 | `battery_level_vw` | ID.3 SoC | % |
 | `electric_range_vw` | ID.3 estimated range | km |
 | `charging_time_left_vw` | ID.3 charge time remaining | min |
+| `plug_connected_enyaq` | Enyaq cable plugged in (1=yes, 0=no) | bool |
+| `plug_connected_vw` | ID.3 cable plugged in (1=yes, 0=no) | bool |
+| `target_soc_enyaq` | Enyaq charging target SoC | % |
+| `target_soc_vw` | ID.3 charging target SoC | % |
 | `charging_wallbox_power` | Wallbox charge power (shared) | W |
-| `car_connected` | Car plugged in (1=yes, 0=no) | bool |
+| `car_connected` | Any car plugged into wallbox (1=yes, 0=no) | bool |
 
 ### Solar / FVE (measurement: `FVE`)
 

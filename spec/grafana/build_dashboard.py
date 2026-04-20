@@ -3,7 +3,7 @@
 Build the Prdikov Grafana dashboard JSON (v5 redesign).
 
 Loads the existing prdikov.json, keeps meta/templating/annotations,
-replaces all panels with the new 9-panel layout, and writes back.
+replaces all panels with the new 7-panel layout, and writes back.
 
 Usage:
     python3 spec/grafana/build_dashboard.py
@@ -67,7 +67,8 @@ def business_text_panel(panel_id, grid_pos, targets, content,
 def timeseries_panel(panel_id, grid_pos, targets, overrides,
                      title="", line_width=2, fill_opacity=15,
                      legend_mode="list", legend_calcs=None,
-                     show_legend=True, max_data_points=None):
+                     show_legend=True, max_data_points=None,
+                     span_nulls=False):
     """Create a native Grafana timeseries panel dict."""
     if legend_calcs is None:
         legend_calcs = ["lastNotNull"]
@@ -106,7 +107,7 @@ def timeseries_panel(panel_id, grid_pos, targets, overrides,
                     "pointSize": 5,
                     "scaleDistribution": {"type": "linear"},
                     "showPoints": "never",
-                    "spanNulls": False,
+                    "spanNulls": span_nulls,
                     "stacking": {"group": "A", "mode": "none"},
                     "thresholdsStyle": {"mode": "off"},
                 },
@@ -151,7 +152,41 @@ def build_panel_70(existing_panels):
             break
     if p70 is None:
         raise ValueError("Panel 70 not found in existing dashboard")
-    p70["gridPos"] = {"x": 0, "y": 0, "w": 15, "h": 12}
+    p70["gridPos"] = {"x": 0, "y": 0, "w": 14, "h": 10}
+    p70["transparent"] = True
+    # Patch global CSS: cascade height:100% through all Grafana wrapper divs
+    content = p70["options"]["content"]
+    # Strip all leading <style>...</style> blocks before the panel's own <style>\n.ww{
+    import re
+    panel_css_start = content.find('<style>\n.ww{')
+    if panel_css_start < 0:
+        panel_css_start = content.find("<style>\\n.ww{")
+    if panel_css_start > 0:
+        content = content[panel_css_start:]
+    new_global = (
+        '<style>'
+        '.react-grid-layout{gap:1px !important}'
+        '[class*="panel-content"]{padding:0 !important;height:100% !important}'
+        '[class*="panel-content"]>div{height:100% !important}'
+        '[class*="panel-content"]>div>div{height:100% !important}'
+        '[class*="panel-content"]>div>div>div{height:100% !important}'
+        '.markdown-html{margin:0 !important;padding:0 !important;'
+        'height:100% !important;display:flex !important;flex-direction:column !important}'
+        '</style>'
+    )
+    content = new_global + content
+    # Make .ww fill full height
+    content = content.replace(
+        ".ww{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#e8e8e8}",
+        ".ww{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#e8e8e8;"
+        "display:flex;flex-direction:column;flex:1;min-height:0}"
+    )
+    # Make sparkline grow to fill space
+    content = content.replace(
+        ".ww-spark{margin:0 -4px 2px;height:80px}",
+        ".ww-spark{margin:0 -4px 2px;flex:1;min-height:60px}"
+    )
+    p70["options"]["content"] = content
     return p70
 
 
@@ -160,6 +195,7 @@ def build_panel_70(existing_panels):
 # ===================================================================
 
 PANEL_67_CONTENT = r"""<style>
+.indoor-wrap{display:flex;flex-direction:column;flex:1;min-height:0;height:100%}
 .rooms{display:flex;flex-direction:column;padding:10px 10px 6px;gap:5px;flex:1;min-height:0;font-family:'Inter','Helvetica Neue',Arial,sans-serif}
 .room{flex:1;display:grid;grid-template-columns:1fr auto auto auto auto;align-items:center;column-gap:14px;padding:4px 16px;border-radius:8px;background:#1a1d22;border:1px solid rgba(255,255,255,0.06);min-height:0}
 .room .name{font-size:16px;font-weight:600;color:#d8d9da}
@@ -175,9 +211,10 @@ PANEL_67_CONTENT = r"""<style>
 .stat-bar{display:flex;background:#111217;border-top:1px solid rgba(255,255,255,0.06);flex-shrink:0}
 .stat-bar .s{flex:1;padding:8px 14px;display:flex;flex-direction:column;gap:3px}
 .stat-bar .s .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
-.stat-bar .s .val{font-size:24px;font-weight:700;line-height:1}
+.stat-bar .s .val{font-size:36px;font-weight:700;line-height:1}
 .stat-bar .s .val .unit{font-size:12px;color:#8e8e8e;margin-left:3px;font-weight:400}
 </style>
+<div class="indoor-wrap">
 <div class="rooms">
   <div class="room">
     <span class="name">Obyvacka</span>
@@ -217,14 +254,10 @@ PANEL_67_CONTENT = r"""<style>
 </div>
 <div class="stat-bar">
   <div class="s"><span class="lab">CO&#8322;</span><span class="val" style="color:{{#if (gt co2 1000)}}#f2495c{{else if (gt co2 800)}}#FF9830{{else}}#73bf69{{/if}};">{{co2}}<span class="unit">ppm</span></span></div>
+</div>
 </div>"""
 
-PANEL_67_HELPERS = (
-    'handlebars.registerHelper("lt", function(a, b) '
-    '{ return parseFloat(a) < parseFloat(b); });\n'
-    'handlebars.registerHelper("gt", function(a, b) '
-    '{ return parseFloat(a) > parseFloat(b); });'
-)
+PANEL_67_HELPERS = ""  # gt is built-in to Business Text plugin
 
 
 def build_panel_67(existing_panels):
@@ -242,7 +275,7 @@ def build_panel_67(existing_panels):
 
     return business_text_panel(
         panel_id=67,
-        grid_pos={"x": 15, "y": 0, "w": 9, "h": 12},
+        grid_pos={"x": 14, "y": 0, "w": 10, "h": 10},
         targets=targets,
         content=PANEL_67_CONTENT,
         helpers=PANEL_67_HELPERS,
@@ -478,7 +511,8 @@ PANEL_80_QUERY_B = r"""from(bucket: "default")
   |> last()"""
 
 PANEL_80_CONTENT = r"""<style>
-.topo{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#d8d9da;height:100%;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.topo-wrap{display:flex;flex-direction:column;height:100%;min-height:0}
+.topo{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#d8d9da;flex:1;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .topo svg{display:block;width:100%;height:auto}
 @keyframes flow-march-16{from{stroke-dashoffset:16}to{stroke-dashoffset:0}}
 @keyframes flow-march-11{from{stroke-dashoffset:11}to{stroke-dashoffset:0}}
@@ -486,6 +520,7 @@ PANEL_80_CONTENT = r"""<style>
 .flow-batt{animation:flow-march-16 0.70s linear infinite}
 .flow-house{animation:flow-march-11 1.10s linear infinite}
 </style>
+<div class="topo-wrap">
 <div class="topo" id="topo-root"
   data-prod="{{prod}}" data-cons="{{cons}}" data-soc="{{soc}}"
   data-bat="{{bat}}" data-meter="{{meter}}" data-charge="{{charge_w}}"
@@ -685,6 +720,7 @@ PANEL_80_CONTENT = r"""<style>
     <text x="1000" y="178" id="topo-wb-val" fill="#8e8e8e" font-size="17" font-weight="800">{{charge_w}}<tspan font-size="10" font-weight="600"> kW</tspan></text>
   </g>
 </svg>
+</div>
 </div>"""
 
 PANEL_80_AFTER_RENDER = r"""var root=document.getElementById("topo-root");
@@ -855,26 +891,16 @@ if(gridBars.length===20){
   }
 }"""
 
-PANEL_80_HELPERS = (
-    'handlebars.registerHelper("lt", function(a, b) '
-    '{ return parseFloat(a) < parseFloat(b); });\n'
-    'handlebars.registerHelper("gt", function(a, b) '
-    '{ return parseFloat(a) > parseFloat(b); });\n'
-    'handlebars.registerHelper("gte", function(a, b) '
-    '{ return parseFloat(a) >= parseFloat(b); });\n'
-    'handlebars.registerHelper("abs", function(a) '
-    '{ return Math.abs(parseFloat(a)); });'
-)
+PANEL_80_HELPERS = ""  # gt is built-in to Business Text plugin; lt replaced with swapped gt
 
 
 def build_panel_80():
     targets = [
         flux_target(PANEL_80_QUERY_A, "A"),
-        flux_target(PANEL_80_QUERY_B, "B"),
     ]
     return business_text_panel(
         panel_id=80,
-        grid_pos={"x": 0, "y": 12, "w": 15, "h": 7},
+        grid_pos={"x": 0, "y": 10, "w": 14, "h": 7},
         targets=targets,
         content=PANEL_80_CONTENT,
         helpers=PANEL_80_HELPERS,
@@ -883,95 +909,153 @@ def build_panel_80():
 
 
 # ===================================================================
-# PANEL 81 -- Energy Chart (timeseries)
+# PANEL 81 -- Energy Chart (Business Text with SVG chart)
 # ===================================================================
+# Encodes Solar/House/Battery/Bojlery as "minute:kW" strings at 2-min
+# aggregation, plus OTE hourly prices as "hour:price" strings.
+# afterRender JS draws a dual-axis SVG chart (kW left, Kč right)
+# with OTE price bars, data lines/areas, and a NOW marker.
 
-def build_panel_81():
-    targets = [
-        flux_target(
-            'from(bucket: "default")\n'
-            "  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n"
-            '  |> filter(fn: (r) => r._measurement == "FVE" and '
-            'r._field == "power" and r.string == "all")\n'
-            "  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))\n"
-            "  |> aggregateWindow(every: v.windowPeriod, fn: max)",
-            "A",
-        ),
-        flux_target(
-            'from(bucket: "default")\n'
-            "  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n"
-            '  |> filter(fn: (r) => r._measurement == "FVE" and '
-            'r._field == "consumption")\n'
-            "  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))\n"
-            "  |> aggregateWindow(every: v.windowPeriod, fn: max)",
-            "B",
-        ),
-        flux_target(
-            'from(bucket: "default")\n'
-            "  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n"
-            '  |> filter(fn: (r) => r._measurement == "FVE" and '
-            'r._field == "battery_load")\n'
-            "  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))\n"
-            "  |> aggregateWindow(every: v.windowPeriod, fn: max)",
-            "C",
-        ),
-        flux_target(
-            'from(bucket: "default")\n'
-            "  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n"
-            '  |> filter(fn: (r) => r._measurement == "FVE" and '
-            'r._field == "bojlery" and r.pretoky == "pretoky")\n'
-            "  |> map(fn: (r) => ({r with _value: r._value / 1000.0}))\n"
-            "  |> aggregateWindow(every: v.windowPeriod, fn: max)",
-            "D",
-        ),
-    ]
-    overrides = [
-        {
-            "matcher": {"id": "byFrameRefID", "options": "A"},
-            "properties": [
-                {"id": "color", "value": {"fixedColor": "#5794F2", "mode": "fixed"}},
-                {"id": "displayName", "value": "Solar"},
-            ],
-        },
-        {
-            "matcher": {"id": "byFrameRefID", "options": "B"},
-            "properties": [
-                {"id": "color", "value": {"fixedColor": "#73bf69", "mode": "fixed"}},
-                {"id": "displayName", "value": "House"},
-            ],
-        },
-        {
-            "matcher": {"id": "byFrameRefID", "options": "C"},
-            "properties": [
-                {"id": "color", "value": {"fixedColor": "#FADE2A", "mode": "fixed"}},
-                {"id": "displayName", "value": "Battery"},
-            ],
-        },
-        {
-            "matcher": {"id": "byFrameRefID", "options": "D"},
-            "properties": [
-                {"id": "color", "value": {"fixedColor": "#FF9830", "mode": "fixed"}},
-                {"id": "displayName", "value": "Bojlery"},
-            ],
-        },
-    ]
-    panel = timeseries_panel(
-        panel_id=81,
-        grid_pos={"x": 0, "y": 19, "w": 15, "h": 13},
-        targets=targets,
-        overrides=overrides,
-    )
-    # Override time range: today midnight → now (independent of dashboard range)
-    panel["timeFrom"] = "now/d"
-    return panel
+PANEL_81_QUERY = r"""import "math"
+import "array"
+import "strings"
+import "date"
+import "timezone"
 
+option location = timezone.location(name: "Europe/Prague")
 
-# ===================================================================
-# PANEL 82 -- Energy Stats
-# ===================================================================
+// -- Encode time-series as "minute:kW" strings (2-min aggregation) --
 
-PANEL_82_CONTENT = r"""<style>
-.estat{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;background:#111217;height:100%;overflow:hidden}
+solar_enc = from(bucket: "default")
+  |> range(start: today(), stop: now())
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "power" and r.string == "all")
+  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> filter(fn: (r) => exists r._value)
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
+  |> findColumn(fn: (key) => true, column: "_enc")
+solar_str = strings.joinStr(arr: solar_enc, v: ",")
+
+house_enc = from(bucket: "default")
+  |> range(start: today(), stop: now())
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "consumption")
+  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> filter(fn: (r) => exists r._value)
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
+  |> findColumn(fn: (key) => true, column: "_enc")
+house_str = strings.joinStr(arr: house_enc, v: ",")
+
+bat_enc = from(bucket: "default")
+  |> range(start: today(), stop: now())
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "battery_load")
+  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> filter(fn: (r) => exists r._value)
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
+  |> findColumn(fn: (key) => true, column: "_enc")
+bat_str = strings.joinStr(arr: bat_enc, v: ",")
+
+boj_enc = from(bucket: "default")
+  |> range(start: today(), stop: now())
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "bojlery" and r.pretoky == "pretoky")
+  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> filter(fn: (r) => exists r._value)
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
+  |> findColumn(fn: (key) => true, column: "_enc")
+boj_str = strings.joinStr(arr: boj_enc, v: ",")
+
+// -- Solar forecast (full day, 50th percentile → kW; JS filters to after NOW) --
+fc_enc = from(bucket: "default")
+  |> range(start: today(), stop: date.add(d: 24h, to: today()))
+  |> filter(fn: (r) => r._measurement == "SolarForecast" and r._field == "30m_50p")
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value * 200.0) / 100.0)}))
+  |> findColumn(fn: (key) => true, column: "_enc")
+fc_str = strings.joinStr(arr: fc_enc, v: ",")
+
+// -- OTE hourly prices (subtract 1h from end-of-hour timestamp) --
+ote_enc = from(bucket: "default")
+  |> range(start: today(), stop: date.add(d: 25h, to: today()))
+  |> filter(fn: (r) => r._measurement == "OTE" and r._field == "price_czk_kwh" and r.type == "hourly")
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _enc: string(v: date.hour(t: date.sub(d: 1h, from: r._time))) + ":" + string(v: math.round(x: r._value * 100.0) / 100.0)}))
+  |> findColumn(fn: (key) => true, column: "_enc")
+ote_str = strings.joinStr(arr: ote_enc, v: ",")
+
+// -- Daily stats --
+d_cons_raw = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "consumption_day")
+  |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+d_gen_raw = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "generation_day")
+  |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+// -- Monthly stats --
+month_start = date.truncate(t: now(), unit: 1mo)
+
+m_cons_raw = from(bucket: "default")
+  |> range(start: month_start)
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "consumption_day")
+  |> aggregateWindow(every: 1d, fn: max)
+  |> sum()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+m_gen_raw = from(bucket: "default")
+  |> range(start: month_start)
+  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "generation_day")
+  |> aggregateWindow(every: 1d, fn: max)
+  |> sum()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+// -- Virtual Battery (CEZ) --
+vb_prod_raw = from(bucket: "default")
+  |> range(start: -1d)
+  |> filter(fn: (r) => r._measurement == "cez" and r._field == "aggregated_production")
+  |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+vb_cons_raw = from(bucket: "default")
+  |> range(start: -1d)
+  |> filter(fn: (r) => r._measurement == "cez" and r._field == "aggregated_consumption")
+  |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+d_cons  = if exists d_cons_raw._value then float(v: d_cons_raw._value) else 0.0
+d_gen   = if exists d_gen_raw._value  then float(v: d_gen_raw._value)  else 0.0
+m_cons  = if exists m_cons_raw._value then float(v: m_cons_raw._value) else 0.0
+m_gen   = if exists m_gen_raw._value  then float(v: m_gen_raw._value)  else 0.0
+self_suf = if d_cons > 0.0 then math.round(x: d_gen / d_cons * 100.0) else 0.0
+vb_prod = if exists vb_prod_raw._value then float(v: vb_prod_raw._value) else 0.0
+vb_cons = if exists vb_cons_raw._value then float(v: vb_cons_raw._value) else 0.0
+vb_pct  = if vb_cons > 0.0 then math.round(x: vb_prod / vb_cons * 100.0) else 0.0
+
+array.from(rows: [{
+  solar_str: solar_str,
+  house_str: house_str,
+  bat_str: bat_str,
+  boj_str: boj_str,
+  fc_str: fc_str,
+  ote_str: ote_str,
+  d_cons:   math.round(x: d_cons * 10.0) / 10.0,
+  d_gen:    math.round(x: d_gen * 10.0) / 10.0,
+  m_cons:   math.round(x: m_cons),
+  m_gen:    math.round(x: m_gen),
+  self_suf: self_suf,
+  vb_pct:   vb_pct,
+}])"""
+
+PANEL_81_CONTENT = r"""<style>
+.ec-wrap{display:flex;flex-direction:column;height:100%;min-height:0}
+.ec{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;flex-direction:column;flex:1;min-height:0}
+.ec-svg{flex:1;min-height:0;padding:0 2px}
+.estat{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;background:#111217;overflow:hidden;flex-shrink:0}
 .estat .s{flex:1;padding:8px 14px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px;justify-content:center}
 .estat .s:last-child{border-right:none}
 .estat .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
@@ -994,6 +1078,16 @@ PANEL_82_CONTENT = r"""<style>
 .s-diverge .dv-fill-cons{background:#f2495c;border-radius:3px 0 0 3px}
 .s-diverge .dv-fill-prod{background:#73bf69;border-radius:0 3px 3px 0}
 </style>
+<div class="ec-wrap">
+<div class="ec" id="ec-root"
+  data-solar="{{solar_str}}"
+  data-house="{{house_str}}"
+  data-bat="{{bat_str}}"
+  data-boj="{{boj_str}}"
+  data-fc="{{fc_str}}"
+  data-ote="{{ote_str}}">
+  <div id="ec-chart" class="ec-svg"></div>
+</div>
 <div class="estat" id="estat-root"
   data-d-cons="{{d_cons}}" data-d-gen="{{d_gen}}"
   data-m-cons="{{m_cons}}" data-m-gen="{{m_gen}}"
@@ -1028,12 +1122,218 @@ PANEL_82_CONTENT = r"""<style>
   </div>
   <div class="s"><span class="lab">Self-suff.</span><span class="val" style="color:#73bf69">{{self_suf}}<span class="unit">%</span></span></div>
   <div class="s"><span class="lab">Virt. batt.</span><span class="val" style="color:#FADE2A">{{vb_pct}}<span class="unit">%</span></span></div>
+</div>
 </div>"""
 
-PANEL_82_AFTER_RENDER = r"""var root=document.getElementById("estat-root");
+PANEL_81_AFTER_RENDER = r"""var root=document.getElementById("ec-root");
 if(!root)return;
-var dc=parseFloat(root.dataset.dCons)||0,dg=parseFloat(root.dataset.dGen)||0;
-var mc=parseFloat(root.dataset.mCons)||0,mg=parseFloat(root.dataset.mGen)||0;
+var chartEl=document.getElementById("ec-chart");
+if(!chartEl)return;
+
+// Parse "minute:value,..." into [{m,v}]
+function pd(str){
+  if(!str)return[];
+  var r=[],p=str.split(",");
+  for(var i=0;i<p.length;i++){
+    var j=p[i].indexOf(":");
+    if(j>0){var m=parseInt(p[i].substring(0,j),10),v=parseFloat(p[i].substring(j+1));
+      if(!isNaN(m)&&!isNaN(v))r.push({m:m,v:v});}
+  }return r;
+}
+var sol=pd(root.dataset.solar),hou=pd(root.dataset.house);
+var bat=pd(root.dataset.bat),boj=pd(root.dataset.boj);
+var fc=pd(root.dataset.fc);
+
+// OTE prices: "hour:price,..."
+var ote=[];
+var os=root.dataset.ote;
+if(os){var op=os.split(",");for(var i=0;i<op.length;i++){
+  var j=op[i].indexOf(":");
+  if(j>0){var h=parseInt(op[i].substring(0,j),10),v=parseFloat(op[i].substring(j+1));
+    if(!isNaN(h)&&!isNaN(v))ote.push({h:h,v:v});}
+}}
+
+if(sol.length<2&&hou.length<2){
+  chartEl.innerHTML='<div style="color:#5a5e72;font-size:13px;text-align:center;padding:40px">Energy data loading\u2026</div>';return;
+}
+
+var now=new Date(),nowM=now.getHours()*60+now.getMinutes(),nowHr=now.getHours();
+var cO=0;
+for(var i=0;i<ote.length;i++){if(ote[i].h===nowHr){cO=ote[i].v;break;}}
+
+// Filter forecast to only points after NOW
+var fcFut=[];
+for(var i=0;i<fc.length;i++){if(fc[i].m>=nowM)fcFut.push(fc[i]);}
+
+// Chart dimensions (fixed viewBox)
+var VW=1160,VH=460,PL=48,PR=52,PT=16,PB=22;
+var CW=VW-PL-PR,CH=VH-PT-PB;
+
+// Y-axis range (auto from data)
+var allV=[3,-1];
+function aV(pts){for(var i=0;i<pts.length;i++)allV.push(pts[i].v);}
+aV(sol);aV(hou);aV(bat);aV(boj);aV(fcFut);
+for(var i=0;i<ote.length;i++)allV.push(ote[i].v);
+var yMax=Math.ceil(Math.max.apply(null,allV))+1;
+var yMin=Math.floor(Math.min.apply(null,allV))-1;
+if(yMax%2!==0)yMax++;
+if(yMin%2!==0)yMin--;
+var yR=yMax-yMin;
+
+function xP(m){return PL+(m/1440)*CW;}
+function yP(v){return PT+((yMax-v)/yR)*CH;}
+var y0=yP(0);
+
+// OTE bar color by price tier
+function oc(v){return v>=2?"#F2495C":v>=0.5?"#FF9830":"#73BF69";}
+
+var s='<svg viewBox="0 0 '+VW+' '+VH+'" width="100%" height="100%" preserveAspectRatio="none" style="display:block">';
+
+// Defs: gradients
+s+='<defs>';
+s+='<linearGradient id="ec81sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5794F2" stop-opacity=".28"/><stop offset="100%" stop-color="#5794F2" stop-opacity="0"/></linearGradient>';
+s+='<linearGradient id="ec81bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FADE2A" stop-opacity="0"/><stop offset="100%" stop-color="#FADE2A" stop-opacity=".22"/></linearGradient>';
+s+='<linearGradient id="ec81fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5794F2" stop-opacity=".16"/><stop offset="100%" stop-color="#5794F2" stop-opacity="0"/></linearGradient>';
+s+='</defs>';
+
+// Horizontal grid: major every 2 kW
+s+='<g stroke="#333840" stroke-width="0.8">';
+for(var g=yMin;g<=yMax;g+=2){if(g!==0)s+='<line x1="'+PL+'" y1="'+yP(g).toFixed(1)+'" x2="'+(VW-PR)+'" y2="'+yP(g).toFixed(1)+'"/>';}
+s+='</g>';
+// Minor every odd kW
+s+='<g stroke="#24272c" stroke-width="0.5">';
+for(var g=yMin+1;g<yMax;g+=2){s+='<line x1="'+PL+'" y1="'+yP(g).toFixed(1)+'" x2="'+(VW-PR)+'" y2="'+yP(g).toFixed(1)+'"/>';}
+s+='</g>';
+// Zero line
+s+='<line x1="'+PL+'" y1="'+y0.toFixed(1)+'" x2="'+(VW-PR)+'" y2="'+y0.toFixed(1)+'" stroke="#5a5f66" stroke-width="1.3"/>';
+
+// Vertical grid every 3h
+s+='<g stroke="#24272c" stroke-width="0.5">';
+for(var h=3;h<24;h+=3){s+='<line x1="'+xP(h*60).toFixed(1)+'" y1="'+PT+'" x2="'+xP(h*60).toFixed(1)+'" y2="'+(VH-PB)+'"/>';}
+s+='</g>';
+
+// Left Y-axis labels (kW)
+s+='<g font-size="11" fill="#8e8e8e" text-anchor="end" font-weight="500" font-family="Inter,sans-serif">';
+for(var g=yMin;g<=yMax;g+=2){
+  var lbl=(g>0?"+":"")+g,fw=g===0?"700":"500",fc=g===0?"#b8b9ba":"#8e8e8e";
+  s+='<text x="'+(PL-5)+'" y="'+(yP(g)+4).toFixed(1)+'" fill="'+fc+'" font-weight="'+fw+'">'+lbl+'</text>';
+}
+s+='<text x="'+(PL-5)+'" y="'+(PT-2)+'" fill="#d8d9da" font-size="10" font-weight="800" letter-spacing=".05em">kW</text>';
+s+='</g>';
+
+// Right Y-axis labels (Kc/kWh) — same scale, OTE tier colors
+s+='<g font-size="11" text-anchor="start" font-weight="600" font-family="Inter,sans-serif">';
+for(var g=yMin;g<=yMax;g+=2){
+  var lbl=(g>0?"+":"")+g,fw=g===0?"700":"600";
+  s+='<text x="'+(VW-PR+5)+'" y="'+(yP(g)+4).toFixed(1)+'" fill="'+oc(g)+'" font-weight="'+fw+'">'+lbl+'</text>';
+}
+s+='<text x="'+(VW-PR+5)+'" y="'+(PT-2)+'" fill="#d8d9da" font-size="10" font-weight="800" letter-spacing=".05em">K\u010d</text>';
+s+='</g>';
+
+// X-axis labels (every 3h, skip near NOW)
+var nearH=Math.round(nowHr/3)*3;
+s+='<g font-size="11" fill="#8e8e8e" text-anchor="middle" font-weight="500" font-family="Inter,sans-serif">';
+for(var h=0;h<=24;h+=3){
+  if(h===nearH&&h>0&&h<24)continue;
+  var lbl=h===24?"23:59":String(h).padStart(2,"0")+":00";
+  s+='<text x="'+xP(h*60).toFixed(1)+'" y="'+(VH-4)+'">'+lbl+'</text>';
+}
+s+='<text x="'+xP(nowM).toFixed(1)+'" y="'+(VH-4)+'" fill="#FADE2A" font-weight="800">NOW '+String(nowHr).padStart(2,"0")+':'+String(now.getMinutes()).padStart(2,"0")+'</text>';
+s+='</g>';
+
+// OTE price bars (low opacity background)
+if(ote.length>0){
+  var bSlot=CW/24,bW=bSlot*0.45;
+  s+='<g opacity=".22">';
+  for(var i=0;i<ote.length;i++){
+    var bx=xP(ote[i].h*60+30)-bW/2,bv=ote[i].v,by,bh;
+    if(bv>=0){by=yP(bv);bh=y0-by;}else{by=y0;bh=yP(bv)-y0;}
+    if(bh>0.5)s+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bW.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+oc(bv)+'"/>';
+  }
+  s+='</g>';
+}
+
+// Build SVG path from [{m,v}]
+function bp(pts){
+  if(pts.length<2)return"";
+  var d="M"+xP(pts[0].m).toFixed(1)+","+yP(pts[0].v).toFixed(1);
+  for(var i=1;i<pts.length;i++){d+=" L"+xP(pts[i].m).toFixed(1)+","+yP(pts[i].v).toFixed(1);}
+  return d;
+}
+
+// Solar: area fill + line
+if(sol.length>=2){
+  var sl=bp(sol);
+  s+='<path d="'+sl+" L"+xP(sol[sol.length-1].m).toFixed(1)+","+y0.toFixed(1)+" L"+xP(sol[0].m).toFixed(1)+","+y0.toFixed(1)+' Z" fill="url(#ec81sg)"/>';
+  s+='<path d="'+sl+'" fill="none" stroke="#5794F2" stroke-width="2" stroke-linejoin="round"/>';
+}
+
+// Solar forecast: dashed line + lighter fill (from last actual point onward)
+if(fcFut.length>=1){
+  var fcPts=[];
+  if(sol.length>0){fcPts.push({m:sol[sol.length-1].m,v:sol[sol.length-1].v});}
+  for(var i=0;i<fcFut.length;i++){fcPts.push(fcFut[i]);}
+  if(fcPts.length>=2){
+    var fl=bp(fcPts);
+    s+='<path d="'+fl+" L"+xP(fcPts[fcPts.length-1].m).toFixed(1)+","+y0.toFixed(1)+" L"+xP(fcPts[0].m).toFixed(1)+","+y0.toFixed(1)+' Z" fill="url(#ec81fg)"/>';
+    s+='<path d="'+fl+'" fill="none" stroke="#5794F2" stroke-width="2" stroke-dasharray="6 5" stroke-linejoin="round" opacity=".9"/>';
+  }
+}
+
+// House: line
+if(hou.length>=2){
+  s+='<path d="'+bp(hou)+'" fill="none" stroke="#73bf69" stroke-width="2" stroke-linejoin="round"/>';
+}
+
+// Battery: area fill toward zero + line
+if(bat.length>=2){
+  var bl=bp(bat);
+  s+='<path d="'+bl+" L"+xP(bat[bat.length-1].m).toFixed(1)+","+y0.toFixed(1)+" L"+xP(bat[0].m).toFixed(1)+","+y0.toFixed(1)+' Z" fill="url(#ec81bg)"/>';
+  s+='<path d="'+bl+'" fill="none" stroke="#FADE2A" stroke-width="2" stroke-linejoin="round"/>';
+}
+
+// Bojlery: thin line
+if(boj.length>=2){
+  s+='<path d="'+bp(boj)+'" fill="none" stroke="#FF9830" stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>';
+}
+
+// NOW marker
+var nx=xP(nowM);
+s+='<line x1="'+nx.toFixed(1)+'" y1="'+PT+'" x2="'+nx.toFixed(1)+'" y2="'+(VH-PB)+'" stroke="#FADE2A" stroke-width="1" stroke-dasharray="3 4" opacity=".55"/>';
+
+// NOW dots on each active series
+function lv(pts,m){for(var i=pts.length-1;i>=0;i--){if(pts[i].m<=m)return pts[i].v;}return pts.length?pts[0].v:null;}
+var nS=lv(sol,nowM),nH=lv(hou,nowM),nB=lv(bat,nowM);
+if(nS!==null)s+='<circle cx="'+nx.toFixed(1)+'" cy="'+yP(nS).toFixed(1)+'" r="4.5" fill="#5794F2" stroke="#0f1013" stroke-width="1.5"/>';
+if(nH!==null)s+='<circle cx="'+nx.toFixed(1)+'" cy="'+yP(nH).toFixed(1)+'" r="4.5" fill="#73bf69" stroke="#0f1013" stroke-width="1.5"/>';
+if(nB!==null)s+='<circle cx="'+nx.toFixed(1)+'" cy="'+yP(nB).toFixed(1)+'" r="4.5" fill="#FADE2A" stroke="#0f1013" stroke-width="1.5"/>';
+
+// OTE NOW chip (bottom of chart)
+if(cO!==0){
+  var occ=oc(cO);
+  s+='<g transform="translate('+(nx-45).toFixed(0)+','+(VH-PB-22).toFixed(0)+')">';
+  s+='<rect x="0" y="0" width="90" height="18" rx="3" fill="#0f1013" stroke="'+occ+'" stroke-width="0.8"/>';
+  s+='<text x="45" y="13" fill="'+occ+'" font-size="11" font-weight="800" text-anchor="middle" font-family="Inter,sans-serif">'+cO.toFixed(2)+' K\u010d NOW</text></g>';
+}
+
+// OTE min/max annotations
+if(ote.length>1){
+  var oMin=ote[0],oMax=ote[0];
+  for(var i=1;i<ote.length;i++){if(ote[i].v<oMin.v)oMin=ote[i];if(ote[i].v>oMax.v)oMax=ote[i];}
+  if(oMax.v>0.1){
+    s+='<text x="'+xP(oMax.h*60+30).toFixed(1)+'" y="'+(yP(oMax.v)-6).toFixed(1)+'" text-anchor="middle" fill="'+oc(oMax.v)+'" font-size="10" font-weight="700" font-family="Inter,sans-serif">max '+oMax.v.toFixed(2)+' K\u010d @'+String(oMax.h).padStart(2,"0")+':00</text>';
+  }
+  s+='<text x="'+xP(oMin.h*60+30).toFixed(1)+'" y="'+(yP(oMin.v)+16).toFixed(1)+'" text-anchor="middle" fill="'+oc(oMin.v)+'" font-size="10" font-weight="700" font-family="Inter,sans-serif">min '+oMin.v.toFixed(2)+' K\u010d @'+String(oMin.h).padStart(2,"0")+':00</text>';
+}
+
+s+='</svg>';
+chartEl.innerHTML=s;
+
+// -- Energy Stats --
+var eRoot=document.getElementById("estat-root");
+if(eRoot){
+var dc=parseFloat(eRoot.dataset.dCons)||0,dg=parseFloat(eRoot.dataset.dGen)||0;
+var mc=parseFloat(eRoot.dataset.mCons)||0,mg=parseFloat(eRoot.dataset.mGen)||0;
 
 function setBars(consId,prodId,deltaId,c,g){
   var mx=Math.max(c,g,0.1);
@@ -1049,19 +1349,20 @@ function setBars(consId,prodId,deltaId,c,g){
   }
 }
 setBars("estat-d-cons-bar","estat-d-prod-bar","estat-d-delta",dc,dg);
-setBars("estat-m-cons-bar","estat-m-prod-bar","estat-m-delta",mc,mg);"""
+setBars("estat-m-cons-bar","estat-m-prod-bar","estat-m-delta",mc,mg);
+}"""
 
 
-def build_panel_82():
-    # Reuse the same query as panel 80 (refId A)
-    targets = [flux_target(PANEL_80_QUERY_A, "A")]
-    return business_text_panel(
-        panel_id=82,
-        grid_pos={"x": 0, "y": 32, "w": 15, "h": 5},
+def build_panel_81():
+    targets = [flux_target(PANEL_81_QUERY, "A")]
+    panel = business_text_panel(
+        panel_id=81,
+        grid_pos={"x": 0, "y": 17, "w": 14, "h": 16},
         targets=targets,
-        content=PANEL_82_CONTENT,
-        after_render=PANEL_82_AFTER_RENDER,
+        content=PANEL_81_CONTENT,
+        after_render=PANEL_81_AFTER_RENDER,
     )
+    return panel
 
 
 # ===================================================================
@@ -1070,6 +1371,11 @@ def build_panel_82():
 
 PANEL_83_QUERY = r"""import "math"
 import "array"
+import "strings"
+import "date"
+import "timezone"
+
+option location = timezone.location(name: "Europe/Prague")
 
 // -- Krb (fireplace) --
 krb_w_raw = from(bucket: "default")
@@ -1161,148 +1467,21 @@ in_temp_rec = union(tables: [in_temp_default, in_temp_real])
   |> sort(columns: ["_time"]) |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
-array.from(rows: [{
-  krb_w: if exists krb_w_raw._value then math.round(x: float(v: krb_w_raw._value)) else 0.0,
-  krb_t: if exists krb_t_raw._value then math.round(x: float(v: krb_t_raw._value) * 10.0) / 10.0 else 0.0,
-  krb_trend: krb_trend_val,
-  cop: if exists cop_now._value then math.round(x: float(v: cop_now._value) * 100.0) / 100.0 else 0.0,
-  cop_3h: cop_delta,
-  compressor: if exists comp_rec._value then comp_rec._value else 0.0,
-  coil: if exists coil_rec._value then coil_rec._value else 0.0,
-  out_temp: if exists out_temp_rec._value then math.round(x: float(v: out_temp_rec._value) * 10.0) / 10.0 else 0.0,
-  in_temp: if exists in_temp_rec._value then math.round(x: float(v: in_temp_rec._value) * 10.0) / 10.0 else 0.0,
-}])"""
-
-PANEL_83_CONTENT = r"""<style>
-.htiles{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px;padding:8px 10px;height:100%;min-height:0}
-.htile{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;justify-content:center}
-.htile .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
-.htile .big{font-size:36px;font-weight:700;line-height:1}
-.htile .sub{font-size:12px;color:#8e8e8e}
-.htile .sub b{color:#d8d9da;font-weight:700}
-.htile-head{display:flex;align-items:center;justify-content:space-between}
-.pill-sm{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid transparent}
-.pill-sm-comp{background:rgba(115,191,105,.14);color:#73bf69;border-color:rgba(115,191,105,.28)}
-.pill-sm-coil{background:rgba(242,73,92,.14);color:#f2495c;border-color:rgba(242,73,92,.28)}
-.pill-sm-off{background:rgba(142,142,142,.10);color:#6a6a6a;border-color:rgba(142,142,142,.18)}
-.pill-sm .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
-.htile-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
-</style>
-<div class="htiles">
-  <div class="htile">
-    <div class="htile-head">
-      <span class="lab">Krb</span>
-      {{#if (gt krb_w 20)}}<span class="pill-sm pill-sm-on"><span class="dot"></span>On</span>{{else}}<span class="pill-sm pill-sm-off"><span class="dot"></span>Off</span>{{/if}}
-    </div>
-    <div class="htile-row">
-      <span class="big" style="color:{{#if (gt krb_t 60)}}#f2495c{{else if (gt krb_t 40)}}#FF9830{{else if (gt krb_t 15)}}#73bf69{{else}}#5794F2{{/if}}">{{krb_t}}&deg;</span>
-      <span style="font-size:20px;font-weight:700;line-height:1;color:#5794F2">{{#if (gt krb_trend 0)}}&uarr;{{else if (lt krb_trend 0)}}&darr;{{else}}&mdash;{{/if}} {{krb_trend}}<span style="font-size:12px;font-weight:600;color:#8e8e8e"> &deg;/h</span></span>
-    </div>
-  </div>
-  <div class="htile">
-    <span class="lab">COP &middot; 24h</span>
-    <div class="htile-row">
-      <span class="big" style="color:{{#if (gt cop 3.5)}}#73bf69{{else if (gt cop 2.5)}}#FADE2A{{else}}#f2495c{{/if}}">{{cop}}</span>
-      <span style="font-size:16px;font-weight:700;line-height:1;color:{{#if (gt cop_3h 0)}}#73bf69{{else if (lt cop_3h 0)}}#f2495c{{else}}#8e8e8e{{/if}}">{{#if (gt cop_3h 0)}}&uarr;{{else if (lt cop_3h 0)}}&darr;{{else}}&mdash;{{/if}} {{cop_3h}}<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">3h</span></span>
-    </div>
-  </div>
-  <div class="htile">
-    <div class="htile-head">
-      <span class="lab">Heat Pump</span>
-      {{#if (gt compressor 0)}}<span class="pill-sm pill-sm-comp"><span class="dot"></span>Compressor</span>{{else if (gt coil 0)}}<span class="pill-sm pill-sm-coil"><span class="dot"></span>Heat coil</span>{{else}}<span class="pill-sm pill-sm-off"><span class="dot"></span>Off</span>{{/if}}
-    </div>
-    <div class="htile-row">
-      <span style="font-size:24px;font-weight:700;line-height:1;color:#FADE2A">{{out_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">out</span></span>
-      <span style="font-size:14px;color:#555;font-weight:500">/</span>
-      <span style="font-size:24px;font-weight:700;line-height:1;color:#5794F2">{{in_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">in</span></span>
-    </div>
-  </div>
-</div>"""
-
-
-def build_panel_83():
-    targets = [flux_target(PANEL_83_QUERY, "A")]
-    return business_text_panel(
-        panel_id=83,
-        grid_pos={"x": 15, "y": 12, "w": 9, "h": 5},
-        targets=targets,
-        content=PANEL_83_CONTENT,
-        helpers=PANEL_80_HELPERS,  # same lt/gt/gte/abs helpers
-    )
-
-
-# ===================================================================
-# PANEL 84 -- TC Chart (timeseries)
-# ===================================================================
-
-def build_panel_84():
-    targets = [
-        flux_target(
-            'from(bucket: "default")\n'
-            "  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n"
-            '  |> filter(fn: (r) => r._measurement == "estia" and '
-            'r._field == "target_temp")\n'
-            "  |> aggregateWindow(every: v.windowPeriod, fn: last)",
-            "A",
-        ),
-        flux_target(
-            'from(bucket: "default")\n'
-            "  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n"
-            '  |> filter(fn: (r) => r._measurement == "becka" and '
-            'r._field == "tC")\n'
-            "  |> aggregateWindow(every: v.windowPeriod, fn: last)",
-            "B",
-        ),
-    ]
-    overrides = [
-        {
-            "matcher": {"id": "byFrameRefID", "options": "A"},
-            "properties": [
-                {"id": "color", "value": {"fixedColor": "#73bf69", "mode": "fixed"}},
-                {"id": "displayName", "value": "Target"},
-            ],
-        },
-        {
-            "matcher": {"id": "byFrameRefID", "options": "B"},
-            "properties": [
-                {"id": "color", "value": {"fixedColor": "#FADE2A", "mode": "fixed"}},
-                {"id": "displayName", "value": "Water"},
-            ],
-        },
-    ]
-    return timeseries_panel(
-        panel_id=84,
-        grid_pos={"x": 15, "y": 17, "w": 9, "h": 5},
-        targets=targets,
-        overrides=overrides,
-        line_width=3,
-        fill_opacity=0,
-        show_legend=False,
-    )
-
-
-# ===================================================================
-# PANEL 85 -- Heat Stats
-# ===================================================================
-
-PANEL_85_QUERY = r"""import "math"
-import "array"
-
-// Target temp
+// -- Target temp --
 target_raw = from(bucket: "default")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r._measurement == "estia" and r._field == "target_temp")
   |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
-// Water (becka) temp
+// -- Water (becka) temp --
 water_raw = from(bucket: "default")
   |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
   |> filter(fn: (r) => r._measurement == "becka" and r._field == "tC")
   |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
-// Water trend (1h)
+// -- Water trend (1h) --
 water_now = from(bucket: "default")
   |> range(start: -2h)
   |> filter(fn: (r) => r._measurement == "becka" and r._field == "tC")
@@ -1323,36 +1502,224 @@ target_t = if exists target_raw._value then math.round(x: float(v: target_raw._v
 water_t = if exists water_raw._value then math.round(x: float(v: water_raw._value) * 10.0) / 10.0 else 0.0
 delta_t = math.round(x: (target_t - water_t) * 10.0) / 10.0
 
+// -- TC time-series (dashboard timeframe, 5-min windows) --
+target_ts = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "estia" and r._field == "target_temp")
+  |> aggregateWindow(every: 5m, fn: last)
+  |> filter(fn: (r) => exists r._value)
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time) * 60 + date.minute(t: r._time)) + ":" + string(v: math.round(x: r._value * 10.0) / 10.0)}))
+  |> findColumn(fn: (key) => true, column: "_encoded")
+
+target_ts_str = strings.joinStr(arr: target_ts, v: ",")
+
+water_ts = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "becka" and r._field == "tC")
+  |> aggregateWindow(every: 5m, fn: last)
+  |> filter(fn: (r) => exists r._value)
+  |> sort(columns: ["_time"])
+  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time) * 60 + date.minute(t: r._time)) + ":" + string(v: math.round(x: r._value * 10.0) / 10.0)}))
+  |> findColumn(fn: (key) => true, column: "_encoded")
+
+water_ts_str = strings.joinStr(arr: water_ts, v: ",")
+
 array.from(rows: [{
+  krb_w: if exists krb_w_raw._value then math.round(x: float(v: krb_w_raw._value)) else 0.0,
+  krb_t: if exists krb_t_raw._value then math.round(x: float(v: krb_t_raw._value) * 10.0) / 10.0 else 0.0,
+  krb_trend: krb_trend_val,
+  cop: if exists cop_now._value then math.round(x: float(v: cop_now._value) * 100.0) / 100.0 else 0.0,
+  cop_3h: cop_delta,
+  compressor: if exists comp_rec._value then comp_rec._value else 0.0,
+  coil: if exists coil_rec._value then coil_rec._value else 0.0,
+  out_temp: if exists out_temp_rec._value then math.round(x: float(v: out_temp_rec._value) * 10.0) / 10.0 else 0.0,
+  in_temp: if exists in_temp_rec._value then math.round(x: float(v: in_temp_rec._value) * 10.0) / 10.0 else 0.0,
   target_t: target_t,
   water_t: water_t,
   delta_t: delta_t,
   water_trend: water_trend_val,
+  target_ts: target_ts_str,
+  water_ts: water_ts_str,
 }])"""
 
-PANEL_85_CONTENT = r"""<style>
-.hstats{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;background:#111217;height:100%;overflow:hidden}
+PANEL_83_CONTENT = r"""<style>
+.htiles-wrap{display:flex;flex-direction:column;height:100%;min-height:0}
+.htiles{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:8px;padding:8px 10px;flex:1;min-height:0}
+.htile{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:10px 14px;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.htile .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
+.htile .big{font-size:36px;font-weight:700;line-height:1}
+.htile .sub{font-size:12px;color:#8e8e8e}
+.htile .sub b{color:#d8d9da;font-weight:700}
+.htile-head{display:flex;align-items:center;justify-content:space-between}
+.pill-sm{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;border:1px solid transparent}
+.pill-sm-comp{background:rgba(115,191,105,.14);color:#73bf69;border-color:rgba(115,191,105,.28)}
+.pill-sm-coil{background:rgba(242,73,92,.14);color:#f2495c;border-color:rgba(242,73,92,.28)}
+.pill-sm-off{background:rgba(142,142,142,.10);color:#6a6a6a;border-color:rgba(142,142,142,.18)}
+.pill-sm .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.htile-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tc-chart{height:160px;margin:0 -4px}
+.hstats{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:flex;background:#111217;overflow:hidden;flex-shrink:0}
 .hstats .s{flex:1;padding:8px 14px;border-right:1px solid rgba(255,255,255,0.06);display:flex;flex-direction:column;gap:3px;justify-content:center}
 .hstats .s:last-child{border-right:none}
 .hstats .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
 .hstats .val{font-size:28px;font-weight:700;line-height:1}
 .hstats .val .unit{font-size:12px;color:#8e8e8e;margin-left:3px;font-weight:400}
 </style>
+<div class="htiles-wrap">
+<div class="htiles">
+  <div class="htile">
+    <div class="htile-head">
+      <span class="lab">Krb</span>
+      {{#if (gt krb_w 20)}}<span class="pill-sm pill-sm-on"><span class="dot"></span>On</span>{{else}}<span class="pill-sm pill-sm-off"><span class="dot"></span>Off</span>{{/if}}
+    </div>
+    <div class="htile-row">
+      <span class="big" style="color:{{#if (gt krb_t 60)}}#f2495c{{else if (gt krb_t 40)}}#FF9830{{else if (gt krb_t 15)}}#73bf69{{else}}#5794F2{{/if}}">{{krb_t}}&deg;</span>
+      <span style="font-size:20px;font-weight:700;line-height:1;color:#5794F2">{{#if (gt krb_trend 0)}}&uarr;{{else if (gt 0 krb_trend)}}&darr;{{else}}&mdash;{{/if}} {{krb_trend}}<span style="font-size:12px;font-weight:600;color:#8e8e8e"> &deg;/h</span></span>
+    </div>
+  </div>
+  <div class="htile">
+    <span class="lab">COP &middot; 24h</span>
+    <div class="htile-row">
+      <span class="big" style="color:{{#if (gt cop 3.5)}}#73bf69{{else if (gt cop 2.5)}}#FADE2A{{else}}#f2495c{{/if}}">{{cop}}</span>
+      <span style="font-size:16px;font-weight:700;line-height:1;color:{{#if (gt cop_3h 0)}}#73bf69{{else if (gt 0 cop_3h)}}#f2495c{{else}}#8e8e8e{{/if}}">{{#if (gt cop_3h 0)}}&uarr;{{else if (gt 0 cop_3h)}}&darr;{{else}}&mdash;{{/if}} {{cop_3h}}<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">3h</span></span>
+    </div>
+  </div>
+  <div class="htile">
+    <div class="htile-head">
+      <span class="lab">Heat Pump</span>
+      {{#if (gt compressor 0)}}<span class="pill-sm pill-sm-comp"><span class="dot"></span>Compressor</span>{{else if (gt coil 0)}}<span class="pill-sm pill-sm-coil"><span class="dot"></span>Heat coil</span>{{else}}<span class="pill-sm pill-sm-off"><span class="dot"></span>Off</span>{{/if}}
+    </div>
+    <div class="htile-row">
+      <span style="font-size:24px;font-weight:700;line-height:1;color:#FADE2A">{{out_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">out</span></span>
+      <span style="font-size:14px;color:#555;font-weight:500">/</span>
+      <span style="font-size:24px;font-weight:700;line-height:1;color:#5794F2">{{in_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">in</span></span>
+    </div>
+  </div>
+</div>
+<div id="tc-chart" class="tc-chart" data-target="{{target_ts}}" data-water="{{water_ts}}"></div>
 <div class="hstats">
   <div class="s"><span class="lab">Target</span><span class="val" style="color:#73bf69">{{target_t}}<span class="unit">&deg;C</span></span></div>
   <div class="s"><span class="lab">Water</span><span class="val" style="color:#FADE2A">{{water_t}}<span class="unit">&deg;C</span></span></div>
   <div class="s"><span class="lab">&Delta;</span><span class="val" style="color:#d8d9da">{{delta_t}}<span class="unit">K</span></span></div>
   <div class="s"><span class="lab">Trend 1h</span><span class="val" style="color:#5794F2">{{water_trend}}<span class="unit">K/h</span></span></div>
+</div>
 </div>"""
 
 
-def build_panel_85():
-    targets = [flux_target(PANEL_85_QUERY, "A")]
+PANEL_83_AFTER_RENDER = r"""
+var el=document.getElementById("tc-chart");
+if(!el)return;
+var tStr=el.dataset.target||"";
+var wStr=el.dataset.water||"";
+
+function parse(s){
+  if(!s)return[];
+  var pts=[];var seen={};
+  var pairs=s.split(",");
+  for(var i=0;i<pairs.length;i++){
+    var idx=pairs[i].indexOf(":");
+    if(idx>0){
+      var m=parseInt(pairs[i].substring(0,idx),10);
+      var v=parseFloat(pairs[i].substring(idx+1));
+      if(!isNaN(m)&&!isNaN(v)&&!seen[m]){seen[m]=true;pts.push({m:m,v:v})}
+    }
+  }
+  pts.sort(function(a,b){return a.m-b.m});
+  return pts;
+}
+
+var tPts=parse(tStr);
+var wPts=parse(wStr);
+var all=tPts.concat(wPts);
+if(all.length<2){
+  el.innerHTML='<div style="color:#5a5e72;font-size:11px;text-align:center;padding:16px">No TC data</div>';
+  return;
+}
+
+var allM=all.map(function(p){return p.m});
+var allV=all.map(function(p){return p.v});
+var mMin=Math.min.apply(null,allM);
+var mMax=Math.max.apply(null,allM);
+var vMin=Math.min.apply(null,allV)-3;
+var vMax=Math.max.apply(null,allV)+3;
+if(vMax-vMin<8){var mid=(vMax+vMin)/2;vMin=mid-4;vMax=mid+4}
+if(mMax===mMin)mMax=mMin+1;
+
+var W=el.offsetWidth||400;
+var H=el.offsetHeight||100;
+var padL=30,padR=8,padT=8,padB=16;
+
+function xS(m){return padL+((m-mMin)/(mMax-mMin))*(W-padL-padR)}
+function yS(v){return padT+((vMax-v)/(vMax-vMin))*(H-padT-padB)}
+
+function crPath(P){
+  if(P.length<2)return"";
+  var d="M"+xS(P[0].m)+","+yS(P[0].v);
+  for(var i=0;i<P.length-1;i++){
+    var i0=i>0?i-1:0,i1=i,i2=i+1,i3=i+2<P.length?i+2:P.length-1;
+    var x1=xS(P[i1].m),y1=yS(P[i1].v);
+    var x2=xS(P[i2].m),y2=yS(P[i2].v);
+    d+=" C"+(x1+(xS(P[i2].m)-xS(P[i0].m))/6)+","+(y1+(yS(P[i2].v)-yS(P[i0].v))/6)+" "+(x2-(xS(P[i3].m)-xS(P[i1].m))/6)+","+(y2-(yS(P[i3].v)-yS(P[i1].v))/6)+" "+x2+","+y2;
+  }
+  return d;
+}
+
+// Grid lines
+var gridY="";
+var step=Math.ceil((vMax-vMin)/4);
+if(step<1)step=1;
+var gStart=Math.ceil(vMin/step)*step;
+for(var g=gStart;g<=vMax;g+=step){
+  var gy=yS(g);
+  gridY+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#2c3035" stroke-width="0.5"/>';
+  gridY+='<text x="'+(padL-4)+'" y="'+(gy+3)+'" text-anchor="end" fill="#5a5e72" font-size="9" font-family="Inter,sans-serif">'+g+'</text>';
+}
+
+// Time labels
+var tLabels="";
+var span=mMax-mMin;
+var tStep=span>120?60:span>60?30:15;
+var tStart=Math.ceil(mMin/tStep)*tStep;
+for(var t=tStart;t<=mMax;t+=tStep){
+  var tx=xS(t);
+  var hh=Math.floor(t/60);
+  var mm=t%60;
+  var label=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
+  tLabels+='<text x="'+tx+'" y="'+(H-2)+'" text-anchor="middle" fill="#5a5e72" font-size="8" font-family="Inter,sans-serif">'+label+'</text>';
+}
+
+// Draw lines
+var svg='<svg width="'+W+'" height="'+H+'" style="display:block">';
+svg+='<defs><linearGradient id="tg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#73bf69" stop-opacity="0.2"/><stop offset="100%" stop-color="#73bf69" stop-opacity="0"/></linearGradient></defs>';
+svg+=gridY+tLabels;
+
+if(tPts.length>=2){
+  var tLine=crPath(tPts);
+  var tArea=tLine+" L"+xS(tPts[tPts.length-1].m)+","+yS(vMin)+" L"+xS(tPts[0].m)+","+yS(vMin)+" Z";
+  svg+='<path d="'+tArea+'" fill="url(#tg)"/>';
+  svg+='<path d="'+tLine+'" fill="none" stroke="#73bf69" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+
+if(wPts.length>=2){
+  var wLine=crPath(wPts);
+  svg+='<path d="'+wLine+'" fill="none" stroke="#FADE2A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
+}
+
+svg+='</svg>';
+el.innerHTML=svg;
+"""
+
+
+def build_panel_83():
+    targets = [flux_target(PANEL_83_QUERY, "A")]
     return business_text_panel(
-        panel_id=85,
-        grid_pos={"x": 15, "y": 22, "w": 9, "h": 5},
+        panel_id=83,
+        grid_pos={"x": 14, "y": 10, "w": 10, "h": 13},
         targets=targets,
-        content=PANEL_85_CONTENT,
+        content=PANEL_83_CONTENT,
+        helpers=PANEL_80_HELPERS,  # same lt/gt/gte/abs helpers
+        after_render=PANEL_83_AFTER_RENDER,
     )
 
 
@@ -1409,6 +1776,48 @@ vw_time_rec = union(tables: [vw_time_default, vw_time_real])
   |> sort(columns: ["_time"]) |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
+// -- Per-car plug state --
+enyaq_plug_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+enyaq_plug_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "plug_connected_enyaq")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+enyaq_plug_rec = union(tables: [enyaq_plug_default, enyaq_plug_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+vw_plug_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+vw_plug_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "plug_connected_vw")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+vw_plug_rec = union(tables: [vw_plug_default, vw_plug_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+// -- Target SoC --
+enyaq_target_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+enyaq_target_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "target_soc_enyaq")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+enyaq_target_rec = union(tables: [enyaq_target_default, enyaq_target_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+vw_target_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+vw_target_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "target_soc_vw")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+vw_target_rec = union(tables: [vw_target_default, vw_target_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
 // -- Shared wallbox --
 charge_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
 charge_real = from(bucket: "default")
@@ -1417,16 +1826,6 @@ charge_real = from(bucket: "default")
   |> last()
   |> keep(columns: ["_time", "_value"])
 charge_rec = union(tables: [charge_default, charge_real])
-  |> sort(columns: ["_time"]) |> last()
-  |> findRecord(fn: (key) => true, idx: 0)
-
-conn_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
-conn_real = from(bucket: "default")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-  |> filter(fn: (r) => r._measurement == "Car" and r._field == "car_connected")
-  |> last()
-  |> keep(columns: ["_time", "_value"])
-conn_rec = union(tables: [conn_default, conn_real])
   |> sort(columns: ["_time"]) |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
@@ -1441,22 +1840,27 @@ vw_max = if vw_soc > 0.0 then math.round(x: vw_range / vw_soc * 100.0) else 0.0
 vw_time = if exists vw_time_rec._value then math.round(x: float(v: vw_time_rec._value)) else 0.0
 
 charge_w = if exists charge_rec._value then float(v: charge_rec._value) else 0.0
-car_conn = if exists conn_rec._value then float(v: conn_rec._value) else 0.0
+enyaq_plug = if exists enyaq_plug_rec._value then float(v: enyaq_plug_rec._value) else 0.0
+vw_plug = if exists vw_plug_rec._value then float(v: vw_plug_rec._value) else 0.0
+enyaq_target = if exists enyaq_target_rec._value then math.round(x: float(v: enyaq_target_rec._value)) else 0.0
+vw_target = if exists vw_target_rec._value then math.round(x: float(v: vw_target_rec._value)) else 0.0
 
 array.from(rows: [{
-  enyaq_soc: enyaq_soc, enyaq_range: enyaq_range, enyaq_max: enyaq_max, enyaq_time: enyaq_time,
-  vw_soc: vw_soc, vw_range: vw_range, vw_max: vw_max, vw_time: vw_time,
-  charge_w: charge_w, car_conn: car_conn,
+  enyaq_soc: enyaq_soc, enyaq_range: enyaq_range, enyaq_max: enyaq_max, enyaq_time: enyaq_time, enyaq_target: enyaq_target,
+  vw_soc: vw_soc, vw_range: vw_range, vw_max: vw_max, vw_time: vw_time, vw_target: vw_target,
+  charge_w: charge_w, enyaq_plug: enyaq_plug, vw_plug: vw_plug,
 }])"""
 
 PANEL_86_CONTENT = r"""<style>
-.cars{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1fr;grid-auto-rows:1fr;gap:10px;padding:10px 14px 14px;height:100%;min-height:0}
+.cars{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1fr;grid-auto-rows:1fr;gap:10px;padding:10px 14px 0;height:100%;min-height:0}
 .car-card{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:8px;padding:12px 16px;display:flex;flex-direction:column;gap:8px;justify-content:center}
 .car-row1{display:flex;align-items:center;gap:14px}
 .car-name{font-size:28px;font-weight:700;min-width:80px;flex-shrink:0;white-space:nowrap;line-height:1;letter-spacing:-0.01em;color:#d8d9da}
 .car-soc-bar{flex:1;height:14px;background:#0e1013;border-radius:7px;overflow:visible;position:relative}
 .car-soc-bar .gradient{position:absolute;inset:0;border-radius:7px;background:linear-gradient(90deg,#f2495c 0%,#f2495c 10%,#FF6B3D 10%,#FF6B3D 20%,#FF9830 20%,#FF9830 30%,#73bf69 30%,#73bf69 90%,#5794F2 90%,#5794F2 100%)}
 .car-soc-bar .cover{position:absolute;top:0;right:0;height:100%;background:#0e1013;border-radius:0 7px 7px 0}
+.car-soc-bar .target-marker{position:absolute;top:-5px;width:3px;height:26px;background:#FADE2A;opacity:0.9;border-radius:1.5px;transform:translateX(-50%);display:none}
+.car-soc-bar .target-label{position:absolute;top:-18px;font-size:9px;font-weight:700;color:#FADE2A;letter-spacing:.05em;transform:translateX(-50%);white-space:nowrap;display:none}
 .car-soc{font-size:22px;font-weight:700;min-width:60px;text-align:right;line-height:1;white-space:nowrap}
 .car-row2{display:flex;align-items:baseline;gap:14px;font-size:18px;padding-left:94px}
 .car-row2 .car-range{color:#d8d9da;font-weight:700;font-size:18px}
@@ -1472,9 +1876,9 @@ PANEL_86_CONTENT = r"""<style>
 .car-card.charging .car-soc-bar .gradient{animation:car-pulse 2s ease-in-out infinite}
 </style>
 <div class="cars" id="cars-root"
-  data-enyaq-soc="{{enyaq_soc}}" data-enyaq-range="{{enyaq_range}}" data-enyaq-max="{{enyaq_max}}" data-enyaq-time="{{enyaq_time}}"
-  data-vw-soc="{{vw_soc}}" data-vw-range="{{vw_range}}" data-vw-max="{{vw_max}}" data-vw-time="{{vw_time}}"
-  data-charge-w="{{charge_w}}" data-car-conn="{{car_conn}}">
+  data-enyaq-soc="{{enyaq_soc}}" data-enyaq-range="{{enyaq_range}}" data-enyaq-max="{{enyaq_max}}" data-enyaq-time="{{enyaq_time}}" data-enyaq-target="{{enyaq_target}}"
+  data-vw-soc="{{vw_soc}}" data-vw-range="{{vw_range}}" data-vw-max="{{vw_max}}" data-vw-time="{{vw_time}}" data-vw-target="{{vw_target}}"
+  data-charge-w="{{charge_w}}" data-enyaq-plug="{{enyaq_plug}}" data-vw-plug="{{vw_plug}}">
 
   <div class="car-card" id="car-enyaq">
     <div class="car-row1">
@@ -1482,6 +1886,8 @@ PANEL_86_CONTENT = r"""<style>
       <div class="car-soc-bar">
         <div class="gradient"></div>
         <div class="cover" id="enyaq-cover"></div>
+        <div class="target-marker" id="enyaq-target-marker"></div>
+        <div class="target-label" id="enyaq-target-label"></div>
       </div>
       <div class="car-soc" id="enyaq-soc-text">{{enyaq_soc}}%</div>
     </div>
@@ -1499,6 +1905,8 @@ PANEL_86_CONTENT = r"""<style>
       <div class="car-soc-bar">
         <div class="gradient"></div>
         <div class="cover" id="vw-cover"></div>
+        <div class="target-marker" id="vw-target-marker"></div>
+        <div class="target-label" id="vw-target-label"></div>
       </div>
       <div class="car-soc" id="vw-soc-text">{{vw_soc}}%</div>
     </div>
@@ -1515,10 +1923,13 @@ PANEL_86_AFTER_RENDER = r"""var root=document.getElementById("cars-root");
 if(!root)return;
 var eSoc=parseFloat(root.dataset.enyaqSoc)||0;
 var eTime=parseFloat(root.dataset.enyaqTime)||0;
+var eTarget=parseFloat(root.dataset.enyaqTarget)||0;
 var vSoc=parseFloat(root.dataset.vwSoc)||0;
 var vTime=parseFloat(root.dataset.vwTime)||0;
+var vTarget=parseFloat(root.dataset.vwTarget)||0;
 var chargeW=parseFloat(root.dataset.chargeW)||0;
-var conn=parseFloat(root.dataset.carConn)||0;
+var ePlug=parseFloat(root.dataset.enyaqPlug)||0;
+var vPlug=parseFloat(root.dataset.vwPlug)||0;
 
 // SoC bar cover
 var ec=document.getElementById("enyaq-cover");
@@ -1533,30 +1944,35 @@ if(esTxt)esTxt.style.color=socColor(eSoc);
 var vsTxt=document.getElementById("vw-soc-text");
 if(vsTxt)vsTxt.style.color=socColor(vSoc);
 
-// Status pills
+// Status pills — per-car plug state from vehicle API
 var eStat=document.getElementById("enyaq-status");
 var vStat=document.getElementById("vw-status");
 
-// Determine which car is charging (if wallbox is active)
-var enyaqCharging=conn>0&&chargeW>0.1&&eTime>0;
-var vwCharging=conn>0&&chargeW>0.1&&vTime>0&&!enyaqCharging;
+var enyaqCharging=ePlug>0&&chargeW>0.1&&eTime>0;
+var vwCharging=vPlug>0&&chargeW>0.1&&vTime>0;
+
+function pill(cls,label){return '<span class="pill-car '+cls+'"><span class="dot"></span>'+label+'</span>';}
 
 if(eStat){
   if(enyaqCharging){
-    eStat.innerHTML='<span class="pill-car pill-car-chg"><span class="dot"></span>Charging</span>';
+    eStat.innerHTML=pill("pill-car-chg","Charging");
     var eCard=document.getElementById("car-enyaq");
     if(eCard)eCard.classList.add("charging");
+  }else if(ePlug>0){
+    eStat.innerHTML=pill("pill-car-conn","Connected");
   }else{
-    eStat.innerHTML='<span class="pill-car pill-car-disc"><span class="dot"></span>Disconnected</span>';
+    eStat.innerHTML=pill("pill-car-disc","Disconnected");
   }
 }
 if(vStat){
   if(vwCharging){
-    vStat.innerHTML='<span class="pill-car pill-car-chg"><span class="dot"></span>Charging</span>';
+    vStat.innerHTML=pill("pill-car-chg","Charging");
     var vCard=document.getElementById("car-vw");
     if(vCard)vCard.classList.add("charging");
+  }else if(vPlug>0){
+    vStat.innerHTML=pill("pill-car-conn","Connected");
   }else{
-    vStat.innerHTML='<span class="pill-car pill-car-disc"><span class="dot"></span>Disconnected</span>';
+    vStat.innerHTML=pill("pill-car-disc","Disconnected");
   }
 }
 
@@ -1564,14 +1980,25 @@ if(vStat){
 var eTimeEl=document.getElementById("enyaq-time");
 if(eTimeEl&&eTime>0)eTimeEl.textContent="~"+Math.round(eTime)+" min";
 var vTimeEl=document.getElementById("vw-time");
-if(vTimeEl&&vTime>0)vTimeEl.textContent="~"+Math.round(vTime)+" min";"""
+if(vTimeEl&&vTime>0)vTimeEl.textContent="~"+Math.round(vTime)+" min";
+
+// Target SoC markers
+function showTarget(markerId,labelId,targetSoc){
+  if(targetSoc<=0)return;
+  var marker=document.getElementById(markerId);
+  var label=document.getElementById(labelId);
+  if(marker){marker.style.left=targetSoc+"%";marker.style.display="block";}
+  if(label){label.style.left=targetSoc+"%";label.textContent="TARGET "+Math.round(targetSoc)+"%";label.style.display="block";}
+}
+showTarget("enyaq-target-marker","enyaq-target-label",eTarget);
+showTarget("vw-target-marker","vw-target-label",vTarget);"""
 
 
 def build_panel_86():
     targets = [flux_target(PANEL_86_QUERY, "A")]
     return business_text_panel(
         panel_id=86,
-        grid_pos={"x": 15, "y": 27, "w": 9, "h": 10},
+        grid_pos={"x": 14, "y": 23, "w": 10, "h": 10},
         targets=targets,
         content=PANEL_86_CONTENT,
         after_render=PANEL_86_AFTER_RENDER,
@@ -1589,16 +2016,13 @@ def main():
 
     existing_panels = data["dashboard"]["panels"]
 
-    # Build new panels
+    # Build new panels (7 panels -- 82 merged into 80, 85 merged into 83)
     panels = [
         build_panel_70(existing_panels),   # Outdoor
         build_panel_67(existing_panels),   # Indoor
-        build_panel_80(),                   # Energy Topology
+        build_panel_80(),                   # Energy Topology + Stats
         build_panel_81(),                   # Energy Chart
-        build_panel_82(),                   # Energy Stats
-        build_panel_83(),                   # Heat Tiles
-        build_panel_84(),                   # TC Chart
-        build_panel_85(),                   # Heat Stats
+        build_panel_83(),                   # Heat Tiles + Stats
         build_panel_86(),                   # Vehicles
     ]
 
