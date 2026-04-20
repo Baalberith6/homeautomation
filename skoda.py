@@ -46,6 +46,9 @@ def calculate_charging_time_remaining(vehicle):
     return 0
 
 
+FETCH_TIMEOUT = 60  # seconds — kill and retry if fetch_all() hangs
+
+
 async def main():
     client = connect_mqtt("skoda5")
     client.loop_start()
@@ -55,10 +58,14 @@ async def main():
         car_connectivity = carconnectivity.CarConnectivity(config=carConnectivityConfig)
         print("[skoda] Started")
 
+        loop = asyncio.get_event_loop()
         while True:
             try:
                 print("[skoda] Fetching vehicle data...")
-                car_connectivity.fetch_all()  # Refresh vehicle data
+                await asyncio.wait_for(
+                    loop.run_in_executor(None, car_connectivity.fetch_all),
+                    timeout=FETCH_TIMEOUT
+                )
                 garage = car_connectivity.get_garage()
                 for vehicle in garage.list_vehicles():
                     if vehicle.vin.value == skodaConfig["vin_skoda"]:
@@ -105,6 +112,16 @@ async def main():
 
                         charging_state = vehicle.charging.state.value
                         print(f"[skoda] VW: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}")
+            except asyncio.TimeoutError:
+                print(f"[skoda] fetch_all() timed out after"
+                      f" {FETCH_TIMEOUT}s, reconnecting...")
+                try:
+                    car_connectivity.shutdown()
+                except Exception:
+                    pass
+                car_connectivity = carconnectivity.CarConnectivity(
+                    config=carConnectivityConfig)
+                print("[skoda] Reconnected")
             except Exception as e:
                 error_msg = str(e)[:200]
                 print(f"[skoda] Error: {error_msg}")
