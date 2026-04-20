@@ -25,6 +25,7 @@ BASE_RUNTIME_DATA = {
     "e_day": 20, "e_load_day": 15,
     "battery_soc": 85, "battery_soh": 97,
     "load_p1": 200, "load_p2": 150, "load_p3": 150,
+    "backup_p1": 50, "backup_p2": 30, "backup_p3": 40,
     "backup_i1": 0.1, "backup_i2": 0.2, "backup_i3": 0.1,
     "diagnose_result_label": "",
 }
@@ -112,9 +113,9 @@ class TestLoadPPublish(unittest.TestCase):
             if topic.startswith("home/FVE/load_p/"):
                 published[topic] = call[0][1]
 
-        self.assertEqual(200, published["home/FVE/load_p/1"])
-        self.assertEqual(150, published["home/FVE/load_p/2"])
-        self.assertEqual(150, published["home/FVE/load_p/3"])
+        self.assertEqual(250, published["home/FVE/load_p/1"])  # 200 + 50 backup
+        self.assertEqual(180, published["home/FVE/load_p/2"])  # 150 + 30 backup
+        self.assertEqual(190, published["home/FVE/load_p/3"])  # 150 + 40 backup
 
 
 class TestWallboxDataExtraction(unittest.TestCase):

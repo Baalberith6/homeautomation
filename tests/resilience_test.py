@@ -114,6 +114,7 @@ class TestInverterResilience(unittest.TestCase):
             "e_day": 15, "e_load_day": 12,
             "battery_soc": 80, "battery_soh": 95,
             "load_p1": 100, "load_p2": 100, "load_p3": 100,
+            "backup_p1": 0, "backup_p2": 0, "backup_p3": 0,
             "backup_i1": 0, "backup_i2": 0, "backup_i3": 0,
             "diagnose_result_label": "",
         }
