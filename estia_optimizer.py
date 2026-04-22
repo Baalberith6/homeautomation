@@ -55,8 +55,9 @@ rooms = [
 
 
 def _request(payload: dict, path: str):
-    url = rehauConfig["ip_address"] + path
-    r = requests.post(url=url, data=payload, timeout=10)
+    r = requests.post(
+        url=rehauConfig["ip_address"] + '/' + path, data=payload
+    )
     return r
 
 
@@ -103,18 +104,11 @@ def apply_thermostats(include_netatmo=True):
         }
         if room.currentTemp != temp:
             try:
-                resp = _request(payload, "room-page.html")
-                print(f"[estia_optimizer] Rehau {room.name} "
-                      f"(zone {room.id}): {room.currentTemp} -> {temp}, "
-                      f"HTTP {resp.status_code}")
-                if resp.status_code == 200:
-                    room.currentTemp = temp
-                else:
-                    print(f"[estia_optimizer] Rehau {room.name} "
-                          f"bad response: {resp.text[:200]}")
+                _request(payload, "room-page.html")
+                room.currentTemp = temp
             except Exception as e:
                 print(f"[estia_optimizer] Rehau {room.name} error: {e}")
-        else:
+        elif c["debug"]:
             print(f"[estia_optimizer] Rehau {room.name} already at {temp}")
 
     # Netatmo rooms (only on boost transitions, not on base temp changes)
@@ -207,6 +201,7 @@ def subscribe(client: mqtt_client, topics: [str]):
             if c["debug"]:
                 print(f"Received `{msg.payload.decode()}` "
                       f"from `{msg.topic}` topic")
+            global target_temp
             res = json.loads(msg.payload.decode())
             loop(float(res["tC"]))
         elif topicParts[1] == "estia":  # target estia temp
@@ -222,16 +217,12 @@ def subscribe(client: mqtt_client, topics: [str]):
             global outside_temp
             outside_temp = float(msg.payload.decode())
         elif topicParts[1] == "rehau_set":
-            room_name = topicParts[2] if len(topicParts) > 2 else "?"
-            new_set = float(msg.payload.decode())
-            matched = False
+            if c["debug"]:
+                print(f"Received `{msg.payload.decode()}` "
+                      f"from `{msg.topic}` topic")
             for room in rooms:
-                if room.name == room_name:
-                    room.currentTemp = new_set
-                    matched = True
-            if not matched:
-                print(f"[estia_optimizer] rehau_set: no match for "
-                      f"'{room_name}' = {new_set}")
+                if room.name == topicParts[2]:
+                    room.currentTemp = float(msg.payload.decode())
         elif topicParts[1] == "Termostat1NP":
             global termostat_temp_1np
             new_temp = float(msg.payload.decode())
