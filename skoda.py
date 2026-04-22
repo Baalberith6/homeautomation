@@ -162,6 +162,18 @@ async def main():
                             target_soc = None
                         if target_soc is not None:
                             client.publish("home/Car/target_soc_vw", int(target_soc), qos=2, properties=publishProperties).wait_for_publish()
+                        # DEBUG: fetch dedicated charging settings endpoint
+                        try:
+                            vin = vehicle.vin.value
+                            for conn in car_connectivity.connectors.connectors.values():
+                                if hasattr(conn, 'session') and hasattr(conn, '_fetch_data'):
+                                    url = f'https://emea.bff.cariad.digital/vehicle/v1/vehicles/{vin}/selectivestatus?jobs=charging'
+                                    raw = conn._fetch_data(url, conn.session, force=True)
+                                    cs = raw.get('charging', {}).get('chargingSettings', {}).get('value', {}) if raw else {}
+                                    print(f"[skoda] DEBUG VW raw chargingSettings: targetSOC_pct={cs.get('targetSOC_pct')}, ts={cs.get('carCapturedTimestamp')}")
+                                    break
+                        except Exception as dbg_err:
+                            print(f"[skoda] DEBUG error: {dbg_err}")
 
                         try:
                             lat = float(vehicle.position.latitude.value)
