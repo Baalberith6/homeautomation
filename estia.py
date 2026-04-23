@@ -83,6 +83,11 @@ async def main():
             client.publish("bool/estia/compressor_active", compressor_active, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/estia/compressor_on", 1.0 if compressor_active else 0.0, qos=2, properties=publishProperties).wait_for_publish()
             client.publish("home/estia/coil_on", 1.0 if coil_active else 0.0, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish(
+                "bool/estia/heating_compressor_active",
+                data["heatingActiveCompressor"],
+                qos=2, properties=publishProperties
+            ).wait_for_publish()
 
             previous_in_temp = in_temp
             previous_out_temp = out_temp

@@ -1,6 +1,4 @@
-import json
 import time
-from datetime import datetime
 
 import pyatmo
 import requests
@@ -12,15 +10,10 @@ from secret import netatmoClientId, netatmoClientSecret
 
 from common import connect_mqtt
 
-last_water_temp = 100.0
-last_last_water_temp = 100.0
-target_temp = 27.0
-outside_temp = 0.0
 termostat_temp_1np = 21.0
 is_boosting = False
 
 BOOST_OFFSET = 1.5
-hysteresis_above = 3.0  # krb protection
 
 file_path = ('netatmo_optimizer.dev.token' if c["debug"]
              else 'netatmo_optimizer.token')
@@ -146,76 +139,28 @@ def apply_thermostats(include_netatmo=True):
           f"(boosting={is_boosting})")
 
 
-def decide(last_last_water_temp, last_water_temp, new_water_temp,
-           target_temp):
-    global is_boosting
-
-    if c["debug"]:
-        print(f"At {datetime.now()}, deciding based on "
-              f"'new water': {new_water_temp}C, "
-              f"'last water': {last_water_temp}C, "
-              f"'last-last water': {last_last_water_temp}C, "
-              f"'target': {target_temp}C")
-
-    trend_up = new_water_temp > last_water_temp > last_last_water_temp
-    if (trend_up
-            and new_water_temp < (target_temp + hysteresis_above)
-            and not is_boosting):
-        print(f"[estia_optimizer] Starting heating: "
-              f"water {new_water_temp}C, target {target_temp}C")
-        is_boosting = True
-        apply_thermostats()
-        return
-
-    trend_down = new_water_temp < last_water_temp < last_last_water_temp
-    if trend_down and is_boosting:
-        print(f"[estia_optimizer] Stopping heating: "
-              f"water {new_water_temp}C (trend down)")
-        is_boosting = False
-        apply_thermostats()
-        return
-
-    if c["debug"]:
-        print(f"[estia_optimizer] No action: water {new_water_temp}C")
-
-
-def loop(new_water_temp):
-    global last_water_temp
-    global last_last_water_temp
-
-    decide(last_last_water_temp, last_water_temp, new_water_temp,
-           target_temp)
-
-    if new_water_temp != last_water_temp:
-        last_last_water_temp = last_water_temp
-        last_water_temp = new_water_temp
-
-
 def subscribe(client: mqtt_client, topics: [str]):
     def on_message(client, userdata, msg):
         topicParts = msg.topic.split("/")
         if len(topicParts) < 2:
             return
 
-        if topicParts[0] == "krb":  # current water temp
+        if topicParts[1] == "estia":  # heating compressor state
+            global is_boosting
+            active = msg.payload.decode() == "True"
             if c["debug"]:
-                print(f"Received `{msg.payload.decode()}` "
-                      f"from `{msg.topic}` topic")
-            global target_temp
-            res = json.loads(msg.payload.decode())
-            loop(float(res["tC"]))
-        elif topicParts[1] == "estia":  # target estia temp
-            if c["debug"]:
-                print(f"Received `{msg.payload.decode()}` "
-                      f"from `{msg.topic}` topic")
-            global target_temp
-            target_temp = float(msg.payload.decode())
-        elif topicParts[1] == "weather":
-            if c["debug"]:
-                print(f"Received `{msg.payload.decode()}` "
-                      f"from `{msg.topic}` topic")
-            global outside_temp
-            outside_temp = float(msg.payload.decode())
+                print(f"[estia_optimizer] heating_compressor_active="
+                      f"{active}, is_boosting={is_boosting}")
+            if active and not is_boosting:
+                print("[estia_optimizer] Starting boost: "
+                      "heating compressor active")
+                is_boosting = True
+                apply_thermostats()
+            elif not active and is_boosting:
+                print("[estia_optimizer] Stopping boost: "
+                      "heating compressor inactive")
+                is_boosting = False
+                apply_thermostats()
         elif topicParts[1] == "rehau_set":
             if c["debug"]:
                 print(f"Received `{msg.payload.decode()}` "
@@ -243,9 +188,7 @@ def subscribe(client: mqtt_client, topics: [str]):
 def init():
     client = connect_mqtt("estia_optimizer")
     subscribe(client, [
-        "home/estia/target_temp",
-        "krb/status/temperature:101",
-        "home/weather/local/temperature",
+        "bool/estia/heating_compressor_active",
         "home/rehau_set/#",
         "command/Termostat1NP",
     ])
