@@ -23,7 +23,7 @@ NETATMO_ROOMS = [
     "julinka", "kubo", "spalna",
 ]
 
-NETATMO_END_TIME_SECONDS = 7200  # 2 hours safety fallback
+NETATMO_END_TIME_SECONDS = 300  # 5 minutes safety fallback
 
 
 class Room:
