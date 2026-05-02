@@ -18,7 +18,7 @@ EUR_CZK = 24
 
 
 def _request(date: datetime):
-    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d") + '&amp;time_resolution=PT60M')
+    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d") + '&time_resolution=PT60M')
     return r.json()
 
 
