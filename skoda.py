@@ -63,22 +63,28 @@ def maybe_wake(vehicle):
     Why: VW/Skoda backends only refresh from a parked, charging car
     ~every 10 min, so polling alone yields stale SoC/power data.
     """
+    vin = vehicle.vin.value
+    tag = f"...{vin[-6:]}" if vin else "?"
     if not is_charging(vehicle):
+        print(f"[skoda] wake-skip {tag}: not charging")
         return
     cmds = vehicle.commands.commands if vehicle.commands else {}
+    available = list(cmds.keys())
     wake_cmd = cmds.get("wake-sleep")
     if wake_cmd is None:
+        print(f"[skoda] wake-skip {tag}: no wake-sleep cmd; available={available}")
         return
-    vin = vehicle.vin.value
     now = time.monotonic()
-    if now - _last_wake.get(vin, 0) < WAKE_INTERVAL_SECONDS:
+    elapsed = now - _last_wake.get(vin, 0)
+    if elapsed < WAKE_INTERVAL_SECONDS:
+        print(f"[skoda] wake-skip {tag}: throttled ({int(elapsed)}s < {WAKE_INTERVAL_SECONDS}s)")
         return
     try:
         wake_cmd.value = WakeSleepCommand.Command.WAKE
         _last_wake[vin] = now
-        print(f"[skoda] Wake sent for ...{vin[-6:]}")
+        print(f"[skoda] Wake sent for {tag}")
     except Exception as e:
-        print(f"[skoda] Wake failed for ...{vin[-6:]}: {str(e)[:160]}")
+        print(f"[skoda] Wake failed for {tag}: {str(e)[:160]}")
 
 
 def get_address(lat, lon):
