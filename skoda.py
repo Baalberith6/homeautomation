@@ -80,9 +80,9 @@ def maybe_wake(vehicle):
     now = time.monotonic()
     if now - _last_wake.get(vin, 0) < WAKE_INTERVAL_SECONDS:
         return
+    _last_wake[vin] = now  # throttle attempts even on failure to avoid hammering
     try:
         wake_cmd.value = WakeSleepCommand.Command.WAKE
-        _last_wake[vin] = now
         print(f"[skoda] Wake sent for ...{vin[-6:]}")
     except Exception as e:
         print(f"[skoda] Wake failed for ...{vin[-6:]}: {str(e)[:160]}")
