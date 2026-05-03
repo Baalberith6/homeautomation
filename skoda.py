@@ -1,7 +1,6 @@
 import asyncio
 import json
 import sys
-import time
 import urllib.request
 from datetime import datetime
 
@@ -10,7 +9,6 @@ sys.stdout.reconfigure(line_buffering=True)
 from carconnectivity import carconnectivity  # noqa: E402
 from carconnectivity.charging import Charging  # noqa: E402
 from carconnectivity.charging_connector import ChargingConnector  # noqa: E402
-from carconnectivity.command_impl import WakeSleepCommand  # noqa: E402
 from carconnectivity.vehicle import GenericVehicle  # noqa: E402
 
 from common import connect_mqtt, publishProperties  # noqa: E402
@@ -51,34 +49,8 @@ def calculate_charging_time_remaining(vehicle):
 
 
 FETCH_TIMEOUT = 60  # seconds — kill and retry if fetch_all() hangs
-WAKE_INTERVAL_SECONDS = 300  # force-refresh cadence while charging
 
 _geo_cache = {}
-_last_wake = {}  # VIN -> monotonic timestamp of last wake command
-
-
-def maybe_wake(vehicle):
-    """Send WAKE while charging to force fresh backend status.
-
-    Why: VW/Skoda backends only refresh from a parked, charging car
-    ~every 10 min, so polling alone yields stale SoC/power data.
-    """
-    if not is_charging(vehicle):
-        return
-    cmds = vehicle.commands.commands if vehicle.commands else {}
-    wake_cmd = cmds.get("wake-sleep")
-    if wake_cmd is None:
-        return
-    vin = vehicle.vin.value
-    now = time.monotonic()
-    if now - _last_wake.get(vin, 0) < WAKE_INTERVAL_SECONDS:
-        return
-    try:
-        wake_cmd.value = WakeSleepCommand.Command.WAKE
-        _last_wake[vin] = now
-        print(f"[skoda] Wake sent for ...{vin[-6:]}")
-    except Exception as e:
-        print(f"[skoda] Wake failed for ...{vin[-6:]}: {str(e)[:160]}")
 
 
 def get_address(lat, lon):
@@ -171,7 +143,6 @@ async def main():
 
                         charging_state = vehicle.charging.state.value
                         print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, addr={address}")
-                        maybe_wake(vehicle)
                     if vehicle.vin.value == skodaConfig["vin_vw"]:
                         soc = vehicle.drives.drives["primary"].level.value
                         range_km = vehicle.drives.total_range.value
@@ -208,7 +179,6 @@ async def main():
 
                         charging_state = vehicle.charging.state.value
                         print(f"[skoda] VW: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, addr={address}")
-                        maybe_wake(vehicle)
             except asyncio.TimeoutError:
                 print(f"[skoda] fetch_all() timed out after"
                       f" {FETCH_TIMEOUT}s, reconnecting...")
