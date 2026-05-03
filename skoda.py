@@ -65,8 +65,12 @@ def maybe_wake(vehicle):
     """
     vin = vehicle.vin.value
     tag = f"...{vin[-6:]}" if vin else "?"
+    state = vehicle.charging.state.value
+    conn = vehicle.connection_state.value
+    power = vehicle.charging.power.value
     if not is_charging(vehicle):
-        print(f"[skoda] wake-skip {tag}: not charging")
+        print(f"[skoda] wake-skip {tag}: not charging "
+              f"(state={state}, conn={conn}, power={power})")
         return
     cmds = vehicle.commands.commands if vehicle.commands else {}
     available = list(cmds.keys())
