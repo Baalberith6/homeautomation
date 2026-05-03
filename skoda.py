@@ -62,33 +62,30 @@ def maybe_wake(vehicle):
 
     Why: VW/Skoda backends only refresh from a parked, charging car
     ~every 10 min, so polling alone yields stale SoC/power data.
+
+    Note: we deliberately don't gate on connection_state — VW marks the
+    car OFFLINE between pushes mid-charge, which is exactly when we want
+    to wake it. CHARGING + power>0 is enough evidence of a real charge.
     """
-    vin = vehicle.vin.value
-    tag = f"...{vin[-6:]}" if vin else "?"
-    state = vehicle.charging.state.value
-    conn = vehicle.connection_state.value
+    if vehicle.charging.state.value != Charging.ChargingState.CHARGING:
+        return
     power = vehicle.charging.power.value
-    if not is_charging(vehicle):
-        print(f"[skoda] wake-skip {tag}: not charging "
-              f"(state={state}, conn={conn}, power={power})")
+    if power is not None and power <= 0:
         return
     cmds = vehicle.commands.commands if vehicle.commands else {}
-    available = list(cmds.keys())
     wake_cmd = cmds.get("wake-sleep")
     if wake_cmd is None:
-        print(f"[skoda] wake-skip {tag}: no wake-sleep cmd; available={available}")
         return
+    vin = vehicle.vin.value
     now = time.monotonic()
-    elapsed = now - _last_wake.get(vin, 0)
-    if elapsed < WAKE_INTERVAL_SECONDS:
-        print(f"[skoda] wake-skip {tag}: throttled ({int(elapsed)}s < {WAKE_INTERVAL_SECONDS}s)")
+    if now - _last_wake.get(vin, 0) < WAKE_INTERVAL_SECONDS:
         return
     try:
         wake_cmd.value = WakeSleepCommand.Command.WAKE
         _last_wake[vin] = now
-        print(f"[skoda] Wake sent for {tag}")
+        print(f"[skoda] Wake sent for ...{vin[-6:]}")
     except Exception as e:
-        print(f"[skoda] Wake failed for {tag}: {str(e)[:160]}")
+        print(f"[skoda] Wake failed for ...{vin[-6:]}: {str(e)[:160]}")
 
 
 def get_address(lat, lon):
