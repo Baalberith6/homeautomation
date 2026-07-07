@@ -126,8 +126,8 @@ class TestInterpolate(unittest.TestCase):
         now = datetime(2026, 7, 7, 13, 0, tzinfo=timezone.utc)
         r = _interp(d, now)
         self.assertEqual(r["battery_level_vw"], 52)
-        # range is the portal's own value, not derived from the projected SoC
-        self.assertEqual(r["electric_range_vw"], 208)
+        # range scales with the interpolated SoC: 208 * 52.2/42 ~= 259
+        self.assertEqual(r["electric_range_vw"], 259)
         self.assertEqual(r["charging_time_left_vw"], 115)
 
     def test_never_overshoots_target(self):

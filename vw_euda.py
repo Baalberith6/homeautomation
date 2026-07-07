@@ -137,10 +137,11 @@ def charging_minutes_left(d):
 def interpolate(d, now, capacity_kwh, efficiency):
     """Map a merged field dict to {mqtt_field_suffix: value} at time `now`.
 
-    When charging, SoC (and remaining time) is projected forward from the
-    reading's capture time so values stay live between portal drops. Range is
-    the portal's own reported value (no approximation). Only includes fields we
-    have data for, so a partial snapshot never overwrites a good value.
+    When charging, SoC (and range, remaining time) is projected forward from
+    the reading's capture time so values stay live between portal drops. Range
+    starts from the portal's own reported value and is scaled in lockstep with
+    the interpolated SoC. Only includes fields we have data for, so a partial
+    snapshot never overwrites a good value.
     """
     out = {}
     soc = soc_value(d)
@@ -165,6 +166,9 @@ def interpolate(d, now, capacity_kwh, efficiency):
 
     range_km = parse_range(d)
     if range_km is not None:
+        # Extrapolate range over time in lockstep with the interpolated SoC.
+        if soc and soc > 0 and soc_live is not None:
+            range_km = int(round(range_km * soc_live / soc))
         out["electric_range_vw"] = range_km
 
     if charging:
