@@ -143,42 +143,8 @@ async def main():
 
                         charging_state = vehicle.charging.state.value
                         print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, addr={address}")
-                    if vehicle.vin.value == skodaConfig["vin_vw"]:
-                        soc = vehicle.drives.drives["primary"].level.value
-                        range_km = vehicle.drives.total_range.value
-                        client.publish("home/Car/battery_level_vw", soc, qos=2, properties=publishProperties).wait_for_publish()
-
-                        time_remaining = calculate_charging_time_remaining(vehicle)
-                        client.publish("home/Car/charging_time_left_vw", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
-
-                        client.publish("home/Car/electric_range_vw", range_km, qos=2, properties=publishProperties).wait_for_publish()
-
-                        plug = is_plug_connected(vehicle)
-                        client.publish("home/Car/plug_connected_vw", int(plug), qos=2, properties=publishProperties).wait_for_publish()
-
-                        try:
-                            target_soc = vehicle.charging.settings.target_level.value
-                        except (AttributeError, KeyError):
-                            target_soc = None
-                        if target_soc is not None:
-                            client.publish("home/Car/target_soc_vw", int(target_soc), qos=2, properties=publishProperties).wait_for_publish()
-
-                        try:
-                            lat = float(vehicle.position.latitude.value)
-                            lon = float(vehicle.position.longitude.value)
-                        except (AttributeError, TypeError, ValueError):
-                            lat = None
-                            lon = None
-                        address = ""
-                        if lat is not None and lon is not None:
-                            client.publish("home/Car/lat_vw", lat, qos=2, properties=publishProperties).wait_for_publish()
-                            client.publish("home/Car/lon_vw", lon, qos=2, properties=publishProperties).wait_for_publish()
-                            address = get_address(lat, lon)
-                        if address:
-                            client.publish("diag/Car/address_vw", address, qos=2, properties=publishProperties).wait_for_publish()
-
-                        charging_state = vehicle.charging.state.value
-                        print(f"[skoda] VW: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, addr={address}")
+                    # VW ID.3 (vin_vw) is now read from the EU Data Act portal
+                    # (see vw_euda.py); VW shut down the carconnectivity API.
             except asyncio.TimeoutError:
                 print(f"[skoda] fetch_all() timed out after"
                       f" {FETCH_TIMEOUT}s, reconnecting...")

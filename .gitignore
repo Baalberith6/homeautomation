@@ -1,0 +1,7 @@
+# Live VW EU Data Act session cookies (contains a valid access_token) — never commit.
+vw_euda_cookies.pickle
+vw_euda_cookies.dev.pickle
+
+# Python bytecode
+__pycache__/
+*.pyc

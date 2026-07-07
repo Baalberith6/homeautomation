@@ -23,6 +23,27 @@ skodaConfig = {
     "vin_vw": "WVWZZZE11S8005795",
 }
 
+# VW EU Data Act portal. VW shut down the online API the carconnectivity
+# library used, so the ID.3 is now read from the mandated self-service data
+# portal (a ~15-min ZIP export) instead. Credentials are reused from
+# carConnectivityConfig (VW ID == MySkoda account). See vw_euda.py.
+vwEudaConfig = {
+    "identity_base": "https://identity.vwgroup.io",
+    "base_url": "https://eu-data-act.drivesomethinggreater.com",
+    "client_id": "9b58543e-1c15-4193-91d5-8a14145bebb0@apps_vw-dilab_com",
+    "scope": "openid cars profile",
+    "brand": "VOLKSWAGEN_PASSENGER_CARS",
+    "country": "cz",
+    "language": "en",
+    "cookie_file": "vw_euda_cookies.pickle",
+    "poll_interval": 60,    # seconds — tick every 1 min; download only new files
+    "merge_files": 6,       # on startup, seed state from the N newest ZIPs
+    "km_per_soc": 5,        # range approximation: electric_range = SoC * this
+    # Live SoC interpolation between the ~15-min portal drops.
+    "capacity_kwh": 75,     # usable HV battery capacity (0->100%)
+    "charge_efficiency": 0.9,  # charge_power is AC-side; battery gets ~90%
+}
+
 netatmoConfig = {
     "home_id": "65805d35c3db644204070181",
     "room_id_hala": "2965583580",

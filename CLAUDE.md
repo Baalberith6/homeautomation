@@ -48,7 +48,8 @@ This is a home energy automation system built around **MQTT as the central messa
 | `estia.py` | Continuous (60s) | Reads Toshiba Estia heat pump via HTTP API, publishes to MQTT |
 | `estia_energy.py` | Hourly at :22 | Calculates heat pump COP from temp history + hourly consumption, writes to InfluxDB |
 | `netatmo.py` | Continuous (60s) | Reads 7-room Netatmo thermostats via OAuth2, publishes room temps and heating % |
-| `car.py` / `skoda.py` | Continuous (120s) | Reads Skoda/VW vehicle data (SOC, range, charging status, GPS position) via CarConnectivity; reverse-geocodes address via Nominatim |
+| `skoda.py` | Continuous (120s) | Reads Skoda Enyaq vehicle data (SOC, range, charging status, GPS position) via CarConnectivity; reverse-geocodes address via Nominatim. VW ID.3 removed — see `vw_euda.py` |
+| `vw_euda.py` | Continuous (60s) | Reads VW ID.3 telemetry from the EU Data Act portal (VW killed the CarConnectivity API). OIDC login via `vw_euda_auth.py` (reuses MySkoda/VW ID creds); ticks every minute, downloads a ZIP only when a new one appears (~15min), merges into a sticky state, and publishes `home/Car/*_vw`. Between drops, SoC is **interpolated** forward from charge power + capacity (75 kWh) + the reading's timestamp, capped at `settings.target_soc`. **No GPS**; range ≈ SoC×5 km |
 | `oteforecast.py` | Cron (hourly) | Fetches Czech electricity prices from OTE API, publishes to MQTT |
 | `solarforecast.py` | Cron (hourly) | Fetches Solcast PV generation forecast, writes to InfluxDB |
 | `cursor.py` | Cron (Mon 07:00 UTC) | Aggregates Cursor IDE analytics, writes to InfluxDB |

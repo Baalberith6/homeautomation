@@ -179,9 +179,9 @@ class TestPublishPlugState(unittest.TestCase):
             self._get_publish_value(client, "home/Car/plug_connected_enyaq"),
             1,
         )
-        self.assertEqual(
+        # VW is now handled by vw_euda.py; skoda.py must ignore its VIN.
+        self.assertIsNone(
             self._get_publish_value(client, "home/Car/plug_connected_vw"),
-            0,
         )
 
     def test_publishes_plug_disconnected(self):
@@ -193,9 +193,9 @@ class TestPublishPlugState(unittest.TestCase):
             self._get_publish_value(client, "home/Car/plug_connected_enyaq"),
             0,
         )
-        self.assertEqual(
+        # VW is now handled by vw_euda.py; skoda.py must ignore its VIN.
+        self.assertIsNone(
             self._get_publish_value(client, "home/Car/plug_connected_vw"),
-            1,
         )
 
 
@@ -238,9 +238,9 @@ class TestPublishTargetSoc(unittest.TestCase):
             self._get_publish_value(client, "home/Car/target_soc_enyaq"),
             80,
         )
-        self.assertEqual(
+        # VW is now handled by vw_euda.py; skoda.py must ignore its VIN.
+        self.assertIsNone(
             self._get_publish_value(client, "home/Car/target_soc_vw"),
-            90,
         )
 
     def test_skips_target_soc_when_none(self):
