@@ -38,7 +38,6 @@ vwEudaConfig = {
     "cookie_file": "vw_euda_cookies.pickle",
     "poll_interval": 60,    # seconds — tick every 1 min; download only new files
     "merge_files": 6,       # on startup, seed state from the N newest ZIPs
-    "km_per_soc": 5,        # range approximation: electric_range = SoC * this
     # Live SoC interpolation between the ~15-min portal drops.
     "capacity_kwh": 75,     # usable HV battery capacity (0->100%)
     "charge_efficiency": 0.9,  # charge_power is AC-side; battery gets ~90%

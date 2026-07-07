@@ -103,6 +103,12 @@ def parse_target(d):
     return None
 
 
+def parse_range(d):
+    """Electric range in km, reported by the portal in the bare 'value' key."""
+    v = _to_float(d.get("value"))
+    return int(round(v)) if v is not None else None
+
+
 def is_charging(d):
     return d.get("charging_state_report.current_charge_state") == CHARGING_STATE
 
@@ -128,13 +134,13 @@ def charging_minutes_left(d):
         return 0
 
 
-def interpolate(d, now, capacity_kwh, efficiency, km_per_soc):
+def interpolate(d, now, capacity_kwh, efficiency):
     """Map a merged field dict to {mqtt_field_suffix: value} at time `now`.
 
-    When charging, SoC (and hence range, remaining time) is projected forward
-    from the reading's capture time so values stay live between portal drops.
-    Only includes fields we have data for, so a partial snapshot never
-    overwrites a good value with None.
+    When charging, SoC (and remaining time) is projected forward from the
+    reading's capture time so values stay live between portal drops. Range is
+    the portal's own reported value (no approximation). Only includes fields we
+    have data for, so a partial snapshot never overwrites a good value.
     """
     out = {}
     soc = soc_value(d)
@@ -156,7 +162,10 @@ def interpolate(d, now, capacity_kwh, efficiency, km_per_soc):
 
     if soc_live is not None:
         out["battery_level_vw"] = int(round(soc_live))
-        out["electric_range_vw"] = int(soc_live * km_per_soc)
+
+    range_km = parse_range(d)
+    if range_km is not None:
+        out["electric_range_vw"] = range_km
 
     if charging:
         base = charging_minutes_left(d)
@@ -234,8 +243,7 @@ def main():
                 try:
                     readings = interpolate(
                         state, datetime.now(timezone.utc),
-                        cfg["capacity_kwh"], cfg["charge_efficiency"],
-                        cfg["km_per_soc"])
+                        cfg["capacity_kwh"], cfg["charge_efficiency"])
                     publish_readings(client, readings)
                     print(f"[vw_euda] Published: "
                           f"SOC={readings.get('battery_level_vw')}%, "

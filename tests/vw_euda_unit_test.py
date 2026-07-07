@@ -27,12 +27,12 @@ SAMPLE = _payload({
     "charging_state_report.current_charge_state":
         "CHARGE_STATE_CHARGING_HV_BATTERY",
     "car_captured_utc_timestamp": CAPTURE,
+    "value": "208",   # electric range in km, reported by the portal
 })
 
 
-def _interp(d, now, target=80):
-    return vw_euda.interpolate(d, now, capacity_kwh=75, efficiency=0.9,
-                               km_per_soc=5)
+def _interp(d, now):
+    return vw_euda.interpolate(d, now, capacity_kwh=75, efficiency=0.9)
 
 
 class TestBuildFieldDict(unittest.TestCase):
@@ -114,7 +114,7 @@ class TestInterpolate(unittest.TestCase):
         now = datetime(2026, 7, 7, 12, 0, tzinfo=timezone.utc)
         r = _interp(d, now)
         self.assertEqual(r["battery_level_vw"], 42)
-        self.assertEqual(r["electric_range_vw"], 210)
+        self.assertEqual(r["electric_range_vw"], 208)   # real portal value
         self.assertEqual(r["charging_time_left_vw"], 175)
         self.assertEqual(r["plug_connected_vw"], 1)
         self.assertEqual(r["charge_power_vw"], 8.5)
@@ -126,7 +126,8 @@ class TestInterpolate(unittest.TestCase):
         now = datetime(2026, 7, 7, 13, 0, tzinfo=timezone.utc)
         r = _interp(d, now)
         self.assertEqual(r["battery_level_vw"], 52)
-        self.assertEqual(r["electric_range_vw"], 261)
+        # range is the portal's own value, not derived from the projected SoC
+        self.assertEqual(r["electric_range_vw"], 208)
         self.assertEqual(r["charging_time_left_vw"], 115)
 
     def test_never_overshoots_target(self):
@@ -160,7 +161,7 @@ class TestInterpolate(unittest.TestCase):
         now = datetime(2026, 7, 7, 15, 0, tzinfo=timezone.utc)
         r = _interp(d, now)
         self.assertEqual(r["battery_level_vw"], 50)   # no capture -> no proj.
-        self.assertEqual(r["electric_range_vw"], 250)
+        self.assertNotIn("electric_range_vw", r)      # no 'value' -> omitted
         self.assertNotIn("target_soc_vw", r)
         self.assertNotIn("plug_connected_vw", r)
 
