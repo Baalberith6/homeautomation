@@ -14,6 +14,12 @@ def _payload(fields):
                      for name, val in fields.items()]}
 
 
+def _raw(items):
+    """Build a payload from explicit (key, dataFieldName, value) triples."""
+    return {"Data": [{"key": k, "dataFieldName": n, "value": v}
+                     for k, n, v in items]}
+
+
 CAPTURE = "2026-07-07T12:00:00Z"
 
 # The sample the portal returned while charging (subset of real fields).
@@ -164,6 +170,81 @@ class TestInterpolate(unittest.TestCase):
         self.assertNotIn("electric_range_vw", r)      # no 'value' -> omitted
         self.assertNotIn("target_soc_vw", r)
         self.assertNotIn("plug_connected_vw", r)
+
+
+class TestCaptureKey(unittest.TestCase):
+    def test_prefers_keyed_entry_over_stale_duplicates(self):
+        # The export repeats car_captured_* per domain; most are stale. The
+        # keyed entry must win over the last-seen duplicate.
+        p = _raw([
+            ("k1", "car_captured_utc_timestamp", "2026-07-08T06:52:20Z"),
+            ("k2", "car_captured_utc_timestamp", "2026-07-08T06:52:21Z"),
+            (vw_euda.CAPTURE_KEY, "car_captured_time", "2026-07-08T15:39:07Z"),
+            ("k3", "car_captured_utc_timestamp", "2026-07-08T06:52:20Z"),
+        ])
+        self.assertEqual(vw_euda.payload_capture(p),
+                         datetime(2026, 7, 8, 15, 39, 7, tzinfo=timezone.utc))
+
+    def test_falls_back_to_freshest_not_last_seen(self):
+        # keyed entry absent -> freshest generic value wins (not the last one)
+        p = _raw([
+            ("k1", "car_captured_utc_timestamp", "2026-07-08T15:01:22Z"),
+            ("k2", "car_captured_utc_timestamp", "2026-07-08T06:52:20Z"),
+        ])
+        self.assertEqual(vw_euda.payload_capture(p),
+                         datetime(2026, 7, 8, 15, 1, 22, tzinfo=timezone.utc))
+
+
+class TestMergeCaptureAware(unittest.TestCase):
+    def test_out_of_order_file_does_not_regress(self):
+        state = {}
+        fresh = _raw([
+            (vw_euda.CAPTURE_KEY, "car_captured_time", "2026-07-08T15:39:07Z"),
+            ("b", "battery_level_HV.value", "45.0"),
+            ("s", "battery_level_HV.state", "VALID"),
+        ])
+        stale = _raw([
+            (vw_euda.CAPTURE_KEY, "car_captured_time", "2026-07-08T06:52:00Z"),
+            ("b", "battery_level_HV.value", "43.0"),
+            ("s", "battery_level_HV.state", "VALID"),
+        ])
+        vw_euda.merge_capture_aware(state, fresh)
+        vw_euda.merge_capture_aware(state, stale)   # later download, older data
+        d = vw_euda.state_values(state)
+        self.assertEqual(vw_euda.soc_value(d), 45.0)
+        self.assertEqual(vw_euda.capture_time(d),
+                         datetime(2026, 7, 8, 15, 39, 7, tzinfo=timezone.utc))
+
+    def test_delta_fills_gaps_without_dropping_prior(self):
+        state = {}
+        vw_euda.merge_capture_aware(state, _raw([
+            (vw_euda.CAPTURE_KEY, "car_captured_time", "2026-07-08T15:00:00Z"),
+            ("b", "battery_level_HV.value", "50.0"),
+            ("s", "battery_level_HV.state", "VALID"),
+        ]))
+        vw_euda.merge_capture_aware(state, _raw([
+            (vw_euda.CAPTURE_KEY, "car_captured_time", "2026-07-08T15:15:00Z"),
+            ("p", "battery_state_report.charge_power", "8.5"),
+        ]))
+        d = vw_euda.state_values(state)
+        self.assertEqual(vw_euda.soc_value(d), 50.0)
+        self.assertEqual(d["battery_state_report.charge_power"], "8.5")
+
+
+class TestProjectionBound(unittest.TestCase):
+    def test_no_overshoot_when_anchor_is_stale(self):
+        # 24h-old charging reading must NOT project to the target cap.
+        d = vw_euda.build_field_dict([SAMPLE])
+        now = datetime(2026, 7, 8, 12, 0, tzinfo=timezone.utc)   # +24h
+        r = vw_euda.interpolate(d, now, 75, 0.9, max_projection_min=30)
+        self.assertEqual(r["battery_level_vw"], 42)   # raw, not 60/80
+        self.assertEqual(r["electric_range_vw"], 208)
+
+    def test_projects_within_window(self):
+        d = vw_euda.build_field_dict([SAMPLE])
+        now = datetime(2026, 7, 7, 12, 20, tzinfo=timezone.utc)  # +20min
+        r = vw_euda.interpolate(d, now, 75, 0.9, max_projection_min=30)
+        self.assertGreater(r["battery_level_vw"], 42)
 
 
 if __name__ == "__main__":

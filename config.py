@@ -41,6 +41,17 @@ vwEudaConfig = {
     # Live SoC interpolation between the ~15-min portal drops.
     "capacity_kwh": 75,     # usable HV battery capacity (0->100%)
     "charge_efficiency": 0.9,  # charge_power is AC-side; battery gets ~90%
+    # Only project SoC forward when the reading is this fresh. The portal
+    # often lags hours and serves files out of capture-time order; without a
+    # bound the projection would extrapolate a stale charge across that whole
+    # gap and overshoot straight to the target cap. Beyond this, publish the
+    # raw last reading unchanged.
+    "max_projection_min": 30,   # ~2 portal drops
+    # The export repeats car_captured_(utc_)time once per data domain, and
+    # most are stale duplicates. This is the stable `key` of the entry that
+    # actually anchors the battery/SoC reading — the authoritative capture
+    # time. Falls back to the freshest capture value if this key is absent.
+    "battery_capture_key": "f25e91bb-c5f3-3e35-b54b-4bcccbdc4cb9",
 }
 
 netatmoConfig = {

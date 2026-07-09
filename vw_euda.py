@@ -24,13 +24,20 @@ from config import skodaConfig, vwEudaConfig as cfg  # noqa: E402
 from vw_euda_auth import ApiError, EudaClient  # noqa: E402
 
 CHARGING_STATE = "CHARGE_STATE_CHARGING_HV_BATTERY"
-# Preference order for "when was this reading captured" (all near-identical;
-# the UTC capture timestamp is the most reliable anchor).
+# The export repeats car_captured_(utc_)time once per vehicle data domain and
+# most are stale duplicates, so collapsing by field name grabs the wrong one.
+# This is the stable `key` of the entry that anchors the battery/SoC reading.
+CAPTURE_KEY = cfg.get("battery_capture_key")
+# Fallback only, when the keyed entry is absent: the *freshest* of these wins
+# (never the stale-biased last-seen duplicate).
 CAPTURE_TIME_FIELDS = (
     "car_captured_utc_timestamp",
-    "timestamp",
     "car_captured_time",
+    "timestamp",
 )
+# Synthetic field the merge stashes the resolved capture time under, so it
+# survives the collapse-by-name and is what the interpolation anchors to.
+CAPTURE_FIELD = "__capture__"
 # Preference order for the charge target: the user-set charge limit first,
 # then the battery-care cap.
 TARGET_FIELDS = (
@@ -47,6 +54,10 @@ def build_field_dict(payloads, into=None):
     The 15-min ZIPs are deltas: a file may omit fields it hasn't seen change,
     so newest-last means the freshest value of every field wins. Pass an
     existing dict as `into` to merge incrementally across polls.
+
+    NOTE: this merges strictly in the order given, so callers must pass
+    payloads in capture-time order. The service uses `merge_capture_aware`
+    instead, which is robust to the portal serving files out of order.
     """
     merged = dict(into) if into else {}
     for payload in payloads:
@@ -55,6 +66,63 @@ def build_field_dict(payloads, into=None):
             if name is not None:
                 merged[name] = item.get("value")
     return merged
+
+
+def payload_capture(payload):
+    """Authoritative capture time of a single export payload.
+
+    Prefers the entry tagged with `CAPTURE_KEY` (the battery/SoC domain's own
+    timestamp). If that key is absent, falls back to the *freshest* value
+    among the generic capture fields — never the stale-biased last-seen one.
+    """
+    keyed = None
+    freshest = None
+    for item in payload.get("Data", []):
+        if CAPTURE_KEY and item.get("key") == CAPTURE_KEY:
+            keyed = parse_ts(item.get("value"))
+        if item.get("dataFieldName") in CAPTURE_TIME_FIELDS:
+            ts = parse_ts(item.get("value"))
+            if ts and (freshest is None or ts > freshest):
+                freshest = ts
+    return keyed or freshest
+
+
+def merge_capture_aware(state, payload):
+    """Merge one payload into a per-field {name: (value, capture)} state.
+
+    The portal serves files out of capture-time order and mixes full
+    snapshots with tiny deltas, so a strict newest-file-wins merge can let a
+    stale snapshot overwrite fresher fields (and poison the anchor timestamp
+    the interpolation projects from). This keeps, per field, the value from
+    the freshest-captured payload that carried it. A payload with no capture
+    timestamp can only fill fields we don't have yet, never overwrite dated
+    ones. The resolved capture time is stashed under CAPTURE_FIELD so it
+    survives the collapse-by-name and anchors the interpolation.
+    """
+    cap = payload_capture(payload)
+    items = list(payload.get("Data", []))
+    if cap is not None:
+        items.append({"dataFieldName": CAPTURE_FIELD, "value": cap.isoformat()})
+    for item in items:
+        name = item.get("dataFieldName")
+        if name is None:
+            continue
+        val = item.get("value")
+        prev = state.get(name)
+        if prev is None:
+            state[name] = (val, cap)
+            continue
+        prev_cap = prev[1]
+        if cap is None:
+            continue
+        if prev_cap is None or cap >= prev_cap:
+            state[name] = (val, cap)
+    return state
+
+
+def state_values(state):
+    """Flatten a capture-aware state back to a plain {name: value} dict."""
+    return {name: value for name, (value, _) in state.items()}
 
 
 def _to_float(value):
@@ -77,7 +145,15 @@ def parse_ts(raw):
 
 
 def capture_time(d):
-    """The freshest reliable capture timestamp in the reading."""
+    """The authoritative capture timestamp of a merged reading.
+
+    Prefers the capture the merge already resolved (by CAPTURE_KEY, stashed
+    under CAPTURE_FIELD); falls back to the generic fields for plain dicts
+    that never went through the capture-aware merge (e.g. a single payload).
+    """
+    dt = parse_ts(d.get(CAPTURE_FIELD))
+    if dt:
+        return dt
     for field in CAPTURE_TIME_FIELDS:
         dt = parse_ts(d.get(field))
         if dt:
@@ -134,7 +210,7 @@ def charging_minutes_left(d):
         return 0
 
 
-def interpolate(d, now, capacity_kwh, efficiency):
+def interpolate(d, now, capacity_kwh, efficiency, max_projection_min=None):
     """Map a merged field dict to {mqtt_field_suffix: value} at time `now`.
 
     When charging, SoC (and range, remaining time) is projected forward from
@@ -142,6 +218,11 @@ def interpolate(d, now, capacity_kwh, efficiency):
     starts from the portal's own reported value and is scaled in lockstep with
     the interpolated SoC. Only includes fields we have data for, so a partial
     snapshot never overwrites a good value.
+
+    Projection is only trustworthy for a short window after capture. The
+    portal frequently lags hours, so `max_projection_min` caps how far a
+    reading may be extrapolated; past it we publish the raw last reading
+    rather than inventing charge that may never have happened.
     """
     out = {}
     soc = soc_value(d)
@@ -153,9 +234,12 @@ def interpolate(d, now, capacity_kwh, efficiency):
     if captured is not None:
         elapsed_min = max(0.0, (now - captured).total_seconds() / 60.0)
 
+    fresh = (elapsed_min is not None
+             and (max_projection_min is None
+                  or elapsed_min <= max_projection_min))
+
     soc_live = soc
-    if (soc is not None and charging and power and power > 0
-            and elapsed_min is not None):
+    if (soc is not None and charging and power and power > 0 and fresh):
         added = power * (elapsed_min / 60.0) / capacity_kwh * 100.0 * efficiency
         soc_live = soc + added
         limit = float(target) if target is not None else 100.0
@@ -166,14 +250,15 @@ def interpolate(d, now, capacity_kwh, efficiency):
 
     range_km = parse_range(d)
     if range_km is not None:
-        # Extrapolate range over time in lockstep with the interpolated SoC.
+        # Extrapolate range over time in lockstep with the interpolated SoC
+        # (a no-op unless SoC was projected, since then soc_live == soc).
         if soc and soc > 0 and soc_live is not None:
             range_km = int(round(range_km * soc_live / soc))
         out["electric_range_vw"] = range_km
 
     if charging:
         base = charging_minutes_left(d)
-        if elapsed_min is not None:
+        if fresh:
             out["charging_time_left_vw"] = max(0, int(round(base - elapsed_min)))
         else:
             out["charging_time_left_vw"] = base
@@ -213,7 +298,7 @@ def main():
     print("[vw_euda] Started")
 
     ident = None
-    state = {}          # sticky merged field dict (the interpolation anchor)
+    state = {}          # capture-aware {name: (value, capture)} anchor
     last_file = None
     try:
         while True:
@@ -227,15 +312,17 @@ def main():
                         new = files[-cfg["merge_files"]:]
                     else:
                         new = [f for f in files if f["name"] > last_file]
-                    payloads = [euda.download_dataset(vin, ident, f["name"])
-                                for f in new]
-                    state = build_field_dict(payloads, into=state)
+                    for f in new:
+                        merge_capture_aware(
+                            state, euda.download_dataset(vin, ident, f["name"]))
                     last_file = files[-1]["name"]
+                    d = state_values(state)
                     print(f"[vw_euda] New data {last_file}: "
-                          f"SOC={soc_value(state)}%, "
-                          f"charging={is_charging(state)}, "
-                          f"power={state.get('battery_state_report.charge_power')}"
-                          f"kW, target={parse_target(state)}")
+                          f"SOC={soc_value(d)}%, "
+                          f"captured={capture_time(d)}, "
+                          f"charging={is_charging(d)}, "
+                          f"power={d.get('battery_state_report.charge_power')}"
+                          f"kW, target={parse_target(d)}")
             except ApiError as e:
                 print(f"[vw_euda] API error: {str(e)[:200]}")
                 ident = None   # force re-resolving the data-request identifier
@@ -246,8 +333,9 @@ def main():
             if state:
                 try:
                     readings = interpolate(
-                        state, datetime.now(timezone.utc),
-                        cfg["capacity_kwh"], cfg["charge_efficiency"])
+                        state_values(state), datetime.now(timezone.utc),
+                        cfg["capacity_kwh"], cfg["charge_efficiency"],
+                        cfg["max_projection_min"])
                     publish_readings(client, readings)
                     print(f"[vw_euda] Published: "
                           f"SOC={readings.get('battery_level_vw')}%, "
