@@ -273,6 +273,11 @@ def interpolate(d, now, capacity_kwh, efficiency, max_projection_min=None):
         out["charge_power_vw"] = power
     if target is not None:
         out["target_soc_vw"] = target
+    # Car-side capture time (the portal's, not our fetch time) as epoch
+    # seconds, so the dashboard can show how stale the reading is — the
+    # portal routinely lags hours behind real time.
+    if captured is not None:
+        out["captured_vw"] = captured.timestamp()
 
     return out
 

@@ -89,7 +89,7 @@ def get_address(lat, lon):
 
 
 async def main():
-    client = connect_mqtt("skoda5")
+    client = connect_mqtt("skoda6")
     client.loop_start()
 
     car_connectivity = None
@@ -127,6 +127,17 @@ async def main():
                         if target_soc is not None:
                             client.publish("home/Car/target_soc_enyaq", int(target_soc), qos=2, properties=publishProperties).wait_for_publish()
 
+                        # Car-side capture time of the battery reading —
+                        # "last time the value was updated in the vehicle"
+                        # (not our fetch time), published as epoch seconds so
+                        # the dashboard can show data age.
+                        try:
+                            captured = vehicle.drives.drives["primary"].level.last_updated
+                        except (AttributeError, KeyError):
+                            captured = None
+                        if captured is not None:
+                            client.publish("home/Car/captured_enyaq", captured.timestamp(), qos=2, properties=publishProperties).wait_for_publish()
+
                         try:
                             lat = float(vehicle.position.latitude.value)
                             lon = float(vehicle.position.longitude.value)
@@ -142,7 +153,7 @@ async def main():
                             client.publish("diag/Car/address_enyaq", address, qos=2, properties=publishProperties).wait_for_publish()
 
                         charging_state = vehicle.charging.state.value
-                        print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, addr={address}")
+                        print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, captured={captured}, addr={address}")
                     # VW ID.3 (vin_vw) is now read from the EU Data Act portal
                     # (see vw_euda.py); VW shut down the carconnectivity API.
             except asyncio.TimeoutError:
