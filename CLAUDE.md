@@ -2,6 +2,45 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## The knowledge base is next door
+
+This repo is one half of a pair. The other half is [`../kb`](../kb) — the knowledge base that holds the spec, the architecture, the device knowledge, and the decisions behind this code.
+
+| Repo | Holds | Your role here |
+| --- | --- | --- |
+| `.` (this one) | Python services, tests, deploy script, Telegraf and Grafana config | Write and maintain |
+| [`../kb`](../kb) | Ideas, plans, specs, architecture, devices, decisions, runbooks | **Read freely. Do not write.** It maintains its own indexes and log |
+
+**`../kb` holds the thinking. This repo holds the typing.**
+
+Start from [`../kb/index.md`](../kb/index.md) when a task needs to know *why* something works the way it does. The rules that control logic must obey — battery SOC floors, comfort limits, tariff rules — live in `../kb/requirements/`. A threshold's reason lives in `../kb/decisions.md`. This file tells you what the code does; `../kb` tells you what it is supposed to do.
+
+### Before implementing a change, look for its spec
+
+A non-trivial change is worked out in `../kb` first, as idea, then plan, then spec, under `../kb/changes/NNN-<slug>/`. A finished `spec.md` names the behaviour, the MQTT topics, the limits, the failure modes, and the acceptance checks. It is written to be implemented without further context.
+
+- **If the user names a spec** — read it and implement it. Treat its acceptance list as the definition of done.
+- **If the user asks for a non-trivial change with no spec** — say so, and offer to work it out in `../kb` first. Do not refuse to proceed; if they want it built now, build it, and say that the knowledge base will be behind until it is told.
+- **A bug fix needs no spec.** The lifecycle is for a change in behaviour, not for every edit.
+
+[`../kb/changes/CHANGES.md`](../kb/changes/CHANGES.md) is the pipeline and the backlog. There is no backlog in this repo.
+
+### When the code contradicts the knowledge base
+
+This happens, and finding it is valuable. The code is what actually runs; the knowledge base is what someone decided. Either can be the wrong one.
+
+**Say so the moment you notice.** Quote both sides:
+
+> **⚠ Contradiction — `<short title>`**
+> - **Spec:** <what `../kb` says> — [link]
+> - **Code:** <what the code does> — `file.py:line`
+
+Never silently make the code match the document, and never assume the document is stale. Tell the user, and let them decide. If they want it recorded, that is a job for a session in `../kb` — say so rather than writing there yourself.
+
+### Reporting back
+
+When a change ships, tell the user in one line what `../kb` now needs to be told: which change shipped, and which pages it affects. A session there folds the spec into the wiki and marks the change `shipped`. Do not do it from here.
+
 ## Commands
 
 ```bash
