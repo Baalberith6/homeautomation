@@ -17,13 +17,13 @@ Start from [`../kb/index.md`](../kb/index.md) when a task needs to know *why* so
 
 ### Before implementing a change, look for its spec
 
-A non-trivial change is worked out in `../kb` first, as idea, then plan, then spec, under `../kb/changes/NNN-<slug>/`. A finished `spec.md` names the behaviour, the MQTT topics, the limits, the failure modes, and the acceptance checks. It is written to be implemented without further context.
+A non-trivial change is worked out in `../kb` first, as idea, then plan, then spec, under `../kb/work/NNN-<slug>/`. A finished `spec.md` names the behaviour, the MQTT topics, the limits, the failure modes, and the acceptance checks. It is written to be implemented without further context.
 
 - **If the user names a spec** — read it and implement it. Treat its acceptance list as the definition of done.
 - **If the user asks for a non-trivial change with no spec** — say so, and offer to work it out in `../kb` first. Do not refuse to proceed; if they want it built now, build it, and say that the knowledge base will be behind until it is told.
 - **A bug fix needs no spec.** The lifecycle is for a change in behaviour, not for every edit.
 
-[`../kb/changes/CHANGES.md`](../kb/changes/CHANGES.md) is the pipeline and the backlog. There is no backlog in this repo.
+[`../kb/work/CHANGES.md`](../kb/work/CHANGES.md) is the pipeline and the backlog. There is no backlog in this repo.
 
 ### When the code contradicts the knowledge base
 
