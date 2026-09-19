@@ -48,8 +48,8 @@ This is a home energy automation system built around **MQTT as the central messa
 | `estia.py` | Continuous (60s) | Reads Toshiba Estia heat pump via HTTP API, publishes to MQTT |
 | `estia_energy.py` | Hourly at :22 | Calculates heat pump COP from temp history + hourly consumption, writes to InfluxDB |
 | `netatmo.py` | Continuous (60s) | Reads 7-room Netatmo thermostats via OAuth2, publishes room temps and heating % |
-| `skoda.py` | Continuous (120s) | Reads Skoda Enyaq vehicle data (SOC, range, charging status, GPS position) via CarConnectivity; reverse-geocodes address via Nominatim. VW ID.3 removed — see `vw_euda.py` |
-| `vw_euda.py` | Continuous (60s) | Reads VW ID.3 telemetry from the EU Data Act portal (VW killed the CarConnectivity API). OIDC login via `vw_euda_auth.py` (reuses MySkoda/VW ID creds); ticks every minute, downloads a ZIP only when a new one appears (~15min), and publishes `home/Car/*_vw`. Files arrive **out of capture-time order** and mix full snapshots with deltas, so they're merged **capture-time-aware** (per-field newest-capture-wins). The capture time is selected by a stable field `key` (`battery_capture_key` — the export repeats stale per-domain `car_captured_*` timestamps), falling back to the freshest value. Between drops SoC is **interpolated** forward from charge power + capacity (75 kWh), **only while the reading is fresh** (`max_projection_min`, 30) and capped at `settings.target_soc`; past the bound the raw last reading is published (the portal often lags hours). Range comes from the portal's `value` field, extrapolated in lockstep with SoC. **No GPS** |
+| `skoda.py` | Continuous (120s) | Reads Skoda Enyaq vehicle data (SOC, range, charging status, GPS position) via CarConnectivity; reverse-geocodes address via Nominatim; publishes the battery reading's car-side capture time as epoch seconds (`home/Car/captured_enyaq`, from `level.last_updated`) for the dashboard's data-age display. VW ID.3 removed — see `vw_euda.py` |
+| `vw_euda.py` | Continuous (60s) | Reads VW ID.3 telemetry from the EU Data Act portal (VW killed the CarConnectivity API). OIDC login via `vw_euda_auth.py` (reuses MySkoda/VW ID creds); ticks every minute, downloads a ZIP only when a new one appears (~15min), and publishes `home/Car/*_vw`. Files arrive **out of capture-time order** and mix full snapshots with deltas, so they're merged **capture-time-aware** (per-field newest-capture-wins). The capture time is selected by a stable field `key` (`battery_capture_key` — the export repeats stale per-domain `car_captured_*` timestamps), falling back to the freshest value. Between drops SoC is **interpolated** forward from charge power + capacity (75 kWh), **only while the reading is fresh** (`max_projection_min`, 30) and capped at `settings.target_soc`; past the bound the raw last reading is published (the portal often lags hours). Range comes from the portal's `value` field, extrapolated in lockstep with SoC. Also publishes the resolved capture time as epoch seconds (`home/Car/captured_vw`) so the dashboard can show data age — this is the portal's own capture time (lags hours), not the fetch time. **No GPS** |
 | `oteforecast.py` | Cron (hourly) | Fetches Czech electricity prices from OTE API, publishes to MQTT |
 | `solarforecast.py` | Cron (hourly) | Fetches Solcast PV generation forecast, writes to InfluxDB |
 | `cursor.py` | Cron (Mon 07:00 UTC) | Aggregates Cursor IDE analytics, writes to InfluxDB |
@@ -83,12 +83,12 @@ Two-column layout: col 1 = 14 units, col 2 = 10 units. Design: `spec/grafana/des
 
 | ID | Title | Type | GridPos (x,y,w,h) | Notes |
 |----|-------|------|--------------------|-------|
-| 70 | Outdoor | `dynamictext` (canvas) | 0,0,14,7 | Weather widget with sparkline |
+| 70 | Outdoor | `dynamictext` (canvas) | 0,0,14,8 | Weather widget with sparkline |
 | 67 | Indoor | `dynamictext` | 14,0,10,8 | 5 rooms + CO2 stat-bar |
-| 80 | Energy Topology | `dynamictext` (SVG) | 0,7,14,8 | Solar/Grid → Inverter → Battery/House/Wallbox |
-| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,15,14,11 | Chart (Solar/House/Battery/Bojlery + OTE bars) + Energy Stats (Today/Month, Self-suff, Virt.batt) |
-| 83 | Heat Tiles + TC + Stats | `dynamictext` | 14,8,10,10 | Krb + COP + Heat Pump tiles + TC chart + stat-bar |
-| 86 | Vehicles | `dynamictext` | 14,18,10,10 | Enyaq + ID.3 SoC bars + per-car plug status pills (Connected/Charging/Disconnected) + GPS address |
+| 80 | Energy Topology | `dynamictext` (SVG) | 0,8,14,8 | Solar/Grid → Inverter (SoC+kW hero) → House/Wallbox |
+| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,16,14,10 | Chart (Solar/House/Battery/Bojlery + OTE bars) + Energy Stats (Today/Month, Self-suff, Virt.batt). 75/25 split: NOW at 3/4, forecast 2× history compressed in right 25% |
+| 86 | Vehicles | `dynamictext` | 14,8,10,8 | Enyaq + ID.3 SoC bars + per-car plug status pills (Connected/Charging/Disconnected) + GPS address + data-capture age ("N min ago", the car's own reading time) |
+| 83 | Heat Tiles + TC + Stats | `dynamictext` | 14,16,10,10 | Krb + COP + Heat Pump tiles + TC chart + stat-bar |
 
 Old panel designs archived in `spec/grafana/old/`.
 
