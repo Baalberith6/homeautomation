@@ -247,13 +247,21 @@ class EudaClient:
         r = s.post(authenticate_action, data=fields2,
                    headers={"Referer": auth_url}, timeout=20)
         landing = r.url
-        if r.status_code >= 400:
-            raise AuthError(
-                _login_error(r.text) or f"Login rejected (HTTP {r.status_code})")
+        has_token = "access_token" in [ck.name for ck in s.cookies]
         if "signin-service" in landing or "/error" in landing:
-            raise AuthError("Login failed - check email and password")
+            raise AuthError(
+                _login_error(r.text) or "Login failed - check email/password")
         if urlparse(landing).netloc != portal_host:
             raise AuthError(f"Login did not complete (ended at {landing})")
+        # The redirect chain already dropped the session cookies by the time
+        # the browser lands on the portal page, so the landing page's own
+        # status is irrelevant — the portal has served 404s for its post-login
+        # landing URL while the session was perfectly valid. Only treat a
+        # missing access_token as a real failure.
+        if not has_token:
+            raise AuthError(
+                _login_error(r.text)
+                or f"Login rejected (no access_token, HTTP {r.status_code})")
 
         self._logged_in = True
         self._save_cookies()
