@@ -68,37 +68,11 @@ DEBUG=1 python3 inverter.py
 
 CI runs on every push via `.github/workflows/test.yaml` (Python 3.9, flake8 + pytest).
 
-## Architecture
+## Where the architecture lives
 
-This is a home energy automation system built around **MQTT as the central message bus** with **InfluxDB for time-series storage**. Services are independent Python processes with no central orchestrator — they communicate via MQTT pub/sub topics under `home/`, `bool/`, `command/`, `wallbox/`, `jsons/`, `diag/` prefixes.
+Services, hosts, and topics: `../kb/architecture/services.md`, `topology.md`, `mqtt-topics.md`
 
-**Infrastructure:**
-- MQTT broker: `192.168.1.52:1883` (configured in `config.py`)
-- InfluxDB: `192.168.1.50` (configured in `config.py`)
-- All credentials in `secret.py` (not committed)
-
-**Key services and their roles:**
-
-| File | Runs | Role |
-|------|------|------|
-| `inverter.py` | Continuous (5s) | Reads GoodWe solar inverter via LAN, publishes 40+ metrics (PV power, battery SOC, grid current) |
-| `inverter_setter.py` | MQTT event-driven | Subscribes to inverter data, controls battery charging curves dynamically |
-| `wallbox.py` | MQTT event-driven | Controls go-eCharger EV charger; computes allowable current from PV surplus + battery SOC |
-| `estia.py` | Continuous (60s) | Reads Toshiba Estia heat pump via HTTP API, publishes to MQTT |
-| `estia_energy.py` | Hourly at :22 | Calculates heat pump COP from temp history + hourly consumption, writes to InfluxDB |
-| `netatmo.py` | Continuous (60s) | Reads 7-room Netatmo thermostats via OAuth2, publishes room temps and heating % |
-| `skoda.py` | Continuous (120s) | Reads Skoda Enyaq vehicle data (SOC, range, charging status, GPS position) via CarConnectivity; reverse-geocodes address via Nominatim; publishes the battery reading's car-side capture time as epoch seconds (`home/Car/captured_enyaq`, from `level.last_updated`) for the dashboard's data-age display. VW ID.3 removed — see `vw_euda.py` |
-| `vw_euda.py` | Continuous (60s) | Reads VW ID.3 telemetry from the EU Data Act portal (VW killed the CarConnectivity API). OIDC login via `vw_euda_auth.py` (reuses MySkoda/VW ID creds); ticks every minute, downloads a ZIP only when a new one appears (~15min), and publishes `home/Car/*_vw`. Files arrive **out of capture-time order** and mix full snapshots with deltas, so they're merged **capture-time-aware** (per-field newest-capture-wins). The capture time is selected by a stable field `key` (`battery_capture_key` — the export repeats stale per-domain `car_captured_*` timestamps), falling back to the freshest value. Between drops SoC is **interpolated** forward from charge power + capacity (75 kWh), **only while the reading is fresh** (`max_projection_min`, 30) and capped at `settings.target_soc`; past the bound the raw last reading is published (the portal often lags hours). Range comes from the portal's `value` field, extrapolated in lockstep with SoC. Also publishes the resolved capture time as epoch seconds (`home/Car/captured_vw`) so the dashboard can show data age — this is the portal's own capture time (lags hours), not the fetch time. **No GPS** |
-| `oteforecast.py` | Cron (hourly) | Fetches Czech electricity prices from OTE API, publishes to MQTT |
-| `solarforecast.py` | Cron (hourly) | Fetches Solcast PV generation forecast, writes to InfluxDB |
-| `cursor.py` | Cron (Mon 07:00 UTC) | Aggregates Cursor IDE analytics, writes to InfluxDB |
-
-**Energy optimization flow:**
-1. `inverter.py` publishes real-time PV production and battery SOC
-2. `wallbox.py` subscribes and dynamically adjusts EV charging amps (maximizes PV self-consumption)
-3. `inverter_setter.py` adjusts battery charge curves based on SOC thresholds
-4. `oteforecast.py` + `solarforecast.py` provide price/generation forecasts for scheduling decisions
-5. `estia_optimizer.py` uses OTE prices to schedule heat pump operation
+The energy loop: `../kb/architecture/data-flows.md`
 
 **State management:** MQTT-based services use module-level global variables to persist state between messages (e.g., `soc`, `amp` in `wallbox.py`). Services rely on an external supervisor (systemd/supervisord) for restart-on-failure.
 
@@ -106,40 +80,16 @@ This is a home energy automation system built around **MQTT as the central messa
 
 **Config structure:** `config.py` holds all device IPs, MQTT/InfluxDB endpoints, device IDs, and polling intervals. `secret.py` holds all API keys and credentials (not in git).
 
-**Grafana:**
+## Grafana
+
 - Grafana instance: `http://192.168.1.50:3000/` (configured in `config.py` as `grafanaConfig`)
 - API token for reading dashboard variables: `grafanaApiKey` in `secret.py`
 - Service account token for dashboard management: `grafanaServiceAccountToken` in `secret.py`
-- `spec/grafana/` contains design specs (`.md`) and exported dashboard JSON (`.json`) for the "Prdikov" dashboard (UID `q50mEhf7k`)
 - `grafana_setter.py` reads dashboard template variables and publishes them to MQTT
 
-**Grafana workflow:** After deploying dashboard changes via API, always fetch the live JSON back and update `spec/grafana/prdikov.json` so the local copy stays in sync. Start from `prdikov.json` when making further changes — never build from scratch. **Always update the local design docs** (`spec/grafana/grafana-spec.md`, relevant `panel-*.jsx` files) to reflect any changes made to the dashboard.
+**Grafana workflow:** After deploying dashboard changes via API, always fetch the live JSON back and update `spec/grafana/prdikov.json` so the local copy stays in sync. Start from `prdikov.json` when making further changes — never build from scratch. **Always update `spec/grafana/grafana-spec.md`** to reflect any changes made to the dashboard.
 
-### Prdikov Dashboard Panel Map (UID `q50mEhf7k`)
+`spec/grafana/grafana-spec.md` is the build reference for `spec/grafana/build_dashboard.py`, which generates `spec/grafana/prdikov.json`.
+`spec/grafana/prdikov.json` is the generated artefact and the sync-back target after a deploy.
 
-Dashboard: 24-column grid, 10s refresh, InfluxDB datasource (`ceyru5v6xg3r4b`).
-Two-column layout: col 1 = 14 units, col 2 = 10 units. Design: `spec/grafana/design.html`.
-
-| ID | Title | Type | GridPos (x,y,w,h) | Notes |
-|----|-------|------|--------------------|-------|
-| 70 | Outdoor | `dynamictext` (canvas) | 0,0,14,8 | Weather widget with sparkline |
-| 67 | Indoor | `dynamictext` | 14,0,10,8 | 5 rooms + CO2 stat-bar |
-| 80 | Energy Topology | `dynamictext` (SVG) | 0,8,14,8 | Solar/Grid → Inverter (SoC+kW hero) → House/Wallbox |
-| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,16,14,10 | Chart (Solar/House/Battery/Bojlery + OTE bars) + Energy Stats (Today/Month, Self-suff, Virt.batt). 75/25 split: NOW at 3/4, forecast 2× history compressed in right 25% |
-| 86 | Vehicles | `dynamictext` | 14,8,10,8 | Enyaq + ID.3 SoC bars + per-car plug status pills (Connected/Charging/Disconnected) + GPS address + data-capture age ("N min ago", the car's own reading time) |
-| 83 | Heat Tiles + TC + Stats | `dynamictext` | 14,16,10,10 | Krb + COP + Heat Pump tiles + TC chart + stat-bar |
-
-Old panel designs archived in `spec/grafana/old/`.
-
-### Grafana Design Docs
-
-All panel documentation is consolidated in `spec/grafana/grafana-spec.md`, which covers:
-- Dashboard architecture and grid layout
-- Complete color scheme reference
-- Flux query patterns and InfluxDB field reference
-- Per-panel specs (queries, templates, color logic, CSS classes)
-- Grafana compatibility notes
-
-Old panel JSX visualizations archived in `spec/grafana/old/panel-*.jsx`.
-Dashboard JSON is generated by `spec/grafana/build_dashboard.py` → `spec/grafana/prdikov.json`.
-Visual reference: `spec/grafana/design.html` (serve with `python3 -m http.server`). Previous iteration archived as `redesign-v5.html`.
+Panel map and field reference: `../kb/architecture/grafana.md`
