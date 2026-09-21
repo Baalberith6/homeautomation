@@ -11,25 +11,25 @@ stop_charging_at_soc = 90
 last_curr_set = -1
 last_dod_set = -1
 
+# Battery charge current by SOC. Rows: (upper SOC bound in %, charge current in A), in rising order.
+# The last row has no upper bound, so every SOC matches exactly one row and there is no default.
+# Spec: ../kb/work/001-charging-curve-soc-gap/spec.md
+CHARGING_CURVE = (
+    (40, 20),
+    (50, 18),
+    (60, 15),
+    (70, 13),
+    (80, 10),
+    (85, 8),
+    (90, 6),
+    (None, 4),
+)
+
+
 def charging_curve(x):
-    if x <= 40:
-        return 20
-    elif x <= 50:
-        return 18
-    elif x <= 60:
-        return 15
-    elif x <= 70:
-        return 13
-    elif x <= 80:
-        return 10
-    elif x <= 85:
-        return 8
-    elif x <= 90:
-        return 6
-    elif x >= 95:
-        return 4
-    else:
-        return 20  # or some default if needed
+    for upper, current in CHARGING_CURVE:
+        if upper is None or x <= upper:
+            return current
 
 
 async def handle_inverter_battery_charge_current():
