@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 # Mock heavy external dependency that may not be installed locally
 sys.modules.setdefault('goodwe', MagicMock())
 
-from inverter_setter import charging_curve  # noqa: E402
+from inverter_setter import charging_curve, target_current  # noqa: E402
 
 
 # Expected charge current per SOC, from ../kb/work/001-charging-curve-soc-gap/spec.md section 2.
@@ -43,6 +43,19 @@ class TestChargingCurve(unittest.TestCase):
     def test_out_of_range_soc(self):
         self.assertEqual(20, charging_curve(-1))
         self.assertEqual(4, charging_curve(101))
+
+
+class TestTargetCurrent(unittest.TestCase):
+
+    def test_stop_100_soc_92_is_4(self):
+        self.assertEqual(4, target_current(92, 100))
+
+    def test_stop_90_soc_92_is_0(self):
+        self.assertEqual(0, target_current(92, 90))
+
+    def test_soc_equal_to_stop_is_0(self):
+        self.assertEqual(0, target_current(90, 90))
+        self.assertEqual(6, target_current(89, 90))
 
 
 if __name__ == '__main__':

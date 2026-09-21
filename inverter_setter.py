@@ -32,9 +32,14 @@ def charging_curve(x):
             return current
 
 
+def target_current(soc, stop_at):
+    """Charge current to write: 0 A at or above the stop level, otherwise the curve value."""
+    return 0 if soc >= stop_at else charging_curve(soc)
+
+
 async def handle_inverter_battery_charge_current():
     global last_curr_set
-    val = 0 if soc >= stop_charging_at_soc else charging_curve(soc)
+    val = target_current(soc, stop_charging_at_soc)
     if val != last_curr_set:
         inverter = await goodwe.connect(inverterConfig["ip_address"])
         last_curr_set = val
