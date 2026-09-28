@@ -5,7 +5,7 @@ import os
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 from config import cezConfig, generalConfig as c
 from secret import cezUsername, cezPassword
 
@@ -122,14 +122,10 @@ def run():
     client = connect_mqtt("cez-battery")
     client.loop_start()
 
-    client.publish("home/cez/virtual_battery", charge,
-                   qos=2, properties=publishProperties).wait_for_publish()
-    client.publish("home/cez/aggregated_production", production,
-                   qos=2, properties=publishProperties).wait_for_publish()
-    client.publish("home/cez/aggregated_consumption", consumption,
-                   qos=2, properties=publishProperties).wait_for_publish()
-    client.publish("home/cez/discount_amount", discount,
-                   qos=2, properties=publishProperties).wait_for_publish()
+    client.publish("home/cez/virtual_battery", charge).wait_for_publish()
+    client.publish("home/cez/aggregated_production", production).wait_for_publish()
+    client.publish("home/cez/aggregated_consumption", consumption).wait_for_publish()
+    client.publish("home/cez/discount_amount", discount).wait_for_publish()
 
     client.disconnect()
     print("[cez] Published to MQTT")
