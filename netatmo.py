@@ -5,7 +5,7 @@ import traceback
 import asyncio
 import time
 
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 from secret import netatmoClientId, netatmoClientSecret
 from config import netatmoConfig
 from config import generalConfig as c
@@ -73,10 +73,10 @@ async def main():
             for room_name in ["hala", "kupelna", "chodba", "hostovska", "julinka", "kubo", "spalna"]:
                 room = home_status.rooms.get(netatmoConfig["room_id_" + room_name])
 
-                client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature'], qos=2, properties=publishProperties).wait_for_publish()
-                client.publish("home/netatmo/on/"+room_name, float(room['heating_power_request'])/100.0, qos=2, properties=publishProperties).wait_for_publish()
+                client.publish("home/netatmo/temp_curr/"+room_name, room['therm_measured_temperature']).wait_for_publish()
+                client.publish("home/netatmo/on/"+room_name, float(room['heating_power_request'])/100.0).wait_for_publish()
                 if 'therm_setpoint_temperature' in room:
-                    client.publish("home/netatmo/temp_target/"+room_name, room['therm_setpoint_temperature'], qos=2, properties=publishProperties).wait_for_publish()
+                    client.publish("home/netatmo/temp_target/"+room_name, room['therm_setpoint_temperature']).wait_for_publish()
 
                 if c["debug"]: print(room['therm_measured_temperature'])
                 if c["debug"]: print(room['heating_power_request'])

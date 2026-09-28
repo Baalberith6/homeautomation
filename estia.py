@@ -6,7 +6,7 @@ from estia_api import ToshibaAcHttpApi
 
 import time
 
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 from secret import toshibaUsername, toshibaSecret
 from config import generalConfig as c, estiaConfig
 
@@ -76,17 +76,16 @@ async def main():
             compressor_active = data["waterActiveCompressor"] or data["heatingActiveCompressor"]
             coil_active = data["waterActiveCoil"] or data["heatingActiveCoil"]
 
-            client.publish("home/estia/in_temp", in_temp, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/estia/out_temp", out_temp, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/estia/target_temp", target_temp, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/estia/outside_temp", hex_to_number_2(sensors["TO_Temp"]), qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("bool/estia/compressor_active", compressor_active, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/estia/compressor_on", 1.0 if compressor_active else 0.0, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/estia/coil_on", 1.0 if coil_active else 0.0, qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/estia/in_temp", in_temp).wait_for_publish()
+            client.publish("home/estia/out_temp", out_temp).wait_for_publish()
+            client.publish("home/estia/target_temp", target_temp).wait_for_publish()
+            client.publish("home/estia/outside_temp", hex_to_number_2(sensors["TO_Temp"])).wait_for_publish()
+            client.publish("bool/estia/compressor_active", compressor_active).wait_for_publish()
+            client.publish("home/estia/compressor_on", 1.0 if compressor_active else 0.0).wait_for_publish()
+            client.publish("home/estia/coil_on", 1.0 if coil_active else 0.0).wait_for_publish()
             client.publish(
                 "bool/estia/heating_compressor_active",
-                data["heatingActiveCompressor"],
-                qos=2, properties=publishProperties
+                data["heatingActiveCompressor"]
             ).wait_for_publish()
 
             previous_in_temp = in_temp

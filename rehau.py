@@ -6,7 +6,7 @@ import asyncio
 import time
 
 from config import generalConfig as c
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 from config import rehauConfig
 
 rooms = {
@@ -46,9 +46,9 @@ async def main():
                 temp_set = tree.xpath('//div[@class="textCenter"]/table/tr/td/input[@class="inputWPlHolder pinkR"]')[0].value
                 humidity = tree.xpath('//span[@class="spanHum"]/label[@class="labelRight greyR fontArial"]/text()')[0].strip().rstrip('%')
                 if c["debug"]: print(f"SET {room_name}: {temp_set}, {humidity}")
-                client.publish("home/rehau/" + room_name, temp, qos=2, properties=publishProperties).wait_for_publish()
-                client.publish("home/rehau_set/" + room_name, temp_set, qos=2,  properties=publishProperties).wait_for_publish()
-                client.publish("home/rehau_hum/" + room_name, int(humidity), qos=2, properties=publishProperties).wait_for_publish()
+                client.publish("home/rehau/" + room_name, temp).wait_for_publish()
+                client.publish("home/rehau_set/" + room_name, temp_set).wait_for_publish()
+                client.publish("home/rehau_hum/" + room_name, int(humidity)).wait_for_publish()
 
             r = requests.get(url=rehauConfig["ip_address"] + "installer-inputoutput.html")
             tree = html.fromstring(r.text)
@@ -56,7 +56,7 @@ async def main():
             for i, room_val in enumerate(outputs.split(' ')[:7]):
                 room_name = rooms[i]
                 if c["debug"]: print(f"OUTPUT {room_name}: {room_val}")
-                client.publish("home/rehau_output/" + room_name, room_val, qos=2,  properties=publishProperties).wait_for_publish()
+                client.publish("home/rehau_output/" + room_name, room_val).wait_for_publish()
         except Exception as e:
             print(f"[rehau] Error: {e}")
             traceback.print_exc()

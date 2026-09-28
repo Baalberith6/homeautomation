@@ -6,7 +6,7 @@ from grove.i2c import Bus
 
 import asyncio
 
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 
 
 async def store_runtime_data():
@@ -20,8 +20,8 @@ async def store_runtime_data():
             data = sgp30.read_measurements()
             co2_eq_ppm, tvoc_ppb = data.data
 
-            client.publish("home/weather/sensors/co2", co2_eq_ppm, qos=2, properties=publishProperties)
-            client.publish("home/weather/sensors/voc", tvoc_ppb, qos=2, properties=publishProperties)
+            client.publish("home/weather/sensors/co2", co2_eq_ppm)
+            client.publish("home/weather/sensors/voc", tvoc_ppb)
         except Exception as e:
             print(f"[co2] Error: {e}")
             traceback.print_exc()

@@ -11,7 +11,7 @@ from carconnectivity.charging import Charging  # noqa: E402
 from carconnectivity.charging_connector import ChargingConnector  # noqa: E402
 from carconnectivity.vehicle import GenericVehicle  # noqa: E402
 
-from common import connect_mqtt, publishProperties  # noqa: E402
+from common import connect_mqtt  # noqa: E402
 from config import skodaConfig  # noqa: E402
 from secret import carConnectivityConfig  # noqa: E402
 
@@ -110,22 +110,22 @@ async def main():
                     if vehicle.vin.value == skodaConfig["vin_skoda"]:
                         soc = vehicle.drives.drives["primary"].level.value
                         range_km = vehicle.drives.total_range.value
-                        client.publish("home/Car/battery_level_enyaq", soc, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/battery_level_enyaq", soc).wait_for_publish()
 
                         time_remaining = calculate_charging_time_remaining(vehicle)
-                        client.publish("home/Car/charging_time_left_enyaq", time_remaining, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/charging_time_left_enyaq", time_remaining).wait_for_publish()
 
-                        client.publish("home/Car/electric_range_enyaq", range_km, qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/electric_range_enyaq", range_km).wait_for_publish()
 
                         plug = is_plug_connected(vehicle)
-                        client.publish("home/Car/plug_connected_enyaq", int(plug), qos=2, properties=publishProperties).wait_for_publish()
+                        client.publish("home/Car/plug_connected_enyaq", int(plug)).wait_for_publish()
 
                         try:
                             target_soc = vehicle.charging.settings.target_level.value
                         except (AttributeError, KeyError):
                             target_soc = None
                         if target_soc is not None:
-                            client.publish("home/Car/target_soc_enyaq", int(target_soc), qos=2, properties=publishProperties).wait_for_publish()
+                            client.publish("home/Car/target_soc_enyaq", int(target_soc)).wait_for_publish()
 
                         # Car-side capture time of the battery reading —
                         # "last time the value was updated in the vehicle"
@@ -136,7 +136,7 @@ async def main():
                         except (AttributeError, KeyError):
                             captured = None
                         if captured is not None:
-                            client.publish("home/Car/captured_enyaq", captured.timestamp(), qos=2, properties=publishProperties).wait_for_publish()
+                            client.publish("home/Car/captured_enyaq", captured.timestamp()).wait_for_publish()
 
                         try:
                             lat = float(vehicle.position.latitude.value)
@@ -146,11 +146,11 @@ async def main():
                             lon = None
                         address = ""
                         if lat is not None and lon is not None:
-                            client.publish("home/Car/lat_enyaq", lat, qos=2, properties=publishProperties).wait_for_publish()
-                            client.publish("home/Car/lon_enyaq", lon, qos=2, properties=publishProperties).wait_for_publish()
+                            client.publish("home/Car/lat_enyaq", lat).wait_for_publish()
+                            client.publish("home/Car/lon_enyaq", lon).wait_for_publish()
                             address = get_address(lat, lon)
                         if address:
-                            client.publish("diag/Car/address_enyaq", address, qos=2, properties=publishProperties).wait_for_publish()
+                            client.publish("diag/Car/address_enyaq", address).wait_for_publish()
 
                         charging_state = vehicle.charging.state.value
                         print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, captured={captured}, addr={address}")

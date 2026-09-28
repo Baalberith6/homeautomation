@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 
 sys.stdout.reconfigure(line_buffering=True)
 
-from common import connect_mqtt, publishProperties  # noqa: E402
+from common import connect_mqtt  # noqa: E402
 from config import skodaConfig, vwEudaConfig as cfg  # noqa: E402
 from vw_euda_auth import ApiError, EudaClient  # noqa: E402
 
@@ -291,8 +291,7 @@ def _newest_first_sorted(files):
 
 def publish_readings(client, readings):
     for suffix, value in readings.items():
-        client.publish(f"home/Car/{suffix}", value, qos=2,
-                       properties=publishProperties).wait_for_publish()
+        client.publish(f"home/Car/{suffix}", value).wait_for_publish()
 
 
 def main():

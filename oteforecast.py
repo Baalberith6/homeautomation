@@ -8,7 +8,7 @@ import requests
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 from config import generalConfig as c, influxConfig
 from secret import influxToken
 
@@ -36,7 +36,7 @@ def send_to_mqtt(r, client, date: datetime):
     for hour in hour_prices:
         hour_prices_dict[int(hour["x"])] = hour["y"]
 
-    client.publish("home/OTE/hourly", json.dumps(hour_prices_dict), qos=2, properties=publishProperties).wait_for_publish()
+    client.publish("home/OTE/hourly", json.dumps(hour_prices_dict)).wait_for_publish()
     hour_prices_zal = hour_prices_dict.copy()
 
     # Write all 24 hourly prices to InfluxDB (EUR/MWh + CZK/kWh)
@@ -62,10 +62,10 @@ def send_to_mqtt(r, client, date: datetime):
 
     max_hours_out = {max_hour: hour_prices_zal[max_hour], max_hour2: hour_prices_zal[max_hour2], max_hour3: hour_prices_zal[max_hour3]}
     min_hours_out = {min_hour: hour_prices_zal[min_hour], min_hour2: hour_prices_zal[min_hour2], min_hour3: hour_prices_zal[min_hour3]}
-    client.publish("home/OTE/daily/max/hour", max_hour, qos=2, properties=publishProperties).wait_for_publish()
-    client.publish("home/OTE/daily/max/price", hour_prices_zal[max_hour], qos=2, properties=publishProperties).wait_for_publish()
-    client.publish("home/OTE/daily/min/hour", min_hour, qos=2, properties=publishProperties).wait_for_publish()
-    client.publish("home/OTE/daily/min/price", hour_prices_zal[min_hour], qos=2, properties=publishProperties).wait_for_publish()
+    client.publish("home/OTE/daily/max/hour", max_hour).wait_for_publish()
+    client.publish("home/OTE/daily/max/price", hour_prices_zal[max_hour]).wait_for_publish()
+    client.publish("home/OTE/daily/min/hour", min_hour).wait_for_publish()
+    client.publish("home/OTE/daily/min/price", hour_prices_zal[min_hour]).wait_for_publish()
 
     # print(date + timedelta(hours=int(max_hour)))
     write_api.write(bucket=influxConfig["bucket"], record=Point("OTE")

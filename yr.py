@@ -9,7 +9,7 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from metno_locationforecast import Place, Forecast
 
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 from config import generalConfig as c, influxConfig
 from secret import influxToken
 
@@ -32,10 +32,10 @@ def publish(client):
             d_min = datetime.combine(d, time.min)
             d_max = datetime.combine(d, time.max) + timedelta(hours=7)
 
-            client.publish("home/weatherforecast/yr/maxtemp", max(forecast.data.intervals_between(d_min, d_max), key=lambda x: x.variables["air_temperature"].value).variables["air_temperature"].value, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/weatherforecast/yr/mintemp", min(forecast.data.intervals_between(d_min, d_max), key=lambda x: x.variables["air_temperature"].value).variables["air_temperature"].value, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/weatherforecast/yr/maxwind", max(forecast.data.intervals_between(d_min, d_max), key=lambda x: x.variables["wind_speed"].value).variables["wind_speed"].value * 3.6, qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("home/weatherforecast/yr/precip", sum(map(lambda x: x.variables["precipitation_amount"].value, forecast.data.intervals_between(d_min, d_max))), qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("home/weatherforecast/yr/maxtemp", max(forecast.data.intervals_between(d_min, d_max), key=lambda x: x.variables["air_temperature"].value).variables["air_temperature"].value).wait_for_publish()
+            client.publish("home/weatherforecast/yr/mintemp", min(forecast.data.intervals_between(d_min, d_max), key=lambda x: x.variables["air_temperature"].value).variables["air_temperature"].value).wait_for_publish()
+            client.publish("home/weatherforecast/yr/maxwind", max(forecast.data.intervals_between(d_min, d_max), key=lambda x: x.variables["wind_speed"].value).variables["wind_speed"].value * 3.6).wait_for_publish()
+            client.publish("home/weatherforecast/yr/precip", sum(map(lambda x: x.variables["precipitation_amount"].value, forecast.data.intervals_between(d_min, d_max)))).wait_for_publish()
 
             # Publish today's hourly forecast (full local day)
             # yr.no returns naive UTC times, so convert local day bounds to UTC
@@ -72,18 +72,18 @@ def publish(client):
                     write_api.write(bucket=influxConfig["bucket"], record=Point("WindForecast").field("wind_gust", float(gust_val)).time(ts_utc))
 
                 # Publish individual hours to MQTT (local hour)
-                client.publish(f"home/tempforecast/yr/{hour_key}", temp_val, qos=2, properties=publishProperties).wait_for_publish()
-                client.publish(f"home/rainforecast/yr/{hour_key}", precip_val, qos=2, properties=publishProperties).wait_for_publish()
-                client.publish(f"home/windforecast/yr/{hour_key}", wind_val, qos=2, properties=publishProperties).wait_for_publish()
+                client.publish(f"home/tempforecast/yr/{hour_key}", temp_val).wait_for_publish()
+                client.publish(f"home/rainforecast/yr/{hour_key}", precip_val).wait_for_publish()
+                client.publish(f"home/windforecast/yr/{hour_key}", wind_val).wait_for_publish()
                 if gust_val is not None:
-                    client.publish(f"home/gustforecast/yr/{hour_key}", gust_val, qos=2, properties=publishProperties).wait_for_publish()
+                    client.publish(f"home/gustforecast/yr/{hour_key}", gust_val).wait_for_publish()
 
             # Publish JSON summaries for other consumers
-            client.publish("jsons/weatherforecast/yr/hourly", json.dumps(hourly), qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("jsons/weatherforecast/yr/hourly_rain", json.dumps(hourly_rain), qos=2, properties=publishProperties).wait_for_publish()
-            client.publish("jsons/weatherforecast/yr/hourly_wind", json.dumps(hourly_wind), qos=2, properties=publishProperties).wait_for_publish()
+            client.publish("jsons/weatherforecast/yr/hourly", json.dumps(hourly)).wait_for_publish()
+            client.publish("jsons/weatherforecast/yr/hourly_rain", json.dumps(hourly_rain)).wait_for_publish()
+            client.publish("jsons/weatherforecast/yr/hourly_wind", json.dumps(hourly_wind)).wait_for_publish()
             if hourly_gust:
-                client.publish("jsons/weatherforecast/yr/hourly_gust", json.dumps(hourly_gust), qos=2, properties=publishProperties).wait_for_publish()
+                client.publish("jsons/weatherforecast/yr/hourly_gust", json.dumps(hourly_gust)).wait_for_publish()
 
             if datetime.now().hour == 23 and datetime.now().minute > 30:
                 # tomorrow only
@@ -93,7 +93,7 @@ def publish(client):
                 for interval in forecast.data.intervals_between(d_min, d_max):
                     temps[interval.start_time.timestamp()] = interval.variables["air_temperature"].value
 
-                client.publish("jsons/weatherforecast/yr/tomorrow", json.dumps(temps), qos=2, properties=publishProperties).wait_for_publish()
+                client.publish("jsons/weatherforecast/yr/tomorrow", json.dumps(temps)).wait_for_publish()
         except Exception as e:
             print(f"[yr] Error: {e}")
             traceback.print_exc()
