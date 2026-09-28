@@ -1102,7 +1102,7 @@ def build_panel_80():
 # ===================================================================
 # PANEL 81 -- Energy Chart (Business Text with SVG chart)
 # ===================================================================
-# Encodes Solar/House/Battery/Bojlery as "minute:kW" strings at 2-min
+# Encodes Solar/House/Battery as "minute:kW" strings at 2-min
 # aggregation, plus OTE hourly prices as "hour:price" strings.
 # afterRender JS draws a dual-axis SVG chart (kW left, Kč right)
 # with OTE price bars, data lines/areas, and a NOW marker.
@@ -1146,16 +1146,6 @@ bat_enc = from(bucket: "default")
   |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
   |> findColumn(fn: (key) => true, column: "_enc")
 bat_str = strings.joinStr(arr: bat_enc, v: ",")
-
-boj_enc = from(bucket: "default")
-  |> range(start: today(), stop: now())
-  |> filter(fn: (r) => r._measurement == "FVE" and r._field == "bojlery" and r.pretoky == "pretoky")
-  |> aggregateWindow(every: 2m, fn: mean, createEmpty: false)
-  |> filter(fn: (r) => exists r._value)
-  |> sort(columns: ["_time"])
-  |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
-  |> findColumn(fn: (key) => true, column: "_enc")
-boj_str = strings.joinStr(arr: boj_enc, v: ",")
 
 // -- Solar forecast (full day, 50th percentile → kW; JS filters to after NOW) --
 fc_enc = from(bucket: "default")
@@ -1236,7 +1226,6 @@ array.from(rows: [{
   solar_str: solar_str,
   house_str: house_str,
   bat_str: bat_str,
-  boj_str: boj_str,
   fc_str: fc_str,
   ote_str: ote_str,
   range_start_min: range_start_min,
@@ -1281,7 +1270,6 @@ PANEL_81_CONTENT = r"""<style>
   data-solar="{{solar_str}}"
   data-house="{{house_str}}"
   data-bat="{{bat_str}}"
-  data-boj="{{boj_str}}"
   data-fc="{{fc_str}}"
   data-ote="{{ote_str}}">
   <div id="ec-chart" class="ec-svg"></div>
@@ -1339,7 +1327,7 @@ function pd(str){
   }return r;
 }
 var sol=pd(root.dataset.solar),hou=pd(root.dataset.house);
-var bat=pd(root.dataset.bat),boj=pd(root.dataset.boj);
+var bat=pd(root.dataset.bat);
 var fc=pd(root.dataset.fc);
 
 // OTE prices: "hour:price,..."
@@ -1382,7 +1370,7 @@ var HF=0.75,splitX=PL+CW*HF;
 function fv(pts){var r=[];for(var i=0;i<pts.length;i++){if(pts[i].m>=wS&&pts[i].m<=wE)r.push(pts[i]);}return r;}
 var allV=[3,-1];
 function aV(pts){for(var i=0;i<pts.length;i++)allV.push(pts[i].v);}
-aV(fv(sol));aV(fv(hou));aV(fv(bat));aV(fv(boj));aV(fcPast);aV(fcFut);
+aV(fv(sol));aV(fv(hou));aV(fv(bat));aV(fcPast);aV(fcFut);
 for(var i=0;i<ote.length;i++){if(ote[i].h*60>=wS&&ote[i].h*60<wE)allV.push(ote[i].v);}
 var yMax=Math.ceil(Math.max.apply(null,allV));
 var yMin=Math.floor(Math.min.apply(null,allV));
@@ -1527,11 +1515,6 @@ if(bat.length>=2){
   var bl=bp(bat);
   s+='<path d="'+bl+" L"+xP(bat[bat.length-1].m).toFixed(1)+","+y0.toFixed(1)+" L"+xP(bat[0].m).toFixed(1)+","+y0.toFixed(1)+' Z" fill="url(#ec81bg)"/>';
   s+='<path d="'+bl+'" fill="none" stroke="#FADE2A" stroke-width="2" stroke-linejoin="round"/>';
-}
-
-// Bojlery: thin line
-if(boj.length>=2){
-  s+='<path d="'+bp(boj)+'" fill="none" stroke="#FF9830" stroke-width="1.5" stroke-linejoin="round" opacity=".85"/>';
 }
 
 s+='</g>'; // close clip group
