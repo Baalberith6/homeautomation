@@ -5,7 +5,7 @@ import requests
 
 from config import generalConfig as c, grafanaConfig
 from secret import grafanaApiKey
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 
 def _request():
     headers = {"Authorization": f"Bearer {grafanaApiKey}"}
@@ -16,7 +16,7 @@ async def publish(client):
     while True:
         data = _request()["dashboard"]["templating"]["list"]
         for item in data:
-            client.publish("command/"+item["name"], item["current"]["value"], qos=2, properties=publishProperties)
+            client.publish("command/"+item["name"], item["current"]["value"])
             if (c["debug"]):
                 print(f"{item['name']}: {item['current']['value']}")
 
