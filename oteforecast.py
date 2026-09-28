@@ -36,7 +36,6 @@ def send_to_mqtt(r, client, date: datetime):
     for hour in hour_prices:
         hour_prices_dict[int(hour["x"])] = hour["y"]
 
-    client.publish("home/OTE/hourly", json.dumps(hour_prices_dict)).wait_for_publish()
     hour_prices_zal = hour_prices_dict.copy()
 
     # Write all 24 hourly prices to InfluxDB (EUR/MWh + CZK/kWh)
