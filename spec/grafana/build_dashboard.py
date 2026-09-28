@@ -55,7 +55,7 @@ def business_text_panel(panel_id, grid_pos, targets, content,
         "pluginVersion": "6.2.0",
         "targets": targets,
         "title": title,
-        "transparent": True,
+        "transparent": False,
         "type": "marcusolsson-dynamictext-panel",
     }
 
@@ -128,7 +128,7 @@ def timeseries_panel(panel_id, grid_pos, targets, overrides,
         "pluginVersion": "12.1.1",
         "targets": targets,
         "title": title,
-        "transparent": True,
+        "transparent": False,
         "type": "timeseries",
     }
     if max_data_points is not None:
@@ -152,8 +152,8 @@ def build_panel_70(existing_panels):
             break
     if p70 is None:
         raise ValueError("Panel 70 not found in existing dashboard")
-    p70["gridPos"] = {"x": 0, "y": 0, "w": 14, "h": 7}
-    p70["transparent"] = True
+    p70["gridPos"] = {"x": 0, "y": 0, "w": 14, "h": 8}
+    p70["transparent"] = False
     # Patch global CSS: cascade height:100% through all Grafana wrapper divs
     content = p70["options"]["content"]
     # Strip all leading <style>...</style> blocks before the panel's own <style>\n.ww{
@@ -175,18 +175,91 @@ def build_panel_70(existing_panels):
         '</style>'
     )
     content = new_global + content
-    # Make .ww fill full height
+    # Make .ww fill full height, overflow:hidden to prevent scrollbar
     content = content.replace(
         ".ww{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#e8e8e8}",
         ".ww{font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#e8e8e8;"
-        "display:flex;flex-direction:column;flex:1;min-height:0}"
+        "display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}"
     )
-    # Make sparkline grow to fill space
+    # Also handle already-patched version (without overflow:hidden)
+    content = content.replace(
+        "display:flex;flex-direction:column;flex:1;min-height:0}",
+        "display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}"
+    )
+    # Make sparkline grow to fill space and overlap ~30% more into hero area
     content = content.replace(
         ".ww-spark{margin:0 -4px 2px;height:80px}",
-        ".ww-spark{margin:0 -4px 2px;flex:1;min-height:40px}"
+        ".ww-spark{margin:0 -4px 2px;flex:1;min-height:40px;"
+        "margin-top:-3.25vw;position:relative;z-index:1}"
+    )
+    content = content.replace(
+        ".ww-spark{margin:0 -4px 2px;flex:1;min-height:40px}",
+        ".ww-spark{margin:0 -4px 2px;flex:1;min-height:40px;"
+        "margin-top:-3.25vw;position:relative;z-index:1}"
+    )
+    # Handle already-patched versions with previous overlap values
+    content = content.replace(
+        "margin-top:-2.5vw;position:relative;z-index:1}",
+        "margin-top:-3.25vw;position:relative;z-index:1}"
+    )
+    content = content.replace(
+        "margin-top:-3.5vw;position:relative;z-index:1}",
+        "margin-top:-3.25vw;position:relative;z-index:1}"
+    )
+    # Hero z-index so text stays above overlapping sparkline; reduce margin to shift up
+    content = content.replace(
+        ".ww-hero{display:flex;align-items:center;justify-content:space-between;"
+        "margin-bottom:2px}",
+        ".ww-hero{display:flex;align-items:center;justify-content:space-between;"
+        "margin-bottom:1px;position:relative;z-index:2}"
+    )
+    # Handle already-patched version
+    content = content.replace(
+        "margin-bottom:2px;position:relative;z-index:2}",
+        "margin-bottom:1px;position:relative;z-index:2}"
+    )
+    # Reduce stats bar padding to shift content up
+    content = content.replace(
+        ".ww-stats{display:flex;justify-content:space-between;align-items:stretch;"
+        "background:#111217;border-radius:6px;padding:4px 12px;gap:0}",
+        ".ww-stats{display:flex;justify-content:space-between;align-items:stretch;"
+        "background:#111217;border-radius:6px;padding:3px 12px;gap:0}"
+    )
+    # Center wind + 30m columns (space-between pushes them to edges)
+    content = content.replace(
+        "flex:1.3;flex-direction:row;gap:6px;justify-content:space-between;padding:2px 8px",
+        "flex:1.3;flex-direction:row;gap:2vw;justify-content:center;padding:2px 8px"
+    )
+    # Wind gradient colors: white(0) → yellow(10) → orange(20) → red(30+)
+    def _wind_color(var):
+        return (
+            '{{#if (gt ' + var + ' 30)}}#f2495c'
+            '{{else if (gt ' + var + ' 25)}}#FF6B3B'
+            '{{else if (gt ' + var + ' 20)}}#FF9830'
+            '{{else if (gt ' + var + ' 15)}}#FFBC30'
+            '{{else if (gt ' + var + ' 10)}}#FADE2A'
+            '{{else if (gt ' + var + ' 5)}}#ede0a0'
+            '{{else}}#d8d9da{{/if}}'
+        )
+    # Apply gradient to wind sustained/gust
+    content = content.replace(
+        '<span class="ww-val">{{wind}}<span class="ww-sub"> / {{gust}}</span></span>',
+        '<span class="ww-val" style="color:' + _wind_color('wind') + '">{{wind}}'
+        '<span class="ww-sub" style="color:' + _wind_color('gust') + '"> / {{gust}}</span></span>'
+    )
+    # Apply gradient to 30m wind/gust (remove static ww-orange class)
+    content = content.replace(
+        '<span class="ww-val ww-orange">{{wind_30m}}<span class="ww-sub-orange"> / {{gust_30m}}</span></span>',
+        '<span class="ww-val" style="color:' + _wind_color('wind_30m') + '">{{wind_30m}}'
+        '<span class="ww-sub" style="color:' + _wind_color('gust_30m') + '"> / {{gust_30m}}</span></span>'
     )
     p70["options"]["content"] = content
+    # Increase sparkline SVG height (was 60px)
+    js = p70["options"].get("afterRender", "")
+    js = js.replace("var H=60;", "var H=135;")
+    js = js.replace("var H=128;", "var H=135;")
+    js = js.replace("var H=175;", "var H=135;")
+    p70["options"]["afterRender"] = js
     return p70
 
 
@@ -460,8 +533,29 @@ vb_prod   = if exists vb_prod_raw._value then float(v: vb_prod_raw._value) else 
 vb_cons   = if exists vb_cons_raw._value then float(v: vb_cons_raw._value) else 0.0
 vb_pct    = if vb_cons > 0.0 then math.round(x: vb_prod / vb_cons * 100.0) else 0.0
 
+// -- Command values (from MQTT command/* via Telegraf) --
+dod_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 70.0}])
+dod_real = from(bucket: "default")
+  |> range(start: -1d)
+  |> filter(fn: (r) => r._measurement == "command" and r._field == "InverterDepthOfDischarge")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+dod_rec = union(tables: [dod_default, dod_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+soc_stop_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 90.0}])
+soc_stop_real = from(bucket: "default")
+  |> range(start: -1d)
+  |> filter(fn: (r) => r._measurement == "command" and r._field == "InverterStopChargingAt")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+soc_stop_rec = union(tables: [soc_stop_default, soc_stop_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
 // Battery time remaining
-dod = float(v: ${InverterDepthOfDischarge})
+dod = if exists dod_rec._value then float(v: dod_rec._value) else 70.0
 min_soc = 100.0 - dod
 usable_pct = if soc > min_soc then soc - min_soc else 0.0
 usable_kwh = usable_pct / 100.0 * 20.0
@@ -470,7 +564,7 @@ bat_hours_raw = if bat_discharge_kw > 0.0 then usable_kwh / bat_discharge_kw els
 bat_hrs_v = math.floor(x: bat_hours_raw)
 bat_mins_v = math.round(x: (bat_hours_raw - math.floor(x: bat_hours_raw)) * 60.0)
 
-soc_stop = float(v: ${InverterStopChargingAt})
+soc_stop = if exists soc_stop_rec._value then float(v: soc_stop_rec._value) else 90.0
 bat_charge_kw = if bat < -50.0 then math.abs(x: bat) / 1000.0 else 0.0
 remaining_pct = if soc_stop > soc then soc_stop - soc else 0.0
 remaining_kwh = remaining_pct / 100.0 * 20.0
@@ -499,6 +593,8 @@ array.from(rows: [{
   bat_mins:  bat_mins_v,
   bat_chg_hrs:  bat_chg_hrs_v,
   bat_chg_mins: bat_chg_mins_v,
+  min_soc: math.round(x: min_soc),
+  soc_stop: math.round(x: soc_stop),
   load_p1: math.round(x: (if exists load_p1_rec._value then float(v: load_p1_rec._value) else 0.0) / 1000.0 * 100.0) / 100.0,
   load_p2: math.round(x: (if exists load_p2_rec._value then float(v: load_p2_rec._value) else 0.0) / 1000.0 * 100.0) / 100.0,
   load_p3: math.round(x: (if exists load_p3_rec._value then float(v: load_p3_rec._value) else 0.0) / 1000.0 * 100.0) / 100.0,
@@ -517,8 +613,8 @@ PANEL_80_CONTENT = r"""<style>
 @keyframes flow-march-16{from{stroke-dashoffset:16}to{stroke-dashoffset:0}}
 @keyframes flow-march-11{from{stroke-dashoffset:11}to{stroke-dashoffset:0}}
 .flow-solar{animation:flow-march-16 0.75s linear infinite}
-.flow-batt{animation:flow-march-16 0.70s linear infinite}
 .flow-house{animation:flow-march-11 1.10s linear infinite}
+.flow-wb{animation:flow-march-11 1.10s linear infinite}
 </style>
 <div class="topo-wrap">
 <div class="topo" id="topo-root"
@@ -526,19 +622,23 @@ PANEL_80_CONTENT = r"""<style>
   data-bat="{{bat}}" data-meter="{{meter}}" data-charge="{{charge_w}}"
   data-car-conn="{{car_conn}}"
   data-load-p1="{{load_p1}}" data-load-p2="{{load_p2}}" data-load-p3="{{load_p3}}"
-  data-inv-temp="{{inv_temp}}">
+  data-inv-temp="{{inv_temp}}"
+  data-min-soc="{{min_soc}}" data-soc-stop="{{soc_stop}}"
+  data-bat-hrs="{{bat_hrs}}" data-bat-mins="{{bat_mins}}"
+  data-bat-chg-hrs="{{bat_chg_hrs}}" data-bat-chg-mins="{{bat_chg_mins}}">
 <svg viewBox="0 2 870 237" preserveAspectRatio="xMidYMin meet">
   <defs>
     <marker id="arr-yellow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#FADE2A"/></marker>
     <marker id="arr-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#5794F2"/></marker>
     <marker id="arr-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#73bf69"/></marker>
+    <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#f2495c"/></marker>
     <marker id="arr-muted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 Z" fill="#6a6a6a"/></marker>
   </defs>
 
   <!-- SOLAR card -->
   <g id="topo-solar">
-    <rect x="10" y="8" width="200" height="102" rx="8" fill="#1b1e22" stroke="#5794F2" stroke-opacity=".8" stroke-width="1.6"/>
-    <g id="topo-solar-bars" transform="translate(20, 12)">
+    <rect x="10" y="20" width="200" height="100" rx="8" fill="#1b1e22" id="topo-solar-border" stroke="#5794F2" stroke-opacity=".8" stroke-width="1.6"/>
+    <g id="topo-solar-bars" transform="translate(20, 24)">
       <rect x="0" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
       <rect x="9" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
       <rect x="18" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
@@ -560,51 +660,97 @@ PANEL_80_CONTENT = r"""<style>
       <rect x="162" y="0" width="8" height="90" rx="2" fill="#3d6fd4" opacity=".07"/>
       <rect x="171" y="0" width="8" height="90" rx="2" fill="#3d6fd4" opacity=".07"/>
     </g>
-    <text x="110" y="35" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">SOLAR</text>
-    <text x="110" y="85" id="topo-solar-val" fill="#5794F2" font-size="48" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3" stroke-linejoin="round">{{prod}}<tspan fill="#8e8e8e" font-size="15" font-weight="600"> kW</tspan></text>
+    <text x="110" y="47" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">SOLAR</text>
+    <text x="110" y="97" id="topo-solar-val" fill="#5794F2" font-size="48" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="5" stroke-linejoin="round">{{prod}}<tspan fill="#8e8e8e" font-size="15" font-weight="600"> kW</tspan></text>
   </g>
 
   <!-- GRID card -->
   <g id="topo-grid">
-    <rect x="10" y="130" width="200" height="102" rx="8" fill="#1b1e22" stroke="#a8a9aa" stroke-opacity=".7" stroke-width="1.6"/>
-    <g id="topo-grid-bars" transform="translate(18, 134)">
-      <rect x="0" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
-      <rect x="9" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
-      <rect x="18" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
-      <rect x="27" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+    <rect x="10" y="130" width="200" height="100" rx="8" fill="#1b1e22" id="topo-grid-border" stroke="#a8a9aa" stroke-opacity=".7" stroke-width="1.6"/>
+    <g id="topo-grid-bars" transform="translate(20, 134)">
+      <rect x="0" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
+      <rect x="9" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
+      <rect x="18" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="27" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
       <rect x="36" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
       <rect x="45" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
-      <rect x="54" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
-      <rect x="63" y="0" width="8" height="90" rx="2" fill="#73bf69" opacity=".07"/>
-      <rect x="72" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
-      <rect x="81" y="0" width="8" height="90" rx="2" fill="#a6e09e" opacity=".07"/>
-      <line x1="91.5" y1="-2" x2="91.5" y2="92" stroke="#d8d9da" stroke-width="1" opacity=".35"/>
-      <rect x="94" y="0" width="8" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="103" y="0" width="8" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="112" y="0" width="8" height="90" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="121" y="0" width="8" height="90" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="130" y="0" width="8" height="90" rx="2" fill="#FF6B3D" opacity=".07"/>
-      <rect x="139" y="0" width="8" height="90" rx="2" fill="#FF6B3D" opacity=".07"/>
-      <rect x="148" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="157" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="166" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="175" y="0" width="8" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="54" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="63" y="0" width="8" height="90" rx="2" fill="#4a9e3f" opacity=".07"/>
+      <rect x="72" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="81" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="90" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="99" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="108" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="117" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="126" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="135" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="144" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="153" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="162" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
+      <rect x="171" y="0" width="8" height="90" rx="2" fill="#37872D" opacity=".07"/>
     </g>
     <text x="110" y="157" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">GRID</text>
-    <text x="110" y="207" id="topo-grid-val" fill="#a8a9aa" font-size="48" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3" stroke-linejoin="round">{{meter}}<tspan fill="#8e8e8e" font-size="15" font-weight="600"> kW</tspan></text>
+    <text x="110" y="207" id="topo-grid-val" fill="#a8a9aa" font-size="48" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="5" stroke-linejoin="round">{{meter}}<tspan fill="#8e8e8e" font-size="15" font-weight="600"> kW</tspan></text>
   </g>
 
   <!-- Arrow: Solar -> Inverter -->
-  <path id="topo-arr-solar" d="M212,59 L248,68" stroke="#5794F2" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-blue)" stroke-opacity=".45"/>
+  <path id="topo-arr-solar" d="M212,70 L248,70" stroke="#5794F2" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-blue)" stroke-opacity=".45"/>
   <!-- Arrow: Grid -> Inverter -->
-  <path id="topo-arr-grid" d="M212,181 L248,172" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
+  <path id="topo-arr-grid" d="M212,180 L248,180" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
 
   <!-- INVERTER hub -->
   <g id="topo-inverter">
     <rect x="250" y="20" width="350" height="210" rx="10" fill="#15181c" stroke="#a8a9aa" stroke-opacity=".55" stroke-width="1.4"/>
     <text x="268" y="46" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.6">INVERTER</text>
+    <!-- Inverter temp: top-right corner, mirrors INVERTER label. Dynamic color via JS (topo-temp-val). -->
+    <text x="582" y="46" fill="#8e8e8e" font-size="11" font-weight="600" letter-spacing="0.3" text-anchor="end">temp <tspan id="topo-temp-val" fill="#73bf69" font-size="14" font-weight="800">{{inv_temp}} &deg;C</tspan></text>
+    <!-- Battery SoC: hero content inside inverter hub -->
+    <text x="268" y="70" fill="#a8a9aa" font-size="11" font-weight="700" letter-spacing="1.2">BATTERY SOC</text>
+    <g id="topo-soc-bars" transform="translate(268, 78)" fill="#73BF69">
+      <rect x="0" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="10" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="20" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="30" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="40" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="50" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="60" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="70" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="80" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="90" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="100" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="110" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="120" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="130" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="140" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="150" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="160" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="170" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="180" y="0" width="9" height="28" rx="2" opacity=".07"/>
+      <rect x="190" y="0" width="9" height="28" rx="2" opacity=".07"/>
+    </g>
+    <text x="580" y="104" id="topo-inv-soc" fill="#73BF69" font-size="32" font-weight="800" text-anchor="end" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="5" stroke-linejoin="round">{{soc}}%</text>
+    <!-- SoC threshold markers: min (red) / target (yellow) / max (gray) -->
+    <line id="topo-soc-min-line" x1="268" y1="73" x2="268" y2="111" stroke="#f2495c" stroke-width="1.5" opacity=".85" stroke-dasharray="2 1.5"/>
+    <text id="topo-soc-min-label" x="268" y="121" fill="#f2495c" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="0.3"></text>
+    <line id="topo-soc-target-line" x1="268" y1="73" x2="268" y2="111" stroke="#FADE2A" stroke-width="1.5" opacity=".9" stroke-dasharray="2 1.5"/>
+    <text id="topo-soc-target-label" x="268" y="121" fill="#FADE2A" font-size="9" font-weight="700" text-anchor="middle" letter-spacing="0.3"></text>
+    <line x1="468" y1="73" x2="468" y2="111" stroke="#a8a9aa" stroke-width="1.2" opacity=".6"/>
+    <text x="470" y="121" fill="#8e8e8e" font-size="9" font-weight="700" text-anchor="start" letter-spacing="0.3">100%</text>
+    <!-- Battery runtime (state-aware, urgency-coloured) -->
+    <text id="topo-bat-runtime" x="268" y="155" font-size="26" font-weight="800" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="5" stroke-linejoin="round"><tspan id="topo-rt-arrow" fill="#555"></tspan><tspan id="topo-rt-sep" fill="#555" dx="10">|</tspan><tspan id="topo-rt-batkw" font-size="20" dx="10"></tspan></text>
+    <!-- Phase appliance pictograms: above each phase, indicate which loads sit on that line.
+         L1 = tractor + kitchen + washing machine; L2 = dishwasher; L3 = air conditioning + oven.
+         Strokes only, no fills, dimmed so the kW values stay the dominant readout. -->
+    <g transform="translate(263, 182)" stroke="#c4c5c6" stroke-width="1.1" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.78">
+      <g transform="translate(20, 0)"><title>Tractor (L1)</title><path d="M-7 1 L-2 1 L-2 -3 L3 -3 L3 1 L4 1 L4 4 L-7 4 Z"/><line x1="-4" y1="-3" x2="-4" y2="-6"/><circle cx="3" cy="5.5" r="2.8"/><circle cx="-5.5" cy="6" r="1.7"/></g>
+      <g transform="translate(53, 0)"><title>Kitchen (L1)</title><path d="M-5 -1 L-5 5 L5 5 L5 -1"/><line x1="-6" y1="-1" x2="6" y2="-1"/><line x1="-7" y1="0.5" x2="-5" y2="0.5"/><line x1="5" y1="0.5" x2="7" y2="0.5"/><path d="M-2 -3 Q-1 -5 0 -4 Q1 -3 2 -5"/></g>
+      <g transform="translate(86, 0)"><title>Washing machine (L1)</title><rect x="-5" y="-7" width="10" height="14" rx="1"/><line x1="-5" y1="-4" x2="5" y2="-4"/><circle cx="0" cy="2" r="3.2"/><circle cx="0" cy="2" r="1.2"/><circle cx="-3" cy="-5.5" r="0.5" fill="currentColor" stroke="none"/><circle cx="3" cy="-5.5" r="0.5" fill="currentColor" stroke="none"/></g>
+      <g transform="translate(162, 0)"><title>Dishwasher (L2)</title><rect x="-5" y="-7" width="10" height="14" rx="1"/><line x1="-5" y1="-4" x2="5" y2="-4"/><line x1="-3" y1="-1.5" x2="3" y2="-1.5"/><line x1="-3" y1="1.5" x2="3" y2="1.5"/><line x1="-3" y1="4.5" x2="3" y2="4.5"/><circle cx="-2.5" cy="-5.5" r="0.5" fill="currentColor" stroke="none"/><circle cx="0" cy="-5.5" r="0.5" fill="currentColor" stroke="none"/><circle cx="2.5" cy="-5.5" r="0.5" fill="currentColor" stroke="none"/></g>
+      <g transform="translate(250, 0)"><title>Air conditioning (L3)</title><rect x="-8" y="-4" width="16" height="6" rx="1"/><line x1="-6.5" y1="-1.5" x2="6.5" y2="-1.5"/><line x1="-6.5" y1="0.5" x2="6.5" y2="0.5"/><path d="M-4 4 Q-3 6 -2 4"/><path d="M-1 4 Q0 6 1 4"/><path d="M2 4 Q3 6 4 4"/></g>
+      <g transform="translate(292, 0)"><title>Oven (L3)</title><rect x="-5" y="-7" width="10" height="14" rx="1"/><line x1="-5" y1="-4" x2="5" y2="-4"/><circle cx="-3" cy="-5.5" r="0.6"/><circle cx="0" cy="-5.5" r="0.6"/><circle cx="3" cy="-5.5" r="0.6"/><rect x="-3.5" y="-2" width="7" height="6.5" rx="0.5"/><line x1="-3.5" y1="6" x2="3.5" y2="6"/></g>
+    </g>
     <!-- Phase balance bar -->
-    <g transform="translate(263, 182)" id="topo-phases">
+    <g transform="translate(263, 197)" id="topo-phases">
       <rect x="0" y="0" width="324" height="30" rx="5" fill="#0f1115" stroke="#2c3035" stroke-width="0.8"/>
       <rect id="topo-phase-l1" x="0" y="0" width="106" height="30" rx="5" fill="#73bf69" opacity=".35"/>
       <text x="53" y="20" fill="#e8e8e8" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.4">L1 <tspan font-size="12" font-weight="800">{{load_p1}}</tspan><tspan font-size="9" fill="#a8a9aa" font-weight="600"> kW</tspan></text>
@@ -613,105 +759,69 @@ PANEL_80_CONTENT = r"""<style>
       <rect id="topo-phase-l3" x="218" y="0" width="106" height="30" rx="5" fill="#73bf69" opacity=".35"/>
       <text x="271" y="20" fill="#e8e8e8" font-size="10" font-weight="700" text-anchor="middle" letter-spacing="0.4">L3 <tspan font-size="12" font-weight="800">{{load_p3}}</tspan><tspan font-size="9" fill="#a8a9aa" font-weight="600"> kW</tspan></text>
     </g>
-    <!-- Temp + diag -->
-    <text x="268" y="118" fill="#8e8e8e" font-size="15" font-weight="600" letter-spacing="0.3">temp <tspan id="topo-temp-val" fill="#73bf69" font-size="30" font-weight="800">{{inv_temp}} &deg;C</tspan></text>
-    <circle id="topo-diag-dot" cx="408" cy="111" r="5.5" fill="#73BF69"><animate attributeName="opacity" values="1;0.4;1" dur="2.4s" repeatCount="indefinite"/></circle>
-    <text id="topo-diag-text" x="420" y="118" fill="#73BF69" font-size="17" font-weight="700" letter-spacing="0.2">Normal operation</text>
   </g>
 
-  <!-- Arrow: Inverter -> Battery -->
-  <path id="topo-arr-bat" d="M602,55 L638,43" stroke="#FADE2A" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-yellow)" stroke-opacity=".45"/>
   <!-- Arrow: Inverter -> House -->
-  <path id="topo-arr-house" d="M602,126 L638,123" stroke="#73bf69" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-green)" stroke-opacity=".45"/>
+  <path id="topo-arr-house" d="M602,70 L638,70" stroke="#73bf69" stroke-width="2" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-green)" stroke-opacity=".45"/>
   <!-- Arrow: Inverter -> Wallbox -->
-  <path id="topo-arr-wb" d="M602,200 L638,203" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
+  <path id="topo-arr-wb" d="M602,180 L638,180" stroke="#6a6a6a" stroke-width="1.5" stroke-linecap="round" fill="none" stroke-dasharray="4 5" marker-end="url(#arr-muted)" stroke-opacity=".45"/>
 
-  <!-- BATTERY card -->
-  <g id="topo-battery">
-    <rect x="640" y="8" width="220" height="70" rx="8" fill="#1b1e22" stroke="#FADE2A" stroke-opacity=".8" stroke-width="1.6"/>
-    <g id="topo-bat-bars" transform="translate(645, 11)" fill="#73BF69">
-      <rect x="0" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="10" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="20" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="30" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="40" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="50" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="60" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="70" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="80" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="90" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="100" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="110" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="120" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="130" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="140" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="150" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="160" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="170" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="180" y="0" width="9" height="62" rx="2" opacity=".07"/>
-      <rect x="190" y="0" width="9" height="62" rx="2" opacity=".07"/>
-    </g>
-    <text x="750" y="25" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">BATTERY</text>
-    <text x="654" y="62" id="topo-bat-kw" fill="#FADE2A" font-size="40" font-weight="800" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3.5" stroke-linejoin="round">{{bat}}<tspan fill="#8e8e8e" font-size="14" font-weight="600"> kW</tspan></text>
-    <text x="850" y="62" id="topo-bat-soc" fill="#73BF69" font-size="40" font-weight="800" text-anchor="end" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3.5" stroke-linejoin="round">{{soc}}%</text>
-  </g>
-
-  <!-- HOUSE card -->
+  <!-- HOUSE card (640,20,220,100) — 20-bar consumption ladder -->
   <g id="topo-house">
-    <rect x="640" y="88" width="220" height="70" rx="8" fill="#1b1e22" stroke="#73bf69" stroke-opacity=".8" stroke-width="1.6"/>
-    <g id="topo-house-bars" transform="translate(645, 91)">
-      <rect x="0" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
-      <rect x="10" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
-      <rect x="20" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
-      <rect x="30" y="0" width="9" height="62" rx="2" fill="#73bf69" opacity=".07"/>
-      <rect x="40" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="50" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="60" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="70" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="80" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="90" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="100" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="110" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="120" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="130" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="140" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="150" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="160" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="170" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="180" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="190" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+    <rect x="640" y="20" width="220" height="100" rx="8" fill="#1b1e22" id="topo-house-border" stroke="#73bf69" stroke-opacity=".8" stroke-width="1.6"/>
+    <g id="topo-house-bars" transform="translate(645, 24)">
+      <rect x="0" y="0" width="9" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="10" y="0" width="9" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="20" y="0" width="9" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="30" y="0" width="9" height="90" rx="2" fill="#73bf69" opacity=".07"/>
+      <rect x="40" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="50" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="60" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="70" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="80" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="90" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="100" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="110" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="120" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="130" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="140" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="150" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="160" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="170" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="180" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="190" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
     </g>
-    <text x="750" y="108" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">HOUSE</text>
-    <text x="750" y="146" id="topo-house-val" fill="#73bf69" font-size="40" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3.5" stroke-linejoin="round">{{cons}}<tspan fill="#8e8e8e" font-size="14" font-weight="600"> kW</tspan></text>
+    <text x="750" y="47" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">HOUSE</text>
+    <text x="750" y="97" id="topo-house-val" fill="#73bf69" font-size="48" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="5" stroke-linejoin="round">{{cons}}<tspan fill="#8e8e8e" font-size="15" font-weight="600"> kW</tspan></text>
   </g>
 
-  <!-- WALLBOX card -->
+  <!-- WALLBOX card (640,130,220,100) — 20-bar charging ladder -->
   <g id="topo-wallbox">
-    <rect x="640" y="168" width="220" height="70" rx="8" fill="#1b1e22" id="topo-wb-border" stroke="#6a6a6a" stroke-opacity=".7" stroke-width="1.6"/>
-    <g id="topo-wb-bars" transform="translate(645, 171)">
-      <rect x="0" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="10" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="20" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="30" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="40" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="50" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="60" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="70" y="0" width="9" height="62" rx="2" fill="#FADE2A" opacity=".07"/>
-      <rect x="80" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="90" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="100" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="110" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="120" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="130" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="140" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="150" y="0" width="9" height="62" rx="2" fill="#FF9830" opacity=".07"/>
-      <rect x="160" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="170" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="180" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
-      <rect x="190" y="0" width="9" height="62" rx="2" fill="#f2495c" opacity=".07"/>
+    <rect x="640" y="130" width="220" height="100" rx="8" fill="#1b1e22" id="topo-wb-border" stroke="#6a6a6a" stroke-opacity=".7" stroke-width="1.6"/>
+    <g id="topo-wb-bars" transform="translate(645, 134)">
+      <rect x="0" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="10" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="20" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="30" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="40" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="50" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="60" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="70" y="0" width="9" height="90" rx="2" fill="#FADE2A" opacity=".07"/>
+      <rect x="80" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="90" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="100" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="110" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="120" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="130" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="140" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="150" y="0" width="9" height="90" rx="2" fill="#FF9830" opacity=".07"/>
+      <rect x="160" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="170" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="180" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
+      <rect x="190" y="0" width="9" height="90" rx="2" fill="#f2495c" opacity=".07"/>
     </g>
-    <text x="750" y="188" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">WALLBOX</text>
-    <text x="750" y="224" id="topo-wb-val" fill="#8e8e8e" font-size="30" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="3" stroke-linejoin="round">{{charge_w}}<tspan font-size="13" font-weight="600"> kW</tspan></text>
+    <text x="750" y="157" fill="#a8a9aa" font-size="13" font-weight="700" letter-spacing="1.4" text-anchor="middle">WALLBOX</text>
+    <text x="750" y="207" id="topo-wb-val" fill="#8e8e8e" font-size="40" font-weight="800" text-anchor="middle" paint-order="stroke fill" stroke="#0a0c0e" stroke-width="5" stroke-linejoin="round">{{charge_w}}<tspan font-size="13" font-weight="600"> kW</tspan></text>
   </g>
 </svg>
 </div>
@@ -730,8 +840,13 @@ var D={
   lp1:parseFloat(root.dataset.loadP1)||0,
   lp2:parseFloat(root.dataset.loadP2)||0,
   lp3:parseFloat(root.dataset.loadP3)||0,
-  invTemp:parseFloat(root.dataset.invTemp)||0
+  invTemp:parseFloat(root.dataset.invTemp)||0,
+  minSoc:parseFloat(root.dataset.minSoc)||10,
+  socStop:parseFloat(root.dataset.socStop)||90
 };
+
+// Dynamic arrow marker
+function ensureMarker(c){var id="arr-"+c.replace("#","");if(document.getElementById(id))return"url(#"+id+")";var ns="http://www.w3.org/2000/svg";var defs=root.querySelector("svg defs");var m=document.createElementNS(ns,"marker");m.setAttribute("id",id);m.setAttribute("viewBox","0 0 10 10");m.setAttribute("refX","9");m.setAttribute("refY","5");m.setAttribute("markerWidth","5");m.setAttribute("markerHeight","5");m.setAttribute("orient","auto-start-reverse");var p=document.createElementNS(ns,"path");p.setAttribute("d","M0,0 L10,5 L0,10 Z");p.setAttribute("fill",c);m.appendChild(p);defs.appendChild(m);return"url(#"+id+")";}
 
 // Phase color by kW tier
 function phaseColor(kw){
@@ -766,6 +881,14 @@ if(arrS){
   }
 }
 
+// Grid color by bar tier (20 bars, 0.5 kW each)
+var gridExpTier=["#a6e09e","#a6e09e","#73bf69","#73bf69","#4a9e3f","#4a9e3f","#4a9e3f","#4a9e3f","#37872D","#37872D","#37872D","#37872D","#37872D","#37872D","#37872D","#37872D","#37872D","#37872D","#37872D","#37872D"];
+var gridImpTier=["#FADE2A","#FADE2A","#FADE2A","#FADE2A","#FF9830","#FF9830","#FF9830","#FF9830","#FF6B3D","#FF6B3D","#FF6B3D","#FF6B3D","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c"];
+var gc;
+if(D.meter>0.1){var ng=Math.max(Math.min(Math.floor(D.meter*2),20),1);gc=gridExpTier[ng-1];}
+else if(D.meter<-0.1){var ng=Math.max(Math.min(Math.floor(Math.abs(D.meter)*2),20),1);gc=gridImpTier[ng-1];}
+else{gc="#a8a9aa";}
+
 // Grid arrow
 var arrG=document.getElementById("topo-arr-grid");
 if(arrG){
@@ -775,32 +898,24 @@ if(arrG){
     arrG.setAttribute("stroke-width",gw);
     arrG.setAttribute("stroke-opacity","1");
     arrG.setAttribute("stroke-dasharray","10 6");
-    if(D.meter>0){
-      arrG.setAttribute("d","M248,172 L212,181");
-      arrG.setAttribute("stroke","#73bf69");
-      arrG.setAttribute("marker-end","url(#arr-green)");
-    }else{
-      arrG.setAttribute("stroke","#f2495c");
-      arrG.setAttribute("marker-end","url(#arr-muted)");
-    }
+    arrG.setAttribute("stroke",gc);
+    arrG.setAttribute("marker-end",ensureMarker(gc));
+    if(D.meter>0){arrG.setAttribute("d","M248,180 L212,180");}
   }
 }
 
-// Battery arrow
-var arrB=document.getElementById("topo-arr-bat");
-if(arrB){
-  var bAbs=Math.abs(D.bat);
-  if(bAbs>0.1){
-    var bw=Math.min(2+bAbs*1,7);
-    arrB.setAttribute("stroke-width",bw);
-    arrB.setAttribute("stroke-opacity","1");
-    arrB.setAttribute("stroke-dasharray","10 6");
-    arrB.classList.add("flow-batt");
-    if(D.bat>0){
-      arrB.setAttribute("d","M638,43 L602,55");
-    }
-  }
+// Grid value + border color
+var gridVal=document.getElementById("topo-grid-val");
+var gridBorder=document.getElementById("topo-grid-border");
+if(gridVal&&gridBorder){
+  gridVal.setAttribute("fill",gc);
+  gridBorder.setAttribute("stroke",gc);
 }
+
+// House color by bar tier
+var houseTier=["#73bf69","#73bf69","#73bf69","#73bf69","#FADE2A","#FADE2A","#FADE2A","#FADE2A","#FF9830","#FF9830","#FF9830","#FF9830","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c","#f2495c"];
+var nHc=Math.floor(D.cons*2);
+var hc=nHc>0?houseTier[Math.min(nHc-1,19)]:"#73bf69";
 
 // House arrow
 var arrH=document.getElementById("topo-arr-house");
@@ -810,9 +925,24 @@ if(arrH){
     arrH.setAttribute("stroke-width",hw);
     arrH.setAttribute("stroke-opacity","1");
     arrH.setAttribute("stroke-dasharray","7 4");
+    arrH.setAttribute("stroke",hc);
+    arrH.setAttribute("marker-end",ensureMarker(hc));
     arrH.classList.add("flow-house");
   }
 }
+
+// House value + border color
+var houseVal=document.getElementById("topo-house-val");
+var houseBorder=document.getElementById("topo-house-border");
+if(houseVal&&houseBorder){
+  houseVal.setAttribute("fill",hc);
+  houseBorder.setAttribute("stroke",hc);
+}
+
+// Wallbox color by bar tier
+var wbTier=["#FADE2A","#FADE2A","#FADE2A","#FADE2A","#FADE2A","#FADE2A","#FADE2A","#FADE2A","#FF9830","#FF9830","#FF9830","#FF9830","#FF9830","#FF9830","#FF9830","#FF9830","#f2495c","#f2495c","#f2495c","#f2495c"];
+var nWc=Math.floor(D.charge*2);
+var wc=nWc>0?wbTier[Math.min(nWc-1,19)]:"#8e8e8e";
 
 // Wallbox arrow
 var arrW=document.getElementById("topo-arr-wb");
@@ -820,21 +950,38 @@ if(arrW&&D.charge>0.1){
   var ww=Math.min(2+D.charge*1,7);
   arrW.setAttribute("stroke-width",ww);
   arrW.setAttribute("stroke-opacity","1");
-  arrW.setAttribute("stroke","#FF9830");
-  arrW.setAttribute("marker-end","url(#arr-yellow)");
+  arrW.setAttribute("stroke",wc);
+  arrW.setAttribute("marker-end",ensureMarker(wc));
+  arrW.setAttribute("stroke-dasharray","7 4");
+  arrW.classList.add("flow-wb");
 }
 
-// Solar ladder bars
+// Wallbox value + border color
+var wbVal=document.getElementById("topo-wb-val");
+var wbBorder=document.getElementById("topo-wb-border");
+if(wbVal&&wbBorder){
+  wbVal.setAttribute("fill",wc);
+  wbBorder.setAttribute("stroke",wc);
+}
+
+// Solar ladder bars + color grading
+var solarTier=["#a6e09e","#a6e09e","#73bf69","#73bf69","#4a9e3f","#4a9e3f","#4a9e3f","#4a9e3f","#73C0F5","#73C0F5","#73C0F5","#73C0F5","#5794F2","#5794F2","#5794F2","#5794F2","#3d6fd4","#3d6fd4","#3d6fd4","#3d6fd4"];
 var solarBars=document.querySelectorAll("#topo-solar-bars rect");
+var nLit=Math.floor(D.prod*2);
 if(solarBars.length===20){
-  var nLit=Math.floor(D.prod*2);
   for(var i=0;i<20;i++){
     solarBars[i].setAttribute("opacity",i<nLit?"0.85":"0.07");
   }
 }
+var sc=nLit>0?solarTier[Math.min(nLit-1,19)]:"#5794F2";
+var solarBorder=document.getElementById("topo-solar-border");
+var solarVal=document.getElementById("topo-solar-val");
+if(solarBorder)solarBorder.setAttribute("stroke",sc);
+if(solarVal)solarVal.setAttribute("fill",sc);
+if(arrS){arrS.setAttribute("stroke",sc);arrS.setAttribute("marker-end",ensureMarker(sc));}
 
-// Battery SoC bars — per-bar tier coloring
-var batBars=document.querySelectorAll("#topo-bat-bars rect");
+// Battery SoC bars — per-bar tier coloring (inside inverter hub)
+var batBars=document.querySelectorAll("#topo-soc-bars rect");
 if(batBars.length===20){
   var nBat=Math.floor(D.soc/5);
   var batTier=["#F2495C","#F2495C","#FF6B3D","#FF6B3D","#FF9830","#FF9830","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#73BF69","#5794F2","#5794F2"];
@@ -862,25 +1009,76 @@ if(wbBars.length===20){
   }
 }
 
-// Battery SoC text color
-var socEl=document.getElementById("topo-bat-soc");
+// Battery SoC text color (inside inverter hub)
+var socEl=document.getElementById("topo-inv-soc");
 if(socEl){
   var sColor=D.soc>90?"#5794F2":D.soc>=30?"#73BF69":D.soc>=20?"#FF9830":D.soc>=10?"#FF6B3D":"#F2495C";
   socEl.setAttribute("fill",sColor);
 }
 
-// Grid diverging bars
+// Grid bars: fill from left, color tier swaps export (green) vs import (red)
 var gridBars=document.querySelectorAll("#topo-grid-bars rect");
 if(gridBars.length===20){
   var mKw=D.meter;
-  if(mKw>0.1){
-    var nExp=Math.min(Math.floor(mKw),10);
-    for(var i=0;i<10;i++){gridBars[9-i].setAttribute("opacity",i<nExp?"0.85":"0.07");}
-    for(var i=10;i<20;i++){gridBars[i].setAttribute("opacity","0.07");}
-  }else if(mKw<-0.1){
-    var nImp=Math.min(Math.floor(Math.abs(mKw)),10);
-    for(var i=0;i<10;i++){gridBars[i].setAttribute("opacity","0.07");}
-    for(var i=0;i<nImp;i++){gridBars[10+i].setAttribute("opacity","0.85");}
+  var palette=mKw<-0.1?gridImpTier:gridExpTier;
+  var nLitG=Math.min(Math.floor(Math.abs(mKw)*2),20);
+  for(var i=0;i<20;i++){
+    gridBars[i].setAttribute("fill",palette[i]);
+    gridBars[i].setAttribute("opacity",i<nLitG?"0.85":"0.07");
+  }
+}
+
+// SoC threshold markers (min / target)
+var socBarStart=268;
+function socX(pct){return socBarStart+pct*2;}
+var minLine=document.getElementById("topo-soc-min-line");
+var minLabel=document.getElementById("topo-soc-min-label");
+if(minLine&&minLabel){
+  var mx=socX(D.minSoc);
+  minLine.setAttribute("x1",mx);minLine.setAttribute("x2",mx);
+  minLabel.setAttribute("x",mx);
+  minLabel.textContent=Math.round(D.minSoc)+"%";
+}
+var targetLine=document.getElementById("topo-soc-target-line");
+var targetLabel=document.getElementById("topo-soc-target-label");
+if(targetLine&&targetLabel){
+  var tx=socX(D.socStop);
+  targetLine.setAttribute("x1",tx);targetLine.setAttribute("x2",tx);
+  targetLabel.setAttribute("x",tx);
+  targetLabel.textContent=Math.round(D.socStop)+"%";
+}
+
+// Battery runtime display (state-aware, urgency-coloured) + battery kW
+var rtArrow=document.getElementById("topo-rt-arrow");
+var rtSep=document.getElementById("topo-rt-sep");
+var rtBatKw=document.getElementById("topo-rt-batkw");
+if(rtArrow&&rtSep&&rtBatKw){
+  var batKwStr=Math.abs(D.bat).toFixed(2)+" kW";
+  if(D.bat>0.05){
+    var bH=parseFloat(root.dataset.batHrs)||0;
+    var bM=parseFloat(root.dataset.batMins)||0;
+    var tMins=bH*60+bM;
+    var uc=tMins>240?"#FADE2A":tMins>120?"#FF9830":"#F2495C";
+    var ts=(bH>0?bH+"h ":"")+(bM<10?"0":"")+Math.round(bM)+"m";
+    rtArrow.textContent="\u2193 "+ts;
+    rtArrow.setAttribute("fill",uc);
+    rtSep.setAttribute("fill",uc);
+    rtBatKw.textContent=batKwStr;
+    rtBatKw.setAttribute("fill",uc);
+  }else if(D.bat<-0.05){
+    var cH=parseFloat(root.dataset.batChgHrs)||0;
+    var cM=parseFloat(root.dataset.batChgMins)||0;
+    var ts=(cH>0?cH+"h ":"")+(cM<10?"0":"")+Math.round(cM)+"m";
+    rtArrow.textContent="\u2191 "+ts;
+    rtArrow.setAttribute("fill","#73BF69");
+    rtSep.setAttribute("fill","#73BF69");
+    rtBatKw.textContent=batKwStr;
+    rtBatKw.setAttribute("fill","#73BF69");
+  }else{
+    rtArrow.textContent="\u2014 idle \u2014";
+    rtArrow.setAttribute("fill","#555");
+    rtSep.textContent="";
+    rtBatKw.textContent="";
   }
 }"""
 
@@ -893,7 +1091,7 @@ def build_panel_80():
     ]
     return business_text_panel(
         panel_id=80,
-        grid_pos={"x": 0, "y": 7, "w": 14, "h": 8},
+        grid_pos={"x": 0, "y": 8, "w": 14, "h": 8},
         targets=targets,
         content=PANEL_80_CONTENT,
         helpers=PANEL_80_HELPERS,
@@ -922,7 +1120,7 @@ option location = timezone.location(name: "Europe/Prague")
 solar_enc = from(bucket: "default")
   |> range(start: today(), stop: now())
   |> filter(fn: (r) => r._measurement == "FVE" and r._field == "power" and r.string == "all")
-  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> aggregateWindow(every: 2m, fn: mean, createEmpty: false)
   |> filter(fn: (r) => exists r._value)
   |> sort(columns: ["_time"])
   |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
@@ -932,7 +1130,7 @@ solar_str = strings.joinStr(arr: solar_enc, v: ",")
 house_enc = from(bucket: "default")
   |> range(start: today(), stop: now())
   |> filter(fn: (r) => r._measurement == "FVE" and r._field == "consumption")
-  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> aggregateWindow(every: 2m, fn: mean, createEmpty: false)
   |> filter(fn: (r) => exists r._value)
   |> sort(columns: ["_time"])
   |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
@@ -942,7 +1140,7 @@ house_str = strings.joinStr(arr: house_enc, v: ",")
 bat_enc = from(bucket: "default")
   |> range(start: today(), stop: now())
   |> filter(fn: (r) => r._measurement == "FVE" and r._field == "battery_load")
-  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> aggregateWindow(every: 2m, fn: mean, createEmpty: false)
   |> filter(fn: (r) => exists r._value)
   |> sort(columns: ["_time"])
   |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
@@ -952,7 +1150,7 @@ bat_str = strings.joinStr(arr: bat_enc, v: ",")
 boj_enc = from(bucket: "default")
   |> range(start: today(), stop: now())
   |> filter(fn: (r) => r._measurement == "FVE" and r._field == "bojlery" and r.pretoky == "pretoky")
-  |> aggregateWindow(every: 2m, fn: max, createEmpty: false)
+  |> aggregateWindow(every: 2m, fn: mean, createEmpty: false)
   |> filter(fn: (r) => exists r._value)
   |> sort(columns: ["_time"])
   |> map(fn: (r) => ({r with _enc: string(v: (int(v: r._time) - int(v: today())) / 60000000000) + ":" + string(v: math.round(x: r._value / 10.0) / 100.0)}))
@@ -1029,6 +1227,11 @@ vb_prod = if exists vb_prod_raw._value then float(v: vb_prod_raw._value) else 0.
 vb_cons = if exists vb_cons_raw._value then float(v: vb_cons_raw._value) else 0.0
 vb_pct  = if vb_cons > 0.0 then math.round(x: vb_prod / vb_cons * 100.0) else 0.0
 
+// -- Chart time window from dashboard picker --
+_rs_ns = int(v: v.timeRangeStart)
+_td_ns = int(v: today())
+range_start_min = if _rs_ns < _td_ns then 0 else (_rs_ns - _td_ns) / 60000000000
+
 array.from(rows: [{
   solar_str: solar_str,
   house_str: house_str,
@@ -1036,6 +1239,7 @@ array.from(rows: [{
   boj_str: boj_str,
   fc_str: fc_str,
   ote_str: ote_str,
+  range_start_min: range_start_min,
   d_cons:   math.round(x: d_cons * 10.0) / 10.0,
   d_gen:    math.round(x: d_gen * 10.0) / 10.0,
   m_cons:   math.round(x: m_cons),
@@ -1074,7 +1278,6 @@ PANEL_81_CONTENT = r"""<style>
 <div class="ec-wrap">
 <div class="ec" id="ec-root"
   data-range-start="{{range_start_min}}"
-  data-range-dur="{{range_dur_min}}"
   data-solar="{{solar_str}}"
   data-house="{{house_str}}"
   data-bat="{{bat_str}}"
@@ -1156,40 +1359,53 @@ var now=new Date(),nowM=now.getHours()*60+now.getMinutes(),nowHr=now.getHours();
 var cO=0;
 for(var i=0;i<ote.length;i++){if(ote[i].h===nowHr){cO=ote[i].v;break;}}
 
-// Compute chart time window from dashboard picker
+// Compute chart time window: 75% historical, 25% compressed forecast (2x hist duration)
 var wS=parseInt(root.dataset.rangeStart)||0;
-var wDur=parseInt(root.dataset.rangeDur)||720;
-var wE=Math.min(nowM+wDur,1440);
+var histDur=nowM-wS;var fcDur=histDur*2;
+var wE=Math.min(nowM+fcDur,1440);
 
-// Filter forecast to points after NOW and within window
-var fcFut=[];
-for(var i=0;i<fc.length;i++){if(fc[i].m>=nowM&&fc[i].m<=wE)fcFut.push(fc[i]);}
+// Split forecast into past (within window, before NOW) and future (after NOW, within window)
+var fcPast=[],fcFut=[];
+for(var i=0;i<fc.length;i++){
+  if(fc[i].m>=wS&&fc[i].m<nowM)fcPast.push(fc[i]);
+  else if(fc[i].m>=nowM&&fc[i].m<=wE)fcFut.push(fc[i]);
+}
 
 // Chart dimensions (fixed viewBox)
 var VW=1160,VH=400,PL=48,PR=52,PT=10,PB=16;
 var CW=VW-PL-PR,CH=VH-PT-PB;
 
+// Chart split: 75% historical, 25% compressed forecast
+var HF=0.75,splitX=PL+CW*HF;
+
 // Y-axis range from visible points only
 function fv(pts){var r=[];for(var i=0;i<pts.length;i++){if(pts[i].m>=wS&&pts[i].m<=wE)r.push(pts[i]);}return r;}
 var allV=[3,-1];
 function aV(pts){for(var i=0;i<pts.length;i++)allV.push(pts[i].v);}
-aV(fv(sol));aV(fv(hou));aV(fv(bat));aV(fv(boj));aV(fcFut);
+aV(fv(sol));aV(fv(hou));aV(fv(bat));aV(fv(boj));aV(fcPast);aV(fcFut);
 for(var i=0;i<ote.length;i++){if(ote[i].h*60>=wS&&ote[i].h*60<wE)allV.push(ote[i].v);}
 var yMax=Math.ceil(Math.max.apply(null,allV));
 var yMin=Math.floor(Math.min.apply(null,allV));
 var yR=yMax-yMin;
 
-function xP(m){return PL+((m-wS)/(wE-wS))*CW;}
+// Piecewise x: linear in historical zone, compressed in forecast zone
+function xP(m){
+  if(m<=nowM){if(histDur<=0)return PL;return PL+((m-wS)/histDur)*CW*HF;}
+  var fcR=wE-nowM;if(fcR<=0)return splitX;
+  return splitX+((m-nowM)/fcR)*CW*(1-HF);
+}
 function yP(v){return PT+((yMax-v)/yR)*CH;}
 var y0=yP(0);
 
 // OTE bar color by price tier
-function oc(v){return v>=2?"#F2495C":v>=0.5?"#FF9830":"#73BF69";}
+function oc(v){return v>=3?"#F2495C":v>=2?"#FF9830":v>=1?"#FADE2A":"#73BF69";}
 
-// Grid step based on window size
-var wHrs=(wE-wS)/60;
+// Grid step based on historical window; wider step in forecast zone
+var wHrs=histDur/60;
 var gStep=wHrs<=4?1:wHrs<=8?2:3;
 var gStartH=Math.ceil(wS/(gStep*60))*gStep;
+var fcStepH=Math.max(gStep,Math.ceil((wE-nowM)/60/3));
+var fcGS=Math.ceil((nowHr+1)/fcStepH)*fcStepH;
 
 var s='<svg viewBox="0 0 '+VW+' '+VH+'" width="100%" height="100%" preserveAspectRatio="none" style="display:block">';
 
@@ -1199,35 +1415,35 @@ s+='<clipPath id="ec81clip"><rect x="'+PL+'" y="'+(PT-1)+'" width="'+CW+'" heigh
 s+='<linearGradient id="ec81sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5794F2" stop-opacity=".28"/><stop offset="100%" stop-color="#5794F2" stop-opacity="0"/></linearGradient>';
 s+='<linearGradient id="ec81bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FADE2A" stop-opacity="0"/><stop offset="100%" stop-color="#FADE2A" stop-opacity=".22"/></linearGradient>';
 s+='<linearGradient id="ec81fg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#5794F2" stop-opacity=".16"/><stop offset="100%" stop-color="#5794F2" stop-opacity="0"/></linearGradient>';
+s+='<linearGradient id="ec81hg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#73bf69" stop-opacity=".25"/><stop offset="100%" stop-color="#73bf69" stop-opacity="0"/></linearGradient>';
 s+='</defs>';
 
-// Horizontal grid: major every 2 kW
-s+='<g stroke="#333840" stroke-width="0.8">';
+// Horizontal grid: guiding lines from Y-axis labels (every 2 kW)
+s+='<g stroke="#3a4048" stroke-width="0.7" stroke-dasharray="4 3">';
 for(var g=yMin;g<=yMax;g+=2){if(g!==0)s+='<line x1="'+PL+'" y1="'+yP(g).toFixed(1)+'" x2="'+(VW-PR)+'" y2="'+yP(g).toFixed(1)+'"/>';}
-s+='</g>';
-// Minor every odd kW
-s+='<g stroke="#24272c" stroke-width="0.5">';
-for(var g=yMin+1;g<yMax;g+=2){s+='<line x1="'+PL+'" y1="'+yP(g).toFixed(1)+'" x2="'+(VW-PR)+'" y2="'+yP(g).toFixed(1)+'"/>';}
 s+='</g>';
 // Zero line
 s+='<line x1="'+PL+'" y1="'+y0.toFixed(1)+'" x2="'+(VW-PR)+'" y2="'+y0.toFixed(1)+'" stroke="#5a5f66" stroke-width="1.3"/>';
 
-// Vertical grid (dynamic step)
+// Vertical grid: normal step in history, wider step in forecast
 s+='<g stroke="#24272c" stroke-width="0.5">';
-for(var h=gStartH;h*60<=wE;h+=gStep){if(h*60>wS)s+='<line x1="'+xP(h*60).toFixed(1)+'" y1="'+PT+'" x2="'+xP(h*60).toFixed(1)+'" y2="'+(VH-PB)+'"/>';}
+for(var h=gStartH;h*60<=nowM;h+=gStep){if(h*60>wS)s+='<line x1="'+xP(h*60).toFixed(1)+'" y1="'+PT+'" x2="'+xP(h*60).toFixed(1)+'" y2="'+(VH-PB)+'"/>';}
+for(var h=fcGS;h*60<=wE;h+=fcStepH){s+='<line x1="'+xP(h*60).toFixed(1)+'" y1="'+PT+'" x2="'+xP(h*60).toFixed(1)+'" y2="'+(VH-PB)+'"/>';}
 s+='</g>';
+// Forecast zone tint
+if(wE>nowM){s+='<rect x="'+splitX.toFixed(1)+'" y="'+PT+'" width="'+(PL+CW-splitX).toFixed(1)+'" height="'+CH+'" fill="#ffffff" opacity=".025" rx="2"/>';}
 
 // Left Y-axis labels (kW)
-s+='<g font-size="11" fill="#8e8e8e" text-anchor="end" font-weight="500" font-family="Inter,sans-serif">';
+s+='<g font-size="13" fill="#b8b9ba" text-anchor="end" font-weight="500" font-family="Inter,sans-serif">';
 for(var g=yMin;g<=yMax;g+=2){
-  var lbl=(g>0?"+":"")+g,fw=g===0?"700":"500",fcc=g===0?"#b8b9ba":"#8e8e8e";
+  var lbl=(g>0?"+":"")+g,fw=g===0?"700":"500",fcc=g===0?"#d8d9da":"#b8b9ba";
   s+='<text x="'+(PL-5)+'" y="'+(yP(g)+4).toFixed(1)+'" fill="'+fcc+'" font-weight="'+fw+'">'+lbl+'</text>';
 }
 s+='<text x="'+(PL-5)+'" y="'+(PT-2)+'" fill="#d8d9da" font-size="10" font-weight="800" letter-spacing=".05em">kW</text>';
 s+='</g>';
 
 // Right Y-axis labels (Kc/kWh)
-s+='<g font-size="11" text-anchor="start" font-weight="600" font-family="Inter,sans-serif">';
+s+='<g font-size="13" text-anchor="start" font-weight="600" font-family="Inter,sans-serif">';
 for(var g=yMin;g<=yMax;g+=2){
   var lbl=(g>0?"+":"")+g,fw=g===0?"700":"600";
   s+='<text x="'+(VW-PR+5)+'" y="'+(yP(g)+4).toFixed(1)+'" fill="'+oc(g)+'" font-weight="'+fw+'">'+lbl+'</text>';
@@ -1235,14 +1451,17 @@ for(var g=yMin;g<=yMax;g+=2){
 s+='<text x="'+(VW-PR+5)+'" y="'+(PT-2)+'" fill="#d8d9da" font-size="10" font-weight="800" letter-spacing=".05em">K\u010d</text>';
 s+='</g>';
 
-// X-axis labels (dynamic step, skip near NOW)
+// X-axis labels: normal step in history, wider step in compressed forecast
 var nearH=Math.round(nowHr/gStep)*gStep;
-s+='<g font-size="11" fill="#8e8e8e" text-anchor="middle" font-weight="500" font-family="Inter,sans-serif">';
-for(var h=gStartH;h*60<=wE;h+=gStep){
+s+='<g font-size="13" fill="#b8b9ba" text-anchor="middle" font-weight="500" font-family="Inter,sans-serif">';
+for(var h=gStartH;h*60<=nowM;h+=gStep){
   if(h===nearH)continue;
   if(h*60<wS)continue;
-  var lbl=h>=24?"23:59":String(h).padStart(2,"0")+":00";
-  s+='<text x="'+xP(h*60).toFixed(1)+'" y="'+(VH-4)+'">'+lbl+'</text>';
+  s+='<text x="'+xP(h*60).toFixed(1)+'" y="'+(VH-4)+'">'+String(h).padStart(2,"0")+':00</text>';
+}
+for(var h=fcGS;h*60<=wE;h+=fcStepH){
+  var lbl=h>=24?String(h-24).padStart(2,"0")+":00":String(h).padStart(2,"0")+":00";
+  s+='<text x="'+xP(h*60).toFixed(1)+'" y="'+(VH-4)+'" opacity=".6">'+lbl+'</text>';
 }
 s+='<text x="'+xP(nowM).toFixed(1)+'" y="'+(VH-4)+'" fill="#FADE2A" font-weight="800">NOW '+String(nowHr).padStart(2,"0")+':'+String(now.getMinutes()).padStart(2,"0")+'</text>';
 s+='</g>';
@@ -1252,10 +1471,10 @@ s+='<g clip-path="url(#ec81clip)">';
 
 // OTE price bars (low opacity background)
 if(ote.length>0){
-  var bSlot=CW/((wE-wS)/60),bW=bSlot*0.45;
-  s+='<g opacity=".22">';
+  s+='<g opacity=".15">';
   for(var i=0;i<ote.length;i++){
     if(ote[i].h*60+60<=wS||ote[i].h*60>=wE)continue;
+    var bW=(xP(ote[i].h*60+60)-xP(ote[i].h*60))*0.45;
     var bx=xP(ote[i].h*60+30)-bW/2,bv=ote[i].v,by,bh;
     if(bv>=0){by=yP(bv);bh=y0-by;}else{by=y0;bh=yP(bv)-y0;}
     if(bh>0.5)s+='<rect x="'+bx.toFixed(1)+'" y="'+by.toFixed(1)+'" width="'+bW.toFixed(1)+'" height="'+bh.toFixed(1)+'" fill="'+oc(bv)+'"/>';
@@ -1278,10 +1497,16 @@ if(sol.length>=2){
   s+='<path d="'+sl+'" fill="none" stroke="#5794F2" stroke-width="2" stroke-linejoin="round"/>';
 }
 
-// Solar forecast: dashed line + lighter fill
+// Solar forecast (past): dashed line only, lower opacity (compare to actual)
+if(fcPast.length>=2){
+  s+='<path d="'+bp(fcPast)+'" fill="none" stroke="#5794F2" stroke-width="1.5" stroke-dasharray="4 4" stroke-linejoin="round" opacity=".55"/>';
+}
+
+// Solar forecast (future): dashed line + lighter fill
 if(fcFut.length>=1){
   var fcPts=[];
-  if(sol.length>0){fcPts.push({m:sol[sol.length-1].m,v:sol[sol.length-1].v});}
+  if(fcPast.length>0){fcPts.push(fcPast[fcPast.length-1]);}
+  else if(sol.length>0){fcPts.push({m:sol[sol.length-1].m,v:sol[sol.length-1].v});}
   for(var i=0;i<fcFut.length;i++){fcPts.push(fcFut[i]);}
   if(fcPts.length>=2){
     var fl=bp(fcPts);
@@ -1290,9 +1515,11 @@ if(fcFut.length>=1){
   }
 }
 
-// House: line
+// House: area fill + line
 if(hou.length>=2){
-  s+='<path d="'+bp(hou)+'" fill="none" stroke="#73bf69" stroke-width="2" stroke-linejoin="round"/>';
+  var hl=bp(hou);
+  s+='<path d="'+hl+" L"+xP(hou[hou.length-1].m).toFixed(1)+","+y0.toFixed(1)+" L"+xP(hou[0].m).toFixed(1)+","+y0.toFixed(1)+' Z" fill="url(#ec81hg)"/>';
+  s+='<path d="'+hl+'" fill="none" stroke="#73bf69" stroke-width="2" stroke-linejoin="round"/>';
 }
 
 // Battery: area fill toward zero + line
@@ -1373,7 +1600,7 @@ def build_panel_81():
     targets = [flux_target(PANEL_81_QUERY, "A")]
     panel = business_text_panel(
         panel_id=81,
-        grid_pos={"x": 0, "y": 15, "w": 14, "h": 11},
+        grid_pos={"x": 0, "y": 16, "w": 14, "h": 10},
         targets=targets,
         content=PANEL_81_CONTENT,
         after_render=PANEL_81_AFTER_RENDER,
@@ -1541,6 +1768,12 @@ water_ts = from(bucket: "default")
 
 water_ts_str = strings.joinStr(arr: water_ts, v: ",")
 
+out_temp_val = if exists out_temp_rec._value then math.round(x: float(v: out_temp_rec._value) * 10.0) / 10.0 else 0.0
+in_temp_val = if exists in_temp_rec._value then math.round(x: float(v: in_temp_rec._value) * 10.0) / 10.0 else 0.0
+out_delta = math.round(x: (out_temp_val - target_t) * 10.0) / 10.0
+in_delta = math.round(x: (in_temp_val - target_t) * 10.0) / 10.0
+water_delta = math.round(x: (water_t - target_t) * 10.0) / 10.0
+
 array.from(rows: [{
   krb_w: if exists krb_w_raw._value then math.round(x: float(v: krb_w_raw._value)) else 0.0,
   krb_t: if exists krb_t_raw._value then math.round(x: float(v: krb_t_raw._value) * 10.0) / 10.0 else 0.0,
@@ -1549,11 +1782,14 @@ array.from(rows: [{
   cop_3h: cop_delta,
   compressor: if exists comp_rec._value then comp_rec._value else 0.0,
   coil: if exists coil_rec._value then coil_rec._value else 0.0,
-  out_temp: if exists out_temp_rec._value then math.round(x: float(v: out_temp_rec._value) * 10.0) / 10.0 else 0.0,
-  in_temp: if exists in_temp_rec._value then math.round(x: float(v: in_temp_rec._value) * 10.0) / 10.0 else 0.0,
+  out_temp: out_temp_val,
+  in_temp: in_temp_val,
+  out_delta: out_delta,
+  in_delta: in_delta,
   target_t: target_t,
   water_t: water_t,
   delta_t: delta_t,
+  water_delta: water_delta,
   water_trend: water_trend_val,
   target_ts: target_ts_str,
   water_ts: water_ts_str,
@@ -1561,7 +1797,7 @@ array.from(rows: [{
 
 PANEL_83_CONTENT = r"""<style>
 .htiles-wrap{display:flex;flex-direction:column;height:100%;min-height:0}
-.htiles{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:4px;padding:4px 8px;flex:0 0 auto}
+.htiles{font-family:'Inter','Helvetica Neue',Arial,sans-serif;display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:4px;padding:4px 8px;flex:0 0 auto}
 .htile{background:#1a1d22;border:1px solid rgba(255,255,255,0.06);border-radius:6px;padding:4px 10px;display:flex;flex-direction:column;gap:1px}
 .htile .lab{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:#8e8e8e;font-weight:700}
 .htile .big{font-size:28px;font-weight:700;line-height:1}
@@ -1607,17 +1843,17 @@ PANEL_83_CONTENT = r"""<style>
       {{#if (gt compressor 0)}}<span class="pill-sm pill-sm-comp"><span class="dot"></span>Compressor</span>{{else if (gt coil 0)}}<span class="pill-sm pill-sm-coil"><span class="dot"></span>Heat coil</span>{{else}}<span class="pill-sm pill-sm-off"><span class="dot"></span>Off</span>{{/if}}
     </div>
     <div class="htile-row">
-      <span style="font-size:28px;font-weight:700;line-height:1;color:#FADE2A">{{out_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">out</span></span>
+      <span style="font-size:28px;font-weight:700;line-height:1;color:{{#if (gt out_delta 1)}}#FF9830{{else if (gt out_delta 0.5)}}#FDBA2D{{else if (gt out_delta 0)}}#FADE2A{{else if (gt out_delta -1)}}#D0E64B{{else if (gt out_delta -2)}}#A5D87D{{else if (gt out_delta -3)}}#7EC4C3{{else if (gt out_delta -4)}}#6AACE2{{else}}#5794F2{{/if}}">{{out_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">out</span></span>
       <span style="font-size:14px;color:#555;font-weight:500">/</span>
-      <span style="font-size:28px;font-weight:700;line-height:1;color:#5794F2">{{in_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">in</span></span>
+      <span style="font-size:28px;font-weight:700;line-height:1;color:{{#if (gt in_delta 1)}}#FF9830{{else if (gt in_delta 0.5)}}#FDBA2D{{else if (gt in_delta 0)}}#FADE2A{{else if (gt in_delta -1)}}#D0E64B{{else if (gt in_delta -2)}}#A5D87D{{else if (gt in_delta -3)}}#7EC4C3{{else if (gt in_delta -4)}}#6AACE2{{else}}#5794F2{{/if}}">{{in_temp}}&deg;<span style="font-size:11px;font-weight:600;color:#8e8e8e;margin-left:3px">in</span></span>
     </div>
   </div>
 </div>
 <div id="tc-chart" class="tc-chart" data-target="{{target_ts}}" data-water="{{water_ts}}"></div>
 <div class="hstats">
   <div class="s"><span class="lab">Target</span><span class="val" style="color:#73bf69">{{target_t}}<span class="unit">&deg;C</span></span></div>
-  <div class="s"><span class="lab">Water</span><span class="val" style="color:#FADE2A">{{water_t}}<span class="unit">&deg;C</span></span></div>
-  <div class="s"><span class="lab">&Delta;</span><span class="val" style="color:#d8d9da">{{delta_t}}<span class="unit">K</span></span></div>
+  <div class="s"><span class="lab">Water</span><span class="val" style="color:{{#if (gt water_delta 1)}}#FF9830{{else if (gt water_delta 0.5)}}#FDBA2D{{else if (gt water_delta 0)}}#FADE2A{{else if (gt water_delta -1)}}#D0E64B{{else if (gt water_delta -2)}}#A5D87D{{else if (gt water_delta -3)}}#7EC4C3{{else if (gt water_delta -4)}}#6AACE2{{else}}#5794F2{{/if}}">{{water_t}}<span class="unit">&deg;C</span></span></div>
+  <div class="s"><span class="lab">&Delta;</span><span class="val" style="color:{{#if (gt water_delta 1)}}#FF9830{{else if (gt water_delta 0.5)}}#FDBA2D{{else if (gt water_delta 0)}}#FADE2A{{else if (gt water_delta -1)}}#D0E64B{{else if (gt water_delta -2)}}#A5D87D{{else if (gt water_delta -3)}}#7EC4C3{{else if (gt water_delta -4)}}#6AACE2{{else}}#5794F2{{/if}}">{{delta_t}}<span class="unit">K</span></span></div>
   <div class="s"><span class="lab">Trend 1h</span><span class="val" style="color:{{#if (gt water_trend 0)}}#73bf69{{else if (gt 0 water_trend)}}#f2495c{{else}}#8e8e8e{{/if}}">{{#if (gt water_trend 0)}}&uarr;{{else if (gt 0 water_trend)}}&darr;{{else}}&mdash;{{/if}} {{water_trend}}<span class="unit">K/h</span></span></div>
 </div>
 </div>"""
@@ -1688,8 +1924,8 @@ if(step<1)step=1;
 var gStart=Math.ceil(vMin/step)*step;
 for(var g=gStart;g<=vMax;g+=step){
   var gy=yS(g);
-  gridY+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#2c3035" stroke-width="0.5"/>';
-  gridY+='<text x="'+(padL-4)+'" y="'+(gy+3)+'" text-anchor="end" fill="#5a5e72" font-size="9" font-family="Inter,sans-serif">'+g+'</text>';
+  gridY+='<line x1="'+padL+'" y1="'+gy+'" x2="'+(W-padR)+'" y2="'+gy+'" stroke="#3a4048" stroke-width="0.5" stroke-dasharray="4 3"/>';
+  gridY+='<text x="'+(padL-4)+'" y="'+(gy+3)+'" text-anchor="end" fill="#b8b9ba" font-size="11" font-family="Inter,sans-serif">'+g+'</text>';
 }
 
 // Time labels
@@ -1702,7 +1938,7 @@ for(var t=tStart;t<=mMax;t+=tStep){
   var hh=Math.floor(t/60);
   var mm=t%60;
   var label=String(hh).padStart(2,"0")+":"+String(mm).padStart(2,"0");
-  tLabels+='<text x="'+tx+'" y="'+(H-2)+'" text-anchor="middle" fill="#5a5e72" font-size="8" font-family="Inter,sans-serif">'+label+'</text>';
+  tLabels+='<text x="'+tx+'" y="'+(H-2)+'" text-anchor="middle" fill="#b8b9ba" font-size="11" font-family="Inter,sans-serif">'+label+'</text>';
 }
 
 // Draw lines
@@ -1731,7 +1967,7 @@ def build_panel_83():
     targets = [flux_target(PANEL_83_QUERY, "A")]
     return business_text_panel(
         panel_id=83,
-        grid_pos={"x": 14, "y": 8, "w": 10, "h": 10},
+        grid_pos={"x": 14, "y": 16, "w": 10, "h": 10},
         targets=targets,
         content=PANEL_83_CONTENT,
         helpers=PANEL_80_HELPERS,  # same lt/gt/gte/abs helpers
@@ -1834,6 +2070,48 @@ vw_target_rec = union(tables: [vw_target_default, vw_target_real])
   |> sort(columns: ["_time"]) |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
+// -- Address (string field from diag/ topic) --
+enyaq_addr_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: ""}])
+enyaq_addr_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "address_enyaq")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+enyaq_addr_rec = union(tables: [enyaq_addr_default, enyaq_addr_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+vw_addr_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: ""}])
+vw_addr_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "address_vw")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+vw_addr_rec = union(tables: [vw_addr_default, vw_addr_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+// -- Capture time (epoch seconds; the car's own reading time, not fetch time) --
+enyaq_cap_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+enyaq_cap_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "captured_enyaq")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+enyaq_cap_rec = union(tables: [enyaq_cap_default, enyaq_cap_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+vw_cap_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+vw_cap_real = from(bucket: "default")
+  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "captured_vw")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+vw_cap_rec = union(tables: [vw_cap_default, vw_cap_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
 // -- Shared wallbox --
 charge_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
 charge_real = from(bucket: "default")
@@ -1860,11 +2138,16 @@ enyaq_plug = if exists enyaq_plug_rec._value then float(v: enyaq_plug_rec._value
 vw_plug = if exists vw_plug_rec._value then float(v: vw_plug_rec._value) else 0.0
 enyaq_target = if exists enyaq_target_rec._value then math.round(x: float(v: enyaq_target_rec._value)) else 0.0
 vw_target = if exists vw_target_rec._value then math.round(x: float(v: vw_target_rec._value)) else 0.0
+enyaq_addr = if exists enyaq_addr_rec._value then string(v: enyaq_addr_rec._value) else ""
+vw_addr = if exists vw_addr_rec._value then string(v: vw_addr_rec._value) else ""
+enyaq_cap = if exists enyaq_cap_rec._value then float(v: enyaq_cap_rec._value) else 0.0
+vw_cap = if exists vw_cap_rec._value then float(v: vw_cap_rec._value) else 0.0
 
 array.from(rows: [{
   enyaq_soc: enyaq_soc, enyaq_range: enyaq_range, enyaq_max: enyaq_max, enyaq_time: enyaq_time, enyaq_target: enyaq_target,
   vw_soc: vw_soc, vw_range: vw_range, vw_max: vw_max, vw_time: vw_time, vw_target: vw_target,
   charge_w: charge_w, enyaq_plug: enyaq_plug, vw_plug: vw_plug,
+  enyaq_addr: enyaq_addr, vw_addr: vw_addr, enyaq_cap: enyaq_cap, vw_cap: vw_cap,
 }])"""
 
 PANEL_86_CONTENT = r"""<style>
@@ -1877,6 +2160,8 @@ PANEL_86_CONTENT = r"""<style>
 .car-soc-bar .cover{position:absolute;top:0;right:0;height:100%;background:#0e1013;border-radius:0 10px 10px 0}
 .car-soc-bar .target-marker{position:absolute;top:-4px;width:3px;height:28px;background:#FADE2A;opacity:0.9;border-radius:1.5px;transform:translateX(-50%);display:none}
 .car-soc-bar .target-label{position:absolute;top:-20px;font-size:9px;font-weight:700;color:#FADE2A;letter-spacing:.05em;transform:translateX(-50%);white-space:nowrap;display:none}
+.car-soc-bar .full-marker{position:absolute;top:-4px;left:100%;width:3px;height:28px;background:#666;opacity:0.7;border-radius:1.5px;transform:translateX(-50%)}
+.car-soc-bar .full-label{position:absolute;top:-20px;left:100%;font-size:9px;font-weight:700;color:#666;letter-spacing:.05em;transform:translateX(-50%);white-space:nowrap}
 .car-soc{font-size:20px;font-weight:700;min-width:60px;text-align:right;line-height:1;white-space:nowrap}
 .car-row2{display:flex;align-items:baseline;gap:14px;font-size:22px}
 .car-row2 .car-range{color:#d8d9da;font-weight:700;font-size:22px}
@@ -1891,17 +2176,21 @@ PANEL_86_CONTENT = r"""<style>
 @keyframes car-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .car-card.charging .car-soc-bar .gradient{animation:car-pulse 2s ease-in-out infinite}
 .car-row3{font-size:18px;color:#8e8e8e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
+.car-row3 .car-age{color:#6e6e6e}
 </style>
 <div class="cars" id="cars-root"
   data-enyaq-soc="{{enyaq_soc}}" data-enyaq-range="{{enyaq_range}}" data-enyaq-max="{{enyaq_max}}" data-enyaq-time="{{enyaq_time}}" data-enyaq-target="{{enyaq_target}}"
   data-vw-soc="{{vw_soc}}" data-vw-range="{{vw_range}}" data-vw-max="{{vw_max}}" data-vw-time="{{vw_time}}" data-vw-target="{{vw_target}}"
-  data-charge-w="{{charge_w}}" data-enyaq-plug="{{enyaq_plug}}" data-vw-plug="{{vw_plug}}">
+  data-charge-w="{{charge_w}}" data-enyaq-plug="{{enyaq_plug}}" data-vw-plug="{{vw_plug}}"
+  data-enyaq-cap="{{enyaq_cap}}" data-vw-cap="{{vw_cap}}">
 
   <div class="car-card" id="car-enyaq">
     <div class="car-row1">
       <div class="car-soc-bar">
         <div class="gradient"></div>
         <div class="cover" id="enyaq-cover"></div>
+        <div class="full-marker"></div>
+        <div class="full-label">100%</div>
         <div class="target-marker" id="enyaq-target-marker"></div>
         <div class="target-label" id="enyaq-target-label"></div>
       </div>
@@ -1914,7 +2203,7 @@ PANEL_86_CONTENT = r"""<style>
       <span class="car-timeleft" id="enyaq-time"></span>
       <span class="car-status" id="enyaq-status"></span>
     </div>
-    {{#if enyaq_addr}}<div class="car-row3">{{enyaq_addr}}</div>{{/if}}
+    <div class="car-row3" id="enyaq-row3"><span class="car-addr">{{enyaq_addr}}</span><span class="car-age" id="enyaq-age"></span></div>
   </div>
 
   <div class="car-card" id="car-vw">
@@ -1922,6 +2211,8 @@ PANEL_86_CONTENT = r"""<style>
       <div class="car-soc-bar">
         <div class="gradient"></div>
         <div class="cover" id="vw-cover"></div>
+        <div class="full-marker"></div>
+        <div class="full-label">100%</div>
         <div class="target-marker" id="vw-target-marker"></div>
         <div class="target-label" id="vw-target-label"></div>
       </div>
@@ -1934,7 +2225,7 @@ PANEL_86_CONTENT = r"""<style>
       <span class="car-timeleft" id="vw-time"></span>
       <span class="car-status" id="vw-status"></span>
     </div>
-    {{#if vw_addr}}<div class="car-row3">{{vw_addr}}</div>{{/if}}
+    <div class="car-row3" id="vw-row3"><span class="car-addr">{{vw_addr}}</span><span class="car-age" id="vw-age"></span></div>
   </div>
 </div>"""
 
@@ -1949,6 +2240,33 @@ var vTarget=parseFloat(root.dataset.vwTarget)||0;
 var chargeW=parseFloat(root.dataset.chargeW)||0;
 var ePlug=parseFloat(root.dataset.enyaqPlug)||0;
 var vPlug=parseFloat(root.dataset.vwPlug)||0;
+var eCap=parseFloat(root.dataset.enyaqCap)||0;
+var vCap=parseFloat(root.dataset.vwCap)||0;
+
+// Data-capture age — the car's own reading time, not our fetch time.
+function ageStr(cap){
+  if(!cap||cap<=0)return "";
+  var s=Math.floor(Date.now()/1000-cap);
+  if(s<0)s=0;
+  if(s<60)return "just now";
+  var m=Math.floor(s/60);
+  if(m<60)return m+" min ago";
+  var h=Math.floor(m/60);
+  if(h<24)return h+" h ago";
+  return Math.floor(h/24)+" d ago";
+}
+function setRow3(rowId,ageId,cap){
+  var row=document.getElementById(rowId);
+  if(!row)return;
+  var addrSpan=row.querySelector(".car-addr");
+  var hasAddr=addrSpan&&addrSpan.textContent.trim().length>0;
+  var age=ageStr(cap);
+  var ageEl=document.getElementById(ageId);
+  if(ageEl)ageEl.textContent=age?(hasAddr?" · "+age:age):"";
+  row.style.display=(hasAddr||age)?"":"none";
+}
+setRow3("enyaq-row3","enyaq-age",eCap);
+setRow3("vw-row3","vw-age",vCap);
 
 // SoC bar cover
 var ec=document.getElementById("enyaq-cover");
@@ -2017,7 +2335,7 @@ def build_panel_86():
     targets = [flux_target(PANEL_86_QUERY, "A")]
     return business_text_panel(
         panel_id=86,
-        grid_pos={"x": 14, "y": 18, "w": 10, "h": 10},
+        grid_pos={"x": 14, "y": 8, "w": 10, "h": 8},
         targets=targets,
         content=PANEL_86_CONTENT,
         after_render=PANEL_86_AFTER_RENDER,
