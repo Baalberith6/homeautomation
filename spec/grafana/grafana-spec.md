@@ -58,7 +58,7 @@ Row 16-25:  [81 Energy Chart+Stats (0,16,14,10)]   [83 Heat Tiles (14,16,10,10)]
 | 70 | Outdoor | `dynamictext` (canvas) | 0,0,14,8 | Weather widget with sparkline (afterRender JS) |
 | 67 | Indoor | `dynamictext` | 14,0,10,8 | 5 rooms + CO2 stat-bar |
 | 80 | Energy Topology | `dynamictext` (SVG) | 0,8,14,8 | Horizontal flow: Solar/Grid → Inverter (battery SoC+kW inside) → House/Wallbox |
-| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,16,14,10 | Chart (Solar/House/Battery/Bojlery + OTE + forecast) + Energy Stats (Today/Month bars, Self-suff, Virt.batt). **75/25 split layout:** left 75% shows historical data from the Grafana time picker, NOW marker sits at the 3/4 point, right 25% shows compressed forecast (2× the historical duration, capped at midnight). E.g. "last 3h" at 17:00 → history 14:00–17:00 in 75%, forecast 17:00–23:00 in 25%. Forecast zone has subtle white tint (`#fff` @ 2.5% opacity). Grid lines and x-axis labels use wider step in forecast zone to avoid crowding. OTE bar widths scale per-bar to match the local time compression. All 4 series use 2-min `fn: mean` aggregation. Solar (blue), House (green), and Battery (yellow) have gradient area fills; Bojlery (orange) is line-only. Solar forecast is rendered as a dashed blue line in **both zones**: future (after NOW, dasharray 6 5, opacity .9, with gradient fill) for prediction, and past (before NOW, dasharray 4 4, opacity .55, line only) for comparing actual production vs. earlier prediction. Dashed guiding lines (`#3a4048`, dasharray 4 3) at every 2 kW Y-axis label. |
+| 81 | Energy Chart + Stats | `dynamictext` (SVG) | 0,16,14,10 | Chart (Solar/House/Battery + OTE + forecast) + Energy Stats (Today/Month bars, Self-suff, Virt.batt). **75/25 split layout:** left 75% shows historical data from the Grafana time picker, NOW marker sits at the 3/4 point, right 25% shows compressed forecast (2× the historical duration, capped at midnight). E.g. "last 3h" at 17:00 → history 14:00–17:00 in 75%, forecast 17:00–23:00 in 25%. Forecast zone has subtle white tint (`#fff` @ 2.5% opacity). Grid lines and x-axis labels use wider step in forecast zone to avoid crowding. OTE bar widths scale per-bar to match the local time compression. All 3 series use 2-min `fn: mean` aggregation. Solar (blue), House (green), and Battery (yellow) have gradient area fills. Solar forecast is rendered as a dashed blue line in **both zones**: future (after NOW, dasharray 6 5, opacity .9, with gradient fill) for prediction, and past (before NOW, dasharray 4 4, opacity .55, line only) for comparing actual production vs. earlier prediction. Dashed guiding lines (`#3a4048`, dasharray 4 3) at every 2 kW Y-axis label. |
 | 86 | Vehicles | `dynamictext` | 14,8,10,8 | Enyaq + ID.3 with SoC bars and per-car plug status pills (Connected/Charging/Disconnected) + GPS address + data-capture age ("N min ago") |
 | 83 | Heat Tiles | `dynamictext` | 14,16,10,10 | Krb + COP + Heat Pump tiles + TC chart (dashed guiding lines from Y-axis labels) + stat-bar |
 
@@ -190,7 +190,7 @@ This section locks the canonical color mapping for the dashboard (visual referen
 | Token | Hex | Canonical role |
 |---|---|---|
 | `--red` | `#f2495c` | Error / over-threshold / discharge-alarm |
-| `--orange` | `#FF9830` | Warning / bojlery (hot water) / return temp / wallbox active |
+| `--orange` | `#FF9830` | Warning / return temp / wallbox active |
 | `--orange-red` | `#FF6B3D` | Battery/Car SoC 10–20% tier |
 | `--yellow` | `#FADE2A` | Battery kW (charge/discharge) / inverter-temp 40–50 °C |
 | `--green` | `#73bf69` | House consumption / SoC green tier (30–90) / OK / OTE cheap |
@@ -346,9 +346,9 @@ linear-gradient(90deg,
 
 **Charging pulse:** `@keyframes car-pulse { 0,100% {opacity:1} 50% {opacity:.4} }`, 2 s ease-in-out, ported from `panel-61-cars.jsx`. Applied to the gradient layer only so the target marker and label stay static.
 
-### Hot water (bojlery) (C11)
+### Hot water (bojlery) (C11) — retired
 
-Reserved color: **`#FF9830`** (same as panel 2). No other metric uses this hue in the boiler context.
+Retired in change 012 (2026-09-28). The Bojlery series left panel 81. `#FF9830` stays in use as the `--orange` token and as the 2–3 CZK OTE price tier.
 
 ### House — 20-bar consumption ladder
 
@@ -1699,7 +1699,6 @@ from(bucket: "default")
 | `load_p` | `phase` (1/2/3) | Phase load power | W |
 | `inverter_temp_air` | — | Inverter air temperature | °C |
 | `inverter_temp_rad` | — | Inverter radiator temperature | °C |
-| `bojlery` | `pretoky="pretoky"` | Hot water heater overflow power | W |
 
 ### Solar Forecast (measurement: `SolarForecast`)
 
