@@ -1,7 +1,7 @@
 import time
 import tinytuya
 
-from common import connect_mqtt, publishProperties
+from common import connect_mqtt
 from config import moesCo2Config, generalConfig as c
 from secret import tuyaApiKey, tuyaApiSecret
 
@@ -107,9 +107,7 @@ class MOESCo2Sensor:
         # Only publish if value has changed
         self.client.publish(
             "home/weather/sensors/moes_co2",
-            co2_value,
-            qos=2,
-            properties=publishProperties
+            co2_value
         ).wait_for_publish()
         if c["debug"]:
             print(f"Published CO2: {co2_value} ppm")
