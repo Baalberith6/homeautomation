@@ -26,6 +26,8 @@ STATES = {
     "020-broker-port": ("2m", "Alerting", "Alerting"),
     # R5 (spec revision 1c): silence from lxc-scripts means the log path is broken, so no data fires.
     "020-log-path": ("0s", "Alerting", "Alerting"),
+    # R6 (spec revision 1e): without Telegraf on .51 the 0-* series leave R1 and R2 quietly.
+    "020-scripts-metrics": ("0s", "Alerting", "Alerting"),
 }
 LOKI_RULES = ("020-error-line", "020-log-path")
 
@@ -60,7 +62,7 @@ def _push_module():
 
 class TestRules(unittest.TestCase):
 
-    def test_five_rules(self):
+    def test_rule_set(self):
         config = _config()
         group = config["rule_group"]
         self.assertEqual(config["folder"], {"uid": "alerts", "title": "Alerts"})
@@ -121,6 +123,14 @@ class TestRules(unittest.TestCase):
         self.assertIn("[30m]", query)
         self.assertEqual(_threshold(rule), {"type": "lt", "params": [1]})
 
+    def test_r6_query(self):
+        rule = _rules()["020-scripts-metrics"]
+        query = _query(rule)
+        self.assertIn('r._measurement == "systemd_units"', query)
+        self.assertIn('r.host == "lxc-scripts"', query)
+        self.assertIn("range(start: -3m)", query)
+        self.assertEqual(_threshold(rule), {"type": "lt", "params": [1]})
+
     def test_datasource_uids(self):
         for uid, rule in _rules().items():
             want = LOKI_UID if uid in LOKI_RULES else INFLUX_UID
@@ -131,7 +141,7 @@ class TestRules(unittest.TestCase):
             summary = rule["annotations"]["summary"]
             if uid == "020-broker-port":
                 self.assertTrue(summary.startswith("mosquitto: "), summary)
-            elif uid == "020-log-path":
+            elif uid in ("020-log-path", "020-scripts-metrics"):
                 self.assertTrue(summary.startswith("lxc-scripts: "), summary)
             else:
                 self.assertIn("{{ $labels.unit }}", summary, uid)
