@@ -451,25 +451,6 @@ m_gen_raw = from(bucket: "default")
   |> sum()
   |> findRecord(fn: (key) => true, idx: 0)
 
-// -- Virtual Battery (CEZ) --
-vb_charge_raw = from(bucket: "default")
-  |> range(start: -1d)
-  |> filter(fn: (r) => r._measurement == "cez" and r._field == "virtual_battery")
-  |> last()
-  |> findRecord(fn: (key) => true, idx: 0)
-
-vb_prod_raw = from(bucket: "default")
-  |> range(start: -1d)
-  |> filter(fn: (r) => r._measurement == "cez" and r._field == "aggregated_production")
-  |> last()
-  |> findRecord(fn: (key) => true, idx: 0)
-
-vb_cons_raw = from(bucket: "default")
-  |> range(start: -1d)
-  |> filter(fn: (r) => r._measurement == "cez" and r._field == "aggregated_consumption")
-  |> last()
-  |> findRecord(fn: (key) => true, idx: 0)
-
 // -- Phase loads --
 load_p1_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
 load_p1_real = from(bucket: "default")
@@ -528,11 +509,6 @@ m_gen      = if exists m_gen_raw._value  then float(v: m_gen_raw._value)  else 0
 
 self_suf = if d_cons > 0.0 then math.round(x: d_gen / d_cons * 100.0) else 0.0
 
-vb_charge = if exists vb_charge_raw._value then float(v: vb_charge_raw._value) else 0.0
-vb_prod   = if exists vb_prod_raw._value then float(v: vb_prod_raw._value) else 0.0
-vb_cons   = if exists vb_cons_raw._value then float(v: vb_cons_raw._value) else 0.0
-vb_pct    = if vb_cons > 0.0 then math.round(x: vb_prod / vb_cons * 100.0) else 0.0
-
 // -- Command values (from MQTT command/* via Telegraf) --
 dod_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 70.0}])
 dod_real = from(bucket: "default")
@@ -585,10 +561,6 @@ array.from(rows: [{
   m_cons:    math.round(x: m_cons),
   m_gen:     math.round(x: m_gen),
   self_suf:  self_suf,
-  vb_charge: math.round(x: vb_charge * 10.0) / 10.0,
-  vb_prod:   math.round(x: vb_prod),
-  vb_cons:   math.round(x: vb_cons),
-  vb_pct:    vb_pct,
   bat_hrs:   bat_hrs_v,
   bat_mins:  bat_mins_v,
   bat_chg_hrs:  bat_chg_hrs_v,
@@ -1197,13 +1169,13 @@ m_gen_raw = from(bucket: "default")
 
 // -- Virtual Battery (CEZ) --
 vb_prod_raw = from(bucket: "default")
-  |> range(start: -1d)
+  |> range(start: -3d)
   |> filter(fn: (r) => r._measurement == "cez" and r._field == "aggregated_production")
   |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
 vb_cons_raw = from(bucket: "default")
-  |> range(start: -1d)
+  |> range(start: -3d)
   |> filter(fn: (r) => r._measurement == "cez" and r._field == "aggregated_consumption")
   |> last()
   |> findRecord(fn: (key) => true, idx: 0)
@@ -1213,9 +1185,9 @@ d_gen   = if exists d_gen_raw._value  then float(v: d_gen_raw._value)  else 0.0
 m_cons  = if exists m_cons_raw._value then float(v: m_cons_raw._value) else 0.0
 m_gen   = if exists m_gen_raw._value  then float(v: m_gen_raw._value)  else 0.0
 self_suf = if d_cons > 0.0 then math.round(x: d_gen / d_cons * 100.0) else 0.0
-vb_prod = if exists vb_prod_raw._value then float(v: vb_prod_raw._value) else 0.0
-vb_cons = if exists vb_cons_raw._value then float(v: vb_cons_raw._value) else 0.0
-vb_pct  = if vb_cons > 0.0 then math.round(x: vb_prod / vb_cons * 100.0) else 0.0
+// -1.0 = no value in the last 3 days; the cell then shows a grey dash
+vb_prod = if exists vb_prod_raw._value then math.round(x: float(v: vb_prod_raw._value)) else -1.0
+vb_cons = if exists vb_cons_raw._value then math.round(x: float(v: vb_cons_raw._value)) else -1.0
 
 // -- Chart time window from dashboard picker --
 _rs_ns = int(v: v.timeRangeStart)
@@ -1234,7 +1206,8 @@ array.from(rows: [{
   m_cons:   math.round(x: m_cons),
   m_gen:    math.round(x: m_gen),
   self_suf: self_suf,
-  vb_pct:   vb_pct,
+  vb_prod:  vb_prod,
+  vb_cons:  vb_cons,
 }])"""
 
 PANEL_81_CONTENT = r"""<style>
@@ -1263,6 +1236,8 @@ PANEL_81_CONTENT = r"""<style>
 .s-diverge .dv-fill{height:100%}
 .s-diverge .dv-fill-cons{background:#f2495c;border-radius:3px 0 0 3px}
 .s-diverge .dv-fill-prod{background:#73bf69;border-radius:0 3px 3px 0}
+.estat .val.vb{font-size:20px;white-space:nowrap}
+.estat .vb-sep{color:#8e8e8e;font-weight:400}
 </style>
 <div class="ec-wrap">
 <div class="ec" id="ec-root"
@@ -1277,7 +1252,7 @@ PANEL_81_CONTENT = r"""<style>
 <div class="estat" id="estat-root"
   data-d-cons="{{d_cons}}" data-d-gen="{{d_gen}}"
   data-m-cons="{{m_cons}}" data-m-gen="{{m_gen}}"
-  data-self-suf="{{self_suf}}" data-vb-pct="{{vb_pct}}">
+  data-self-suf="{{self_suf}}" data-vb-prod="{{vb_prod}}" data-vb-cons="{{vb_cons}}">
   <div class="s s-diverge">
     <div class="dv-head">
       <span class="lab">Today</span>
@@ -1307,11 +1282,21 @@ PANEL_81_CONTENT = r"""<style>
     </div>
   </div>
   <div class="s"><span class="lab">Self-suff.</span><span class="val" style="color:#73bf69">{{self_suf}}<span class="unit">%</span></span></div>
-  <div class="s"><span class="lab">Virt. batt.</span><span class="val" style="color:#FADE2A">{{vb_pct}}<span class="unit">%</span></span></div>
+  <div class="s"><span class="lab">Virt. batt.</span><span class="val vb" id="estat-vb">&mdash;</span></div>
 </div>
 </div>"""
 
-PANEL_81_AFTER_RENDER = r"""var root=document.getElementById("ec-root");
+# Virtual battery cell: sold / bought kWh, coloured by the ratio sold / bought.
+# p or c below 0 (or not a number) means no value in the last 3 days.
+VB_JS = r"""function vbCell(p,c){
+  if(!(p>=0)||!(c>=0))return{html:"\u2014",color:"#8e8e8e"};
+  var r=c>0?p/c*100:Infinity;
+  var col=r>=100?"#73BF69":r>=75?"#FADE2A":r>50?"#FF9830":"#F2495C";
+  return{html:p+'<span class="vb-sep"> / </span>'+c+'<span class="unit">kWh</span>',color:col};
+}
+"""
+
+PANEL_81_AFTER_RENDER = VB_JS + r"""var root=document.getElementById("ec-root");
 if(!root)return;
 var chartEl=document.getElementById("ec-chart");
 if(!chartEl)return;
@@ -1576,6 +1561,13 @@ function setBars(consId,prodId,deltaId,c,g){
 }
 setBars("estat-d-cons-bar","estat-d-prod-bar","estat-d-delta",dc,dg);
 setBars("estat-m-cons-bar","estat-m-prod-bar","estat-m-delta",mc,mg);
+
+var vbEl=document.getElementById("estat-vb");
+if(vbEl){
+  var vb=vbCell(parseFloat(eRoot.dataset.vbProd),parseFloat(eRoot.dataset.vbCons));
+  vbEl.innerHTML=vb.html;
+  vbEl.style.color=vb.color;
+}
 }"""
 
 
