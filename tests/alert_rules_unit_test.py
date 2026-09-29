@@ -7,6 +7,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -86,9 +87,20 @@ class TestRules(unittest.TestCase):
     def test_r3_query(self):
         query = _query(_rules()["020-error-line"])
         self.assertEqual(query.count("[65m]"), 4)
-        for needle in ('"^ERROR "', '" E! "', '"lvl=error"', '"Error"'):
+        for needle in ('"ERROR [A-Za-z0-9_.]+: "', '" E! "', '"lvl=error"', '"Error"'):
             self.assertIn(needle, query)
         self.assertEqual(_threshold(_rules()["020-error-line"]), {"type": "gt", "params": [0]})
+
+    def test_r3_matches_merged_line(self):
+        # print() writes its text and its newline apart, so a log line from another thread can land
+        # between them: "[rehau] StartedINFO mqtt: connected" on .51, 2026-09-29 (spec revision 1d).
+        query = _query(_rules()["020-error-line"])
+        pattern = re.compile(re.search(r'\|~ "([^"]+)"', query).group(1))
+        for line in ("ERROR yr: test 020", "[rehau] StartedERROR mqtt: disconnected: The connection was lost.",
+                     "ERROR carconnectivity.connectors.skoda: HTTP 429"):
+            self.assertTrue(pattern.search(line), line)
+        for line in ("INFO mqtt: connected", "[vw_euda] API error: HTTP 500", "WARNING vw_euda: Session expired (401)"):
+            self.assertFalse(pattern.search(line), line)
 
     def test_r2_non_negative(self):
         rule = _rules()["020-restart-loop"]
