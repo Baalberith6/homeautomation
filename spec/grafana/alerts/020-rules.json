@@ -119,7 +119,7 @@
                 "type": "influxdb",
                 "uid": "ceyru5v6xg3r4b"
               },
-              "query": "import \"strings\"\nfrom(bucket: \"default\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"systemd_units\" and r._field == \"restarts\")\n  |> filter(fn: (r) => r.name =~ /^0-.*\\.service$/ or r.name == \"telegraf.service\" or r.name == \"influxdb.service\")\n  |> map(fn: (r) => ({r with unit: strings.trimSuffix(v: r.name, suffix: \".service\")}))\n  |> group(columns: [\"unit\"])\n  |> sort(columns: [\"_time\"])\n  |> difference(nonNegative: true)\n  |> sum()\n  |> keep(columns: [\"_value\", \"unit\"])",
+              "query": "import \"strings\"\nfrom(bucket: \"default\")\n  |> range(start: -10m)\n  |> filter(fn: (r) => r._measurement == \"systemd_units\" and r._field == \"restarts\")\n  |> filter(fn: (r) => r.name =~ /^0-.*\\.service$/ or r.name == \"telegraf.service\" or r.name == \"influxdb.service\")\n  |> map(fn: (r) => ({r with unit: strings.trimSuffix(v: r.name, suffix: \".service\")}))\n  |> group(columns: [\"unit\"])\n  |> sort(columns: [\"_time\"])\n  |> difference(nonNegative: true)\n  |> sum()\n  |> map(fn: (r) => ({r with _time: now()}))\n  |> keep(columns: [\"_time\", \"_value\", \"unit\"])",
               "intervalMs": 1000,
               "maxDataPoints": 43200
             }
@@ -469,7 +469,7 @@
                 "type": "influxdb",
                 "uid": "ceyru5v6xg3r4b"
               },
-              "query": "from(bucket: \"default\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"systemd_units\" and r._field == \"active_code\" and r.host == \"lxc-scripts\")\n  |> group()\n  |> count()\n  |> map(fn: (r) => ({r with unit: \"telegraf-lxc-scripts\", _value: float(v: r._value)}))\n  |> group(columns: [\"unit\"])\n  |> keep(columns: [\"_value\", \"unit\"])",
+              "query": "from(bucket: \"default\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"systemd_units\" and r._field == \"active_code\" and r.host == \"lxc-scripts\")\n  |> group()\n  |> count()\n  |> map(fn: (r) => ({r with unit: \"telegraf-lxc-scripts\", _value: float(v: r._value), _time: now()}))\n  |> group(columns: [\"unit\"])\n  |> keep(columns: [\"_time\", \"_value\", \"unit\"])",
               "intervalMs": 1000,
               "maxDataPoints": 43200
             }
