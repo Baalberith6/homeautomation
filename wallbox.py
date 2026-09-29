@@ -22,7 +22,10 @@ from config import generalConfig as c, wallboxConfig
 # curl "http://1.2.3.4/api/status?filter=amp,psm"
 
 # keep at least 1A diff
-from common import connect_mqtt
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging, subscribe_on_connect
+
+log = get_logger("wallbox")
+goe_log = ConnectionLog(log, "go-e MQTT")
 
 wallboxMode = "Auto"
 wallboxMaxAmp = 16
@@ -108,8 +111,9 @@ def calculate_current(inverter, actual_charging_current: int):
 
 def wallbox(inverter, client):
     if updatedAt < (time.time() - 10):  # 10 sec timeout
-        print("[wallbox] Wallbox is OFFLINE")
+        goe_log.failed("no data for more than 10 s, Wallbox is OFFLINE")
         return
+    goe_log.ok()
 
     if wallboxMode == "Disable": # automation OFF
         return
@@ -196,8 +200,7 @@ def subscribe(client: mqtt_client, topics: [str]):
             global amp_reserve
             amp_reserve = int(msg.payload.decode())
 
-    for topic in topics:
-        client.subscribe(topic)
+    subscribe_on_connect(client, topics)
     client.on_message = on_message
 
 
@@ -216,11 +219,11 @@ def run():
             updatedAt = time.time()
             break
         except (JSONDecodeError, requests.exceptions.RequestException) as e:
-            print(f"[wallbox] Error connecting to wallbox (attempt {attempt + 1}/5): {e}")
+            log.error(f"Error connecting to wallbox (attempt {attempt + 1}/5): {e}")
             if attempt < 4:
                 time.sleep(10)
             else:
-                print("[wallbox] Could not reach wallbox after 5 attempts, exiting")
+                log.error("Could not reach wallbox after 5 attempts, exiting")
                 return
     client = connect_mqtt("wallbox3")
     subscribe(client, ["wallbox/inverter", "go-eCharger/201630/#", "command/WallboxMode", "command/WallboxAmp", "command/WallboxStartSOC", "command/WallboxStopAtSOCDiff", "command/WallboxReserveAmp"])
@@ -229,6 +232,7 @@ def run():
 
 
 if __name__ == '__main__':
+    setup_logging()
     run()
 
 

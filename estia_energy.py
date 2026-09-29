@@ -10,7 +10,7 @@ from estia_api import LoginBackoff, ToshibaAcHttpApi, ToshibaAcHttpApiAuthError
 sys.stdout.reconfigure(line_buffering=True)
 
 from paho.mqtt import client as mqtt_client  # noqa: E402
-from common import connect_mqtt  # noqa: E402
+from common import connect_mqtt, get_logger, setup_logging, subscribe_on_connect  # noqa: E402
 from config import influxConfig  # noqa: E402
 from secret import toshibaUsername, toshibaSecret, influxToken  # noqa: E402
 from config import generalConfig as c, estiaConfig  # noqa: E402
@@ -18,6 +18,8 @@ from influxdb_client import InfluxDBClient, Point  # noqa: E402
 from influxdb_client.client.write_api import SYNCHRONOUS  # noqa: E402
 
 # once per hour at minute 22, calc COP for the last 24h
+
+log = get_logger("estia_energy")
 
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
@@ -132,7 +134,7 @@ async def tick(api, state, backoff, now, mono):
             source = await api.connect()
             await api.get_devices()
             state["logged_in"] = True
-            print(f"[estia_energy] Toshiba login OK ({source})")
+            log.info(f"Toshiba login OK ({source})")
         usage = await fetch_consumption(api) if state["due"] else None
         backoff.success(mono)
     except Exception as e:
@@ -141,7 +143,7 @@ async def tick(api, state, backoff, now, mono):
         if isinstance(e, ToshibaAcHttpApiAuthError) or delay >= backoff.last_step:
             api.forget_token()
         state["next_try"] = mono + delay
-        print(f"[estia_energy] Toshiba error: {e}; next login in {delay} s")
+        log.error(f"Toshiba error: {e}; next login in {delay} s")
         return
 
     if usage is None:
@@ -152,14 +154,14 @@ async def tick(api, state, backoff, now, mono):
     try:
         cop, total_consumption = calculate_cop(usage, temps)
     except Exception as e:
-        print(f"[estia_energy] COP error: {e}")
+        log.error(f"COP error: {e}")
         return
     try:
         write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop_24h", float(cop)))
         write_api.write(bucket=influxConfig["bucket"],
                         record=Point("Estia").field("consumption_24h", float(total_consumption)))
     except Exception as e:
-        print(f"[estia_energy] InfluxDB error: {e}")
+        log.error(f"InfluxDB error: {e}")
 
 
 async def calc():
@@ -183,8 +185,7 @@ def subscribe(client: mqtt_client, topics: [str]):
         temps = json.loads(msg.payload)
         if c["debug"]: print(f"Received `{temps}` from `{msg.topic}` topic")
 
-    for topic in topics:
-        client.subscribe(topic)
+    subscribe_on_connect(client, topics)
     client.on_message = on_message
 
 def run():
@@ -194,4 +195,5 @@ def run():
     client.loop_forever()
 
 if __name__ == '__main__':
+    setup_logging()
     run()

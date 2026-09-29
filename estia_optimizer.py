@@ -8,7 +8,10 @@ from paho.mqtt import client as mqtt_client
 from config import rehauConfig, netatmoConfig, generalConfig as c
 from secret import netatmoClientId, netatmoClientSecret
 
-from common import connect_mqtt
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging, subscribe_on_connect
+
+log = get_logger("estia_optimizer")
+rehau_log = ConnectionLog(log, "Rehau")
 
 termostat_temp_1np = 21.0
 is_boosting = False
@@ -97,10 +100,15 @@ def apply_thermostats(include_netatmo=True):
         }
         if room.currentTemp != temp:
             try:
-                _request(payload, "room-page.html")
+                r = _request(payload, "room-page.html")
+                # Change 020: a failed POST is logged; the control rule stays as it was.
+                if 200 <= r.status_code < 300:
+                    rehau_log.ok()
+                else:
+                    rehau_log.failed(f"{room.name}: HTTP {r.status_code}")
                 room.currentTemp = temp
             except Exception as e:
-                print(f"[estia_optimizer] Rehau {room.name} error: {e}")
+                rehau_log.failed(f"{room.name}: {e}")
         elif c["debug"]:
             print(f"[estia_optimizer] Rehau {room.name} already at {temp}")
 
@@ -133,7 +141,7 @@ def apply_thermostats(include_netatmo=True):
                     room_id=room_id, end_time=end_time
                 )
         except Exception as e:
-            print(f"[estia_optimizer] Netatmo error: {e}")
+            log.error(f"Netatmo error: {e}")
 
     print(f"[estia_optimizer] Thermostats set to {temp}C "
           f"(boosting={is_boosting})")
@@ -180,8 +188,7 @@ def subscribe(client: mqtt_client, topics: [str]):
                 print(f"Received `{msg.payload.decode()}` "
                       f"from `{msg.topic}` topic")
 
-    for topic in topics:
-        client.subscribe(topic)
+    subscribe_on_connect(client, topics)
     client.on_message = on_message
 
 
@@ -197,4 +204,5 @@ def init():
 
 
 if __name__ == '__main__':
+    setup_logging()
     init()
