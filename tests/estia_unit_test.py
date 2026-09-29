@@ -358,5 +358,68 @@ class TestTUVSuppression(unittest.TestCase):
         self.assertEqual(32, out_temp_calls[1][0][1])
 
 
+
+def _good_detail():
+    state = TestACStateDataParsing._build_state(None)
+    return {"ACStateData": state, "TWI_Temp": "80", "TWO_Temp": "70",
+            "TO_Temp": "60"}
+
+
+class TestLogInAgain(unittest.TestCase):
+    """Change 019: a failed Toshiba call leads to a new login, not a crash."""
+
+    @patch('estia.time.sleep', side_effect=[None, LoopBreak])
+    @patch('estia.connect_mqtt')
+    @patch('estia.ToshibaAcHttpApi')
+    def test_failed_first_login_does_not_end_process(self, mock_api_cls,
+                                                      mock_mqtt, mock_sleep):
+        from estia_api import ToshibaAcHttpApiRateLimitError
+        mock_client = MagicMock()
+        mock_mqtt.return_value = mock_client
+        mock_api = AsyncMock()
+        mock_api_cls.return_value = mock_api
+        mock_api.connect = AsyncMock(side_effect=[
+            ToshibaAcHttpApiRateLimitError(
+                "HTTP 429: Too many requests. Try again in 60 seconds."),
+            None,
+        ])
+        mock_api.get_device_detail = AsyncMock(return_value=_good_detail())
+
+        import estia
+        with self.assertRaises(LoopBreak):
+            asyncio.run(estia.main())
+
+        self.assertEqual(mock_sleep.call_args_list[0][0][0], 60)
+        self.assertEqual(mock_api.connect.await_count, 2)
+        topics = [call[0][0] for call in mock_client.publish.call_args_list]
+        self.assertIn("home/estia/in_temp", topics)
+
+    @patch('estia.time.sleep', side_effect=[None, LoopBreak])
+    @patch('estia.connect_mqtt')
+    @patch('estia.ToshibaAcHttpApi')
+    def test_failed_read_logs_in_again(self, mock_api_cls, mock_mqtt,
+                                       mock_sleep):
+        from estia_api import ToshibaAcHttpApiError
+        mock_mqtt.return_value = MagicMock()
+        mock_api = AsyncMock()
+        mock_api_cls.return_value = mock_api
+        order = []
+        mock_api.connect = AsyncMock(
+            side_effect=lambda: order.append("connect"))
+
+        async def detail(_):
+            order.append("read")
+            if order.count("read") == 1:
+                raise ToshibaAcHttpApiError("HTTP 401: token expired")
+            return _good_detail()
+        mock_api.get_device_detail = AsyncMock(side_effect=detail)
+
+        import estia
+        with self.assertRaises(LoopBreak):
+            asyncio.run(estia.main())
+
+        self.assertEqual(order, ["connect", "read", "connect", "read"])
+
+
 if __name__ == '__main__':
     unittest.main()

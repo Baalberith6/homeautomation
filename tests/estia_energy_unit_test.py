@@ -1,6 +1,9 @@
+import asyncio
+import io
 import sys
 import unittest
-from unittest.mock import MagicMock
+from datetime import datetime
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Mock heavy external dependencies that may not be installed locally
 for _mod in ('influxdb_client', 'influxdb_client.client',
@@ -29,5 +32,82 @@ class TestEstiaEnergy(unittest.TestCase):
         # self.assertEqual((11.060773480662984, 543), calculate_cop([1287, 572, 143], [0, 2, 10]))
         # self.assertEqual((4.143975283213182, 12623), calculate_cop([577, 1122, 26, 902, 1138, 411, 551, 1004, 119, 805, 595, 1046, 1042, 178, 266, 526, 195, 657, 1526, 25, 573, 589, 143, 871], [0.7, 0.7, 1, 0.9, 1.7, 1.7, 1.7, 1.9, 2.2, 2.9, 3.7, 4.4, 5, 4.6, 4.9, 4.2, 3.9, 3.7, 3.4, 3.2, 2.8, 2.4, 2.2, 2.4])) # 1.1.2024
         # self.assertEqual((3.45949184840144, 23615), calculate_cop([1111, 1244, 1564, 1490, 1512, 1430, 1418, 1407, 1494, 1262, 167, 1379, 1841, 514, 26, 776, 340, 267, 1692, 1171, 1126, 1216, 1171, 1130], [-10, -10.7, -10.8, -10.6, -11.1, -10.8, -10.5, -10.1, -5.8, -2.7, -2.3, -1.1, -0.5, -0.1, -0.5, -1.2, -2.2, -2.8, -4.4, -5.7, -6.8, -6.9, -6.5, -5.2])) # 21.1.2024
+
+def _day():
+    return [{"EnergyConsumption": [{"Energy": 100}] * 24}]
+
+
+def _at(minute):
+    return datetime(2026, 9, 29, 10, minute)
+
+
+class TestTick(unittest.TestCase):
+    """Change 019: the COP loop logs in again under the backoff."""
+
+    def setUp(self):
+        import estia_energy
+        from estia_api import LoginBackoff
+        self.ee = estia_energy
+        self.backoff = LoginBackoff()
+        self.state = estia_energy.new_state()
+        self.api = AsyncMock()
+        self.write = patch.object(estia_energy, "write_api", MagicMock())
+        self.mock_write = self.write.start()
+        self.debug = patch.dict(estia_energy.c, {"debug": False})
+        self.debug.start()
+
+    def tearDown(self):
+        self.write.stop()
+        self.debug.stop()
+
+    def _tick(self, minute, mono):
+        asyncio.run(self.ee.tick(self.api, self.state, self.backoff,
+                                 _at(minute), mono))
+
+    def test_failed_call_retried_once(self):
+        from estia_api import ToshibaAcHttpApiError
+        self.api.get_hourly_consumption = AsyncMock(side_effect=[
+            ToshibaAcHttpApiError("HTTP 401: token expired"),
+            _day(), _day(),
+        ])
+        self._tick(22, 1000)
+        self.assertEqual(self.mock_write.write.call_count, 0)
+        self._tick(23, 1060)
+        self.assertEqual(self.api.connect.await_count, 2)
+        self.assertEqual(self.mock_write.write.call_count, 2)
+        self._tick(24, 1120)
+        self.assertEqual(self.mock_write.write.call_count, 2)
+        self.assertEqual(self.api.get_hourly_consumption.await_count, 3)
+
+    def test_error_printed_without_debug(self):
+        from estia_api import ToshibaAcHttpApiRateLimitError
+        self.api.connect = AsyncMock(side_effect=ToshibaAcHttpApiRateLimitError(
+            "HTTP 429: Too many requests. Try again in 60 seconds."))
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            self._tick(22, 1000)
+        self.assertIn("Toshiba error: HTTP 429: Too many requests. "
+                      "Try again in 60 seconds.; next login in 60 s",
+                      out.getvalue())
+
+    def test_waits_for_backoff(self):
+        from estia_api import ToshibaAcHttpApiError
+        self.api.connect = AsyncMock(
+            side_effect=[ToshibaAcHttpApiError("HTTP 500: x"), None])
+        self._tick(22, 1000)
+        self._tick(22, 1030)
+        self.assertEqual(self.api.connect.await_count, 1)
+        self.assertEqual(self.api.get_hourly_consumption.await_count, 0)
+
+    def test_influx_error_does_not_log_in(self):
+        self.api.get_hourly_consumption = AsyncMock(return_value=_day())
+        self.mock_write.write.side_effect = RuntimeError("influx down")
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            self._tick(22, 1000)
+            self._tick(23, 1060)
+        self.assertIn("InfluxDB error: influx down", out.getvalue())
+        self.assertEqual(self.api.connect.await_count, 1)
+        self.assertEqual(self.api.get_hourly_consumption.await_count, 2)
+
+
 if __name__ == '__main__':
     unittest.main()

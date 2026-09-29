@@ -1,3 +1,4 @@
+import json
 import logging
 import typing as t
 from dataclasses import dataclass
@@ -31,6 +32,47 @@ class ToshibaAcHttpApiError(Exception):
 
 class ToshibaAcHttpApiAuthError(ToshibaAcHttpApiError):
     pass
+
+
+class ToshibaAcHttpApiRateLimitError(ToshibaAcHttpApiError):
+    """HTTP 429 from the Toshiba cloud."""
+    pass
+
+
+def _pick(body: dict, *keys: str) -> t.Any:
+    """The first key present in the reply; the cloud mixes PascalCase and camelCase."""
+    for key in keys:
+        if key in body:
+            return body[key]
+    return None
+
+
+class LoginBackoff:
+    """Wait before the next login after a failure: 60 s, 300 s, 600 s, then 3600 s.
+
+    The step goes back to the first only after an hour with no failure, so two
+    sessions that end each other cannot log in every minute (change 019).
+    `now` is a monotonic time in seconds.
+    """
+
+    STEPS = (60, 300, 600, 3600)
+    RESET_AFTER = 3600
+
+    def __init__(self, steps: t.Sequence[int] = STEPS, reset_after: int = RESET_AFTER) -> None:
+        self._steps = tuple(steps)
+        self._reset_after = reset_after
+        self._index = 0
+        self._last_failure: t.Optional[float] = None
+
+    def failure(self, now: float) -> int:
+        delay = self._steps[min(self._index, len(self._steps) - 1)]
+        self._index += 1
+        self._last_failure = now
+        return delay
+
+    def success(self, now: float) -> None:
+        if self._last_failure is None or now - self._last_failure >= self._reset_after:
+            self._index = 0
 
 
 class ToshibaAcHttpApi:
@@ -80,19 +122,26 @@ class ToshibaAcHttpApi:
             method = self.session.get
 
         async with method(url, **method_args) as response:
-            json = await response.json()
-            logger.debug(f"Response code: {response.status}")
+            status = response.status
+            text = await response.text()
+            logger.debug(f"Response code: {status}")
 
-            err_type = ToshibaAcHttpApiError
+        try:
+            body = json.loads(text)
+        except ValueError:
+            body = None
+        if not isinstance(body, dict):
+            raise ToshibaAcHttpApiError(f"HTTP {status}: {text[:200]}")
 
-            if response.status == 200:
-                if json["IsSuccess"]:
-                    return json["ResObj"]
-                else:
-                    if json["StatusCode"] == "InvalidUserNameorPassword":
-                        err_type = ToshibaAcHttpApiAuthError
+        if status == 200 and _pick(body, "IsSuccess", "isSuccess"):
+            return _pick(body, "ResObj", "resObj")
 
-            raise err_type(json["Message"])
+        message = f"HTTP {status}: {_pick(body, 'Message', 'message') or ''}"
+        if status == 429:
+            raise ToshibaAcHttpApiRateLimitError(message)
+        if _pick(body, "StatusCode", "statusCode") == "InvalidUserNameorPassword":
+            raise ToshibaAcHttpApiAuthError(message)
+        raise ToshibaAcHttpApiError(message)
 
     async def connect(self) -> None:
         headers = {"Content-Type": "application/json"}

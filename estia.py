@@ -1,14 +1,17 @@
 import asyncio
+import sys
 import traceback
 from math import dist
 
-from estia_api import ToshibaAcHttpApi
+from estia_api import LoginBackoff, ToshibaAcHttpApi
 
 import time
 
-from common import connect_mqtt
-from secret import toshibaUsername, toshibaSecret
-from config import generalConfig as c, estiaConfig
+sys.stdout.reconfigure(line_buffering=True)
+
+from common import connect_mqtt  # noqa: E402
+from secret import toshibaUsername, toshibaSecret  # noqa: E402
+from config import generalConfig as c, estiaConfig  # noqa: E402
 
 def hex_to_number(hex_code):
     num = int(hex_code, 16)
@@ -31,15 +34,30 @@ async def main():
     client.loop_start()
 
     api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
-    await api.connect()
-    await api.get_devices()
+    backoff = LoginBackoff()
+    logged_in = False
     print("[estia] Started")
     previous_in_temp = 0
     previous_out_temp = 0
     tuv_active_latest = 999
     while True:
+        # Toshiba calls: a failure drops the token and waits for the backoff (change 019).
         try:
+            if not logged_in:
+                await api.connect()
+                await api.get_devices()
+                logged_in = True
+                print("[estia] Toshiba login OK")
             sensors = await api.get_device_detail(estiaConfig["device_unique_id"])
+            backoff.success(time.monotonic())
+        except Exception as e:
+            logged_in = False
+            delay = backoff.failure(time.monotonic())
+            print(f"[estia] Toshiba error: {e}; next login in {delay} s")
+            time.sleep(delay)
+            continue
+
+        try:
             if (c["debug"]): print(sensors)
             s = sensors["ACStateData"]
             tuv_compressor_active = s[4:6] == "01"
