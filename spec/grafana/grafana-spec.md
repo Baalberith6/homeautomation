@@ -498,9 +498,20 @@ Consolidated state vocabulary and colours for the status pills used across the r
 **Cars (wallbox / EV)**
 | State | Colour | Hex | Trigger |
 |---|---|---|---|
-| `CHARGING` | Orange | `#FF9830` | `charging_wallbox_power > 0` |
+| `CHARGING` | Orange | `#FF9830` | `charging_wallbox_power > 0.1` and the car's plug flag, and the car wins the tie rule |
+| `DRIVING` | Blue | `#5794F2` | `driving_<car>` > 0 in the last 10 min (change 021) |
 | `CONNECTED` | Green | `#73bf69` | Cable plugged, not drawing power |
 | `DISCONNECTED` | Gray | `#6a6a6a` | No cable / idle |
+
+The first matching row wins, in the table order. The panel does not need the car's time left for `CHARGING`, because the car's API can be hours old (change 021).
+
+**Tie rule.** There is one wallbox, so only one card can show `CHARGING`. If both plug flags are 1:
+
+1. The car with time left above 0 wins.
+2. If both cars have it, or neither has it, the car with the newer capture wins.
+3. If the captures are equal, the Enyaq wins.
+
+One function, `carStatus(car, other, chargeW)` (`CAR_STATUS_JS` in `build_dashboard.py`), applies the rules for both cards.
 
 **Heat pump**
 | State | Colour | Hex | Trigger |
@@ -584,7 +595,9 @@ Six-tier scale derived from the Outdoor panel. Use these tokens consistently acr
 - SoC `67%` → **S** (30)
 - Range / max / status / timeleft → **S** (30) — bumped from micro for tablet-in-sunlight legibility
 - Charge timeleft is rendered **unconverted in minutes** (e.g. `~640 min`), matching the raw `charging_time_left_*` field unit — no hours/minutes split, no amperage, no "to full" prefix
-- Status pills use **per-car plug state** from vehicle API (`plug_connected_enyaq`, `plug_connected_vw`): Charging (orange `pill-car-chg`), Connected (green `pill-car-conn`), Disconnected (gray `pill-car-disc`)
+- Status pills come from `carStatus()`: Charging (orange `pill-car-chg`), Driving (blue `pill-car-drv`), Connected (green `pill-car-conn`), Disconnected (gray `pill-car-disc`).
+  - Charging uses the wallbox power and the per-car plug state from the vehicle API (`plug_connected_enyaq`, `plug_connected_vw`), with the tie rule of "Status pills".
+  - Driving reads `driving_enyaq` / `driving_vw` from the last 10 min only. Nothing publishes `driving_vw` yet (change 021).
 - Address (row 3, conditional) → **S** (18), dim `#8e8e8e`, Street/City from reverse-geocoded GPS
 - Target label above marker → **micro** (~9–11)
 
