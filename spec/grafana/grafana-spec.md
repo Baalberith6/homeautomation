@@ -1201,7 +1201,7 @@ Per the **Status pills → Cars (wallbox / EV)** table: `CHARGING` (orange), `CO
 - **Data-capture age** shown when `enyaq_cap` / `vw_cap` > 0, appended after the address as `· N min ago` in a dimmer `.car-age` span (`#6e6e6e`). Computed in `afterRender` JS (`ageStr`): `just now` (<60 s) → `N min ago` → `N h ago` → `N d ago`; refreshes each 10 s panel cycle from browser time.
 - This is the car's **own capture time** (when the vehicle measured the data), **not** our fetch time — so the ID.3's age honestly reflects the EU Data Act portal's multi-hour lag.
 - `setRow3` hides the whole row only when both address and age are empty (so the ID.3, which has no GPS, still shows its age line).
-- Address pipeline: `skoda.py` → GPS lat/lon → Nominatim reverse geocode (cached per ~100 m) → MQTT `diag/Car/address_*` → Telegraf (string consumer) → InfluxDB `Car.address_enyaq` / `Car.address_vw`.
+- Address pipeline: `skoda.py` → GPS lat/lon → Nominatim reverse geocode (cached per ~100 m) → MQTT `diag/Car/address_enyaq` → Telegraf (string consumer) → InfluxDB `Car.address_enyaq`. `Car.address_vw` has no publisher today: `skoda.py` geocodes only the Enyaq, and the VW EU Data Act export has no location field (checked 2026-09-29). The `address_vw` query stays, for a later VW location field.
 - Capture-time pipeline: `skoda.py` (`level.last_updated`) / `vw_euda.py` (`capture_time()`) → epoch seconds → MQTT `home/Car/captured_*` → Telegraf (float consumer) → InfluxDB `Car.captured_enyaq` / `Car.captured_vw` → Flux `last()` → `data-*-cap` attribute → `afterRender`.
 
 ### Typography (v5)

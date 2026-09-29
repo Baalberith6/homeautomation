@@ -1,7 +1,9 @@
+import inspect
+import json
 import os
 import sys
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -37,8 +39,8 @@ SAMPLE = _payload({
 })
 
 
-def _interp(d, now):
-    return vw_euda.interpolate(d, now, capacity_kwh=75, efficiency=0.9)
+SNAPSHOT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "data", "vw_euda_snapshot_2026-09-28.json")
 
 
 class TestBuildFieldDict(unittest.TestCase):
@@ -114,64 +116,6 @@ class TestChargingHelpers(unittest.TestCase):
         self.assertEqual(vw_euda.charging_minutes_left(d), 0)
 
 
-class TestInterpolate(unittest.TestCase):
-    def test_at_capture_time_equals_reading(self):
-        d = vw_euda.build_field_dict([SAMPLE])
-        now = datetime(2026, 7, 7, 12, 0, tzinfo=timezone.utc)
-        r = _interp(d, now)
-        self.assertEqual(r["battery_level_vw"], 42)
-        self.assertEqual(r["electric_range_vw"], 208)   # real portal value
-        self.assertEqual(r["charging_time_left_vw"], 175)
-        self.assertEqual(r["plug_connected_vw"], 1)
-        self.assertEqual(r["charge_power_vw"], 8.5)
-        self.assertEqual(r["target_soc_vw"], 80)
-
-    def test_projects_forward_while_charging(self):
-        # +1h at 8.5kW into 75kWh * 0.9 = +10.2%  -> 52.2%
-        d = vw_euda.build_field_dict([SAMPLE])
-        now = datetime(2026, 7, 7, 13, 0, tzinfo=timezone.utc)
-        r = _interp(d, now)
-        self.assertEqual(r["battery_level_vw"], 52)
-        # range scales with the interpolated SoC: 208 * 52.2/42 ~= 259
-        self.assertEqual(r["electric_range_vw"], 259)
-        self.assertEqual(r["charging_time_left_vw"], 115)
-
-    def test_never_overshoots_target(self):
-        d = vw_euda.build_field_dict([SAMPLE])  # target 80
-        now = datetime(2026, 7, 7, 20, 0, tzinfo=timezone.utc)  # +8h
-        r = _interp(d, now)
-        self.assertEqual(r["battery_level_vw"], 80)
-
-    def test_settings_target_caps_lower(self):
-        d = vw_euda.build_field_dict([SAMPLE])
-        d["settings.target_soc"] = "60"
-        now = datetime(2026, 7, 7, 20, 0, tzinfo=timezone.utc)
-        r = _interp(d, now)
-        self.assertEqual(r["battery_level_vw"], 60)
-        self.assertEqual(r["target_soc_vw"], 60)
-
-    def test_no_projection_when_idle(self):
-        d = {"battery_level_HV.value": "50.0",
-             "battery_level_HV.state": "VALID",
-             "charging_state_report.current_charge_state":
-             "CHARGE_STATE_NOT_CHARGING",
-             "car_captured_utc_timestamp": CAPTURE}
-        now = datetime(2026, 7, 7, 15, 0, tzinfo=timezone.utc)
-        r = _interp(d, now)
-        self.assertEqual(r["battery_level_vw"], 50)
-        self.assertEqual(r["charging_time_left_vw"], 0)
-
-    def test_partial_snapshot_omits_unknowns(self):
-        d = {"battery_level_HV.value": "50.0",
-             "battery_level_HV.state": "VALID"}
-        now = datetime(2026, 7, 7, 15, 0, tzinfo=timezone.utc)
-        r = _interp(d, now)
-        self.assertEqual(r["battery_level_vw"], 50)   # no capture -> no proj.
-        self.assertNotIn("electric_range_vw", r)      # no 'value' -> omitted
-        self.assertNotIn("target_soc_vw", r)
-        self.assertNotIn("plug_connected_vw", r)
-
-
 class TestCaptureKey(unittest.TestCase):
     def test_prefers_keyed_entry_over_stale_duplicates(self):
         # The export repeats car_captured_* per domain; most are stale. The
@@ -231,20 +175,116 @@ class TestMergeCaptureAware(unittest.TestCase):
         self.assertEqual(d["battery_state_report.charge_power"], "8.5")
 
 
-class TestProjectionBound(unittest.TestCase):
-    def test_no_overshoot_when_anchor_is_stale(self):
-        # 24h-old charging reading must NOT project to the target cap.
+def _charging(remaining, capture=CAPTURE):
+    """A charging reading with a given remaining time and capture time."""
+    d = {"battery_level_HV.value": "50.0",
+         "battery_level_HV.state": "VALID",
+         "battery_state_report.charge_power": "7.0",
+         "battery_state_report.remaining_charging_time_complete": remaining,
+         "charging_state_report.current_charge_state":
+         "CHARGE_STATE_CHARGING_HV_BATTERY"}
+    if capture is not None:
+        d["car_captured_utc_timestamp"] = capture
+    return d
+
+
+CAPTURED_AT = datetime(2026, 7, 7, 12, 0, tzinfo=timezone.utc)
+
+
+def _at(minutes):
+    return CAPTURED_AT + timedelta(minutes=minutes)
+
+
+class TestBuildReadings(unittest.TestCase):
+    def test_soc_is_raw_while_charging(self):
         d = vw_euda.build_field_dict([SAMPLE])
-        now = datetime(2026, 7, 8, 12, 0, tzinfo=timezone.utc)   # +24h
-        r = vw_euda.interpolate(d, now, 75, 0.9, max_projection_min=30)
-        self.assertEqual(r["battery_level_vw"], 42)   # raw, not 60/80
+        r = vw_euda.build_readings(d, _at(60))
+        self.assertEqual(r["battery_level_vw"], 42)
+
+    def test_range_is_raw_while_charging(self):
+        d = vw_euda.build_field_dict([SAMPLE])
+        r = vw_euda.build_readings(d, _at(60))
         self.assertEqual(r["electric_range_vw"], 208)
 
-    def test_projects_within_window(self):
+    def test_other_fields_unchanged(self):
         d = vw_euda.build_field_dict([SAMPLE])
-        now = datetime(2026, 7, 7, 12, 20, tzinfo=timezone.utc)  # +20min
-        r = vw_euda.interpolate(d, now, 75, 0.9, max_projection_min=30)
-        self.assertGreater(r["battery_level_vw"], 42)
+        r = vw_euda.build_readings(d, _at(60))
+        self.assertEqual(r["plug_connected_vw"], 1)
+        self.assertEqual(r["charge_power_vw"], 8.5)
+        self.assertEqual(r["target_soc_vw"], 80)
+        self.assertEqual(r["captured_vw"], CAPTURED_AT.timestamp())
+
+    def test_no_estimation_parameters(self):
+        params = list(inspect.signature(vw_euda.build_readings).parameters)
+        self.assertEqual(params, ["d", "now"])
+        self.assertFalse(hasattr(vw_euda, "interpolate"))
+
+
+class TestTimeLeft(unittest.TestCase):
+    def test_raw_time_while_fresh(self):
+        r = vw_euda.build_readings(_charging("2400s"), _at(10))
+        self.assertEqual(r["charging_time_left_vw"], 40)   # no countdown
+
+    def test_boundary(self):
+        d = _charging("2400s")
+        self.assertEqual(
+            vw_euda.build_readings(d, _at(39))["charging_time_left_vw"], 40)
+        self.assertEqual(
+            vw_euda.build_readings(d, _at(40))["charging_time_left_vw"], 0)
+        self.assertEqual(
+            vw_euda.build_readings(d, _at(41))["charging_time_left_vw"], 0)
+
+    def test_long_charge_stays_while_fresh(self):
+        d = vw_euda.build_field_dict([SAMPLE])   # 10500s = 175 min
+        r = vw_euda.build_readings(d, _at(170))
+        self.assertEqual(r["charging_time_left_vw"], 175)
+
+    def test_unknown_capture_is_zero(self):
+        r = vw_euda.build_readings(_charging("2400s", capture=None), _at(10))
+        self.assertEqual(r["charging_time_left_vw"], 0)
+
+    def test_not_charging_is_zero(self):
+        d = {"battery_level_HV.value": "50.0",
+             "battery_level_HV.state": "VALID",
+             "charging_state_report.current_charge_state":
+             "CHARGE_STATE_NOT_CHARGING",
+             "car_captured_utc_timestamp": CAPTURE}
+        r = vw_euda.build_readings(d, _at(10))
+        self.assertEqual(r["battery_level_vw"], 50)
+        self.assertEqual(r["charging_time_left_vw"], 0)
+
+    def test_partial_snapshot_omits_unknowns(self):
+        d = {"battery_level_HV.value": "50.0",
+             "battery_level_HV.state": "VALID"}
+        r = vw_euda.build_readings(d, _at(10))
+        self.assertEqual(r["battery_level_vw"], 50)
+        self.assertNotIn("charging_time_left_vw", r)
+        self.assertNotIn("electric_range_vw", r)
+        self.assertNotIn("target_soc_vw", r)
+        self.assertNotIn("plug_connected_vw", r)
+
+
+class TestSnapshot20260928(unittest.TestCase):
+    """The frozen reading the portal served on the night of 2026-09-28."""
+
+    def _readings(self, now):
+        with open(SNAPSHOT_FILE) as fh:
+            payload = json.load(fh)
+        state = vw_euda.merge_capture_aware({}, payload)
+        return vw_euda.build_readings(vw_euda.state_values(state), now)
+
+    def test_frozen_snapshot_next_morning(self):
+        r = self._readings(datetime(2026, 9, 29, 6, 54, tzinfo=timezone.utc))
+        self.assertEqual(r["charging_time_left_vw"], 0)
+        self.assertEqual(r["battery_level_vw"], 65)
+        self.assertEqual(r["electric_range_vw"], 369)
+        self.assertEqual(r["plug_connected_vw"], 1)
+        self.assertEqual(r["charge_power_vw"], 6.700012)
+        self.assertEqual(r["target_soc_vw"], 60)
+
+    def test_snapshot_within_its_time_left(self):
+        r = self._readings(datetime(2026, 9, 28, 11, 30, tzinfo=timezone.utc))
+        self.assertEqual(r["charging_time_left_vw"], 40)
 
 
 if __name__ == "__main__":
