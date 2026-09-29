@@ -117,7 +117,8 @@ def _car(id, plug=0, time_left=0, driving=0, cap=100):
 def test_panel86_query_reads_driving():
     q = bd.PANEL_86_QUERY
     for car in ('enyaq', 'vw'):
-        assert re.search(r'%s_driving_default = array\.from\(rows: \[\{_time: 2000-01-01T00:00:00Z, _value: 0\.0\}\]\)' % car, q)
+        assert re.search(r'%s_driving_default = array\.from\(rows: '
+                         r'\[\{_time: 2000-01-01T00:00:00Z, _value: 0\.0\}\]\)' % car, q)
         assert re.search(r'  \|> range\(start: -10m\)\n  \|> filter\(fn: \(r\) => r\._measurement == "Car" and '
                          r'r\._field == "driving_%s"\)' % car, q)
         assert re.search(r'^%s_driving = if exists %s_driving_rec\._value then float\(v: %s_driving_rec\._value\) '
@@ -158,4 +159,3 @@ def test_panel86_after_render_uses_car_status():
 ])
 def test_car_status(car, other, charge_w, label):
     assert car_status(car, other, charge_w)['label'] == label
-
