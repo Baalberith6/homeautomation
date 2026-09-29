@@ -206,7 +206,7 @@
                 "type": "loki",
                 "uid": "fezr2b11231fkd"
               },
-              "expr": "sum by (unit) (count_over_time({host=\"lxc-scripts\", unit=~\"0-.+\"} |~ \"^ERROR \" [65m])) or sum by (unit) (count_over_time({unit=\"telegraf\"} |= \" E! \" [65m])) or sum by (unit) (count_over_time({unit=\"influxdb\"} |= \"lvl=error\" [65m])) or sum by (unit) (count_over_time({unit=\"mosquitto\"} |= \"Error\" [65m]))",
+              "expr": "sum by (unit) (count_over_time({host=\"lxc-scripts\", unit=~\"0-.+\"} |~ \"ERROR [A-Za-z0-9_.]+: \" [65m])) or sum by (unit) (count_over_time({unit=\"telegraf\"} |= \" E! \" [65m])) or sum by (unit) (count_over_time({unit=\"influxdb\"} |= \"lvl=error\" [65m])) or sum by (unit) (count_over_time({unit=\"mosquitto\"} |= \"Error\" [65m]))",
               "queryType": "instant",
               "intervalMs": 1000,
               "maxDataPoints": 43200
