@@ -27,6 +27,9 @@ from common import ConnectionLog, connect_mqtt, get_logger, setup_logging, subsc
 log = get_logger("wallbox")
 goe_log = ConnectionLog(log, "go-e MQTT")
 
+GOE_STALE_S = 10    # older go-e data: skip the control cycle (unchanged)
+GOE_OFFLINE_S = 60  # older go-e data: an ERROR line (change 020 revision 2); the charger sends nrg about every 1 s
+
 wallboxMode = "Auto"
 wallboxMaxAmp = 16
 wallboxStartSOC = 40
@@ -110,8 +113,12 @@ def calculate_current(inverter, actual_charging_current: int):
 
 
 def wallbox(inverter, client):
-    if updatedAt < (time.time() - 10):  # 10 sec timeout
-        goe_log.failed("no data for more than 10 s, Wallbox is OFFLINE")
+    stale = time.time() - updatedAt
+    if stale > GOE_STALE_S:
+        if stale > GOE_OFFLINE_S:
+            goe_log.failed(f"no data for more than {GOE_OFFLINE_S} s, Wallbox is OFFLINE")
+        else:
+            log.warning(f"no go-e data for {stale:.0f} s, control skipped")
         return
     goe_log.ok()
 
