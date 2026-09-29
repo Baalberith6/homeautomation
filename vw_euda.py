@@ -18,9 +18,12 @@ from datetime import datetime, timezone
 
 sys.stdout.reconfigure(line_buffering=True)
 
-from common import connect_mqtt  # noqa: E402
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging  # noqa: E402
 from config import skodaConfig, vwEudaConfig as cfg  # noqa: E402
 from vw_euda_auth import ApiError, EudaClient  # noqa: E402
+
+log = get_logger("vw_euda")
+portal_log = ConnectionLog(log, "EU Data Act portal")
 
 CHARGING_STATE = "CHARGE_STATE_CHARGING_HV_BATTERY"
 # The export repeats car_captured_(utc_)time once per vehicle data domain and
@@ -305,11 +308,12 @@ def main():
                           f"charging={is_charging(d)}, "
                           f"power={d.get('battery_state_report.charge_power')}"
                           f"kW, target={parse_target(d)}")
+                portal_log.ok()
             except ApiError as e:
-                print(f"[vw_euda] API error: {str(e)[:200]}")
+                portal_log.failed(f"API error: {str(e)[:200]}")
                 ident = None   # force re-resolving the data-request identifier
             except Exception as e:
-                print(f"[vw_euda] Fetch error: {str(e)[:200]}")
+                portal_log.failed(f"Fetch error: {str(e)[:200]}")
 
             # 2. Publish the last readings every tick.
             if state:
@@ -325,7 +329,7 @@ def main():
                           f"target={readings.get('target_soc_vw')}, "
                           f"power={readings.get('charge_power_vw')}kW")
                 except Exception as e:
-                    print(f"[vw_euda] Publish error: {str(e)[:200]}")
+                    log.error(f"Publish error: {str(e)[:200]}")
 
             time.sleep(cfg["poll_interval"])
     finally:
@@ -334,4 +338,5 @@ def main():
 
 
 if __name__ == "__main__":
+    setup_logging()
     main()

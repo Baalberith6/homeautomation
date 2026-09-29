@@ -11,9 +11,12 @@ from carconnectivity.charging import Charging  # noqa: E402
 from carconnectivity.charging_connector import ChargingConnector  # noqa: E402
 from carconnectivity.vehicle import GenericVehicle  # noqa: E402
 
-from common import connect_mqtt  # noqa: E402
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging  # noqa: E402
 from config import skodaConfig  # noqa: E402
 from secret import carConnectivityConfig  # noqa: E402
+
+log = get_logger("skoda")
+cc_log = ConnectionLog(log, "CarConnectivity")
 
 
 def is_charging(vehicle):
@@ -96,7 +99,7 @@ def get_address(lat, lon):
         _geo_cache[key] = result
         return result
     except Exception as e:
-        print(f"[skoda] Geocode error: {e}")
+        log.error(f"Geocode error: {e}")
         return ""
 
 
@@ -117,6 +120,7 @@ async def main():
                     loop.run_in_executor(None, car_connectivity.fetch_all),
                     timeout=FETCH_TIMEOUT
                 )
+                cc_log.ok()
                 garage = car_connectivity.get_garage()
                 for vehicle in garage.list_vehicles():
                     if vehicle.vin.value == skodaConfig["vin_skoda"]:
@@ -176,18 +180,16 @@ async def main():
                     # VW ID.3 (vin_vw) is now read from the EU Data Act portal
                     # (see vw_euda.py); VW shut down the carconnectivity API.
             except asyncio.TimeoutError:
-                print(f"[skoda] fetch_all() timed out after"
-                      f" {FETCH_TIMEOUT}s, reconnecting...")
+                cc_log.failed(f"fetch_all() timed out after {FETCH_TIMEOUT}s, reconnecting")
                 try:
                     car_connectivity.shutdown()
                 except Exception:
                     pass
                 car_connectivity = carconnectivity.CarConnectivity(
                     config=carConnectivityConfig)
-                print("[skoda] Reconnected")
+                log.info("Reconnected")
             except Exception as e:
-                error_msg = str(e)[:200]
-                print(f"[skoda] Error: {error_msg}")
+                cc_log.failed(str(e)[:200])
             await asyncio.sleep(120)
     finally:
         if car_connectivity:
@@ -196,4 +198,5 @@ async def main():
 
 
 if __name__ == "__main__":
+    setup_logging()
     asyncio.run(main())

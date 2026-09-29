@@ -159,7 +159,8 @@ class ToshibaAcHttpApi:
         url = self.BASE_URL + path
 
         if not self.session:
-            self.session = aiohttp.ClientSession()
+            # 30 s in total; the aiohttp default is 300 s (change 020).
+            self.session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=30))
 
         method_args = {"params": get, "headers": headers}
 

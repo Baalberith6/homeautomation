@@ -1,0 +1,55 @@
+# Promtail on lxc-logs (192.168.1.58): the file of record for /etc/promtail/config.yml (change 020).
+# rsyslog on .58 writes /var/log/remote/<host>/<program>.log. Promtail sends the files of the
+# watched units to Loki, with the labels job, host and unit. There is no pid label: each restart
+# would make a new stream.
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+clients:
+  - url: http://127.0.0.1:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: remote
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: remote
+          host: lxc-scripts
+          __path__: /var/log/remote/lxc-scripts/0-*.log
+      - targets: [localhost]
+        labels:
+          job: remote
+          host: lxc-monitoring
+          unit: telegraf
+          __path__: /var/log/remote/lxc-monitoring/telegraf.log
+      - targets: [localhost]
+        labels:
+          job: remote
+          host: lxc-monitoring
+          unit: influxdb
+          __path__: /var/log/remote/lxc-monitoring/influxd-systemd-start.sh.log
+      - targets: [localhost]
+        labels:
+          job: remote
+          host: lxc-mqtt
+          unit: mosquitto
+          __path__: /var/log/remote/lxc-mqtt/mosquitto.log
+    pipeline_stages:
+      # rsyslog line: "2026-09-29T21:39:57+02:00 lxc-scripts 0-vw_euda[321786]: INFO vw_euda: ..."
+      - regex:
+          expression: '^(?P<ts>\S+)\s+(?P<h>\S+)\s+(?P<u>[^\[:\s]+)(\[\d+\])?:\s+(?P<message>.*)$'
+      - timestamp:
+          source: ts
+          format: RFC3339
+      # The unit of a 0-* file comes from the line; the other files set it as a static label.
+      - match:
+          selector: '{host="lxc-scripts"}'
+          stages:
+            - labels:
+                unit: u
+      - output:
+          source: message

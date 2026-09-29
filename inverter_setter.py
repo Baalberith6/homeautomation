@@ -3,8 +3,10 @@ import asyncio
 import goodwe
 
 from config import generalConfig as c, inverterConfig
-from common import connect_mqtt
+from common import connect_mqtt, get_logger, setup_logging, subscribe_on_connect
 from paho.mqtt import client as mqtt_client
+
+log = get_logger("inverter_setter")
 
 soc = 0
 stop_charging_at_soc = 90
@@ -41,10 +43,14 @@ async def handle_inverter_battery_charge_current():
     global last_curr_set
     val = target_current(soc, stop_charging_at_soc)
     if val != last_curr_set:
-        inverter = await goodwe.connect(inverterConfig["ip_address"])
-        last_curr_set = val
-        print(f"[inverter_setter] Set battery_charge_current: {val}A (SOC: {soc}%)")
-        await inverter.write_setting("battery_charge_current", val)
+        try:
+            inverter = await goodwe.connect(inverterConfig["ip_address"])
+            last_curr_set = val
+            print(f"[inverter_setter] Set battery_charge_current: {val}A (SOC: {soc}%)")
+            await inverter.write_setting("battery_charge_current", val)
+        except Exception as e:
+            log.exception(f"GoodWe write of battery_charge_current {val}A failed: {e}")
+            raise
     else:
         if c["debug"]: print(f"[inverter_setter] No change: {val}A for battery_charge_current")
 
@@ -53,9 +59,13 @@ async def handle_inverter_depth_of_discharge(val):
     global last_dod_set
     if val != last_dod_set:
         last_dod_set = val
-        inverter = await goodwe.connect(inverterConfig["ip_address"])
-        print(f"[inverter_setter] Set dod: {val}%")
-        await inverter.set_ongrid_battery_dod(val)
+        try:
+            inverter = await goodwe.connect(inverterConfig["ip_address"])
+            print(f"[inverter_setter] Set dod: {val}%")
+            await inverter.set_ongrid_battery_dod(val)
+        except Exception as e:
+            log.exception(f"GoodWe write of dod {val}% failed: {e}")
+            raise
     else:
         if c["debug"]: print(f"[inverter_setter] No change: {val}% for dod")
 
@@ -78,8 +88,7 @@ def subscribe(client: mqtt_client, topics: [str]):
             soc = int(msg.payload.decode())
             asyncio.run(handle_inverter_battery_charge_current())
 
-    for topic in topics:
-        client.subscribe(topic)
+    subscribe_on_connect(client, topics)
     client.on_message = on_message
 
 
@@ -91,4 +100,5 @@ def run():
 
 
 if __name__ == '__main__':
+    setup_logging()
     run()

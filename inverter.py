@@ -1,20 +1,27 @@
 import asyncio
 import json
-import traceback
 
 import goodwe
 import time
 
 from config import generalConfig as c, inverterConfig
-from common import connect_mqtt
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging
+
+log = get_logger("inverter")
+goodwe_log = ConnectionLog(log, "GoodWe")
 
 
 async def publish(client):
-    inverter = await goodwe.connect(host=inverterConfig["ip_address"], retries=10, timeout=5)
+    try:
+        inverter = await goodwe.connect(host=inverterConfig["ip_address"], retries=10, timeout=5)
+    except Exception as e:
+        log.error(f"GoodWe connect failed: {e}")
+        raise
     print("[inverter] Started")
     while True:
         try:
             runtime_data = await inverter.read_runtime_data()
+            goodwe_log.ok()
 
             client.publish("home/FVE/power/1", runtime_data["ppv1"])
             client.publish("home/FVE/power/2", runtime_data["ppv2"])
@@ -67,8 +74,7 @@ async def publish(client):
                         print(f"{sensor.id_}: \t\t {sensor.name} = {runtime_data[sensor.id_]} {sensor.unit}")
                 print("---INVERTER END---\n\n\n")
         except Exception as e:
-            print(f"[inverter] Error: {e}")
-            traceback.print_exc()
+            goodwe_log.failed(e, exc_info=True)
         time.sleep(inverterConfig["wait"])
 
 
@@ -79,4 +85,5 @@ def run():
 
 
 if __name__ == '__main__':
+    setup_logging()
     run()

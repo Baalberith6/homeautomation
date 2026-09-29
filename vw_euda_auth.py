@@ -29,6 +29,9 @@ import requests
 from config import generalConfig as c
 from config import vwEudaConfig as cfg
 from secret import carConnectivityConfig
+from common import get_logger
+
+log = get_logger("vw_euda")
 
 USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
@@ -209,8 +212,7 @@ class EudaClient:
         try:
             s.get(cfg["base_url"] + "/", timeout=20)
         except requests.RequestException as e:
-            if c["debug"]:
-                print(f"[vw_euda] priming GET failed (ignored): {e}")
+            log.warning(f"priming GET failed (ignored): {e}")
 
         # 1. Start OIDC at the identity provider (authorize URL built
         #    directly; the portal's redirect servlet 500s for non-browsers).
@@ -282,9 +284,7 @@ class EudaClient:
         except requests.RequestException as e:
             raise ApiError(f"Connection error for {url}: {e}") from e
         if r.status_code in (401, 403) and _retry:
-            if c["debug"]:
-                print(f"[vw_euda] Session expired ({r.status_code}); "
-                      "re-authenticating")
+            log.warning(f"Session expired ({r.status_code}); re-authenticating")
             self._logged_in = False
             self.login()
             return self._get(url, headers=headers, _retry=False)

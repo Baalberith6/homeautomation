@@ -1,9 +1,12 @@
 import time
 import tinytuya
 
-from common import connect_mqtt
+from common import ConnectionLog, connect_mqtt, default_requests_timeout, get_logger, setup_logging
 from config import moesCo2Config, generalConfig as c
 from secret import tuyaApiKey, tuyaApiSecret
+
+log = get_logger("moes_co2")
+tuya_log = ConnectionLog(log, "Tuya cloud")
 
 
 class MOESCo2Sensor:
@@ -33,8 +36,7 @@ class MOESCo2Sensor:
                 print("Tuya device authenticated successfully")
             return True
         except Exception as e:
-            if c["debug"]:
-                print(f"Error initializing Tuya device: {e}")
+            tuya_log.failed(f"init: {e}")
             return False
     
     def needs_reauth(self):
@@ -73,6 +75,7 @@ class MOESCo2Sensor:
             
             # Extract CO2 value from status
             if 'result' in status and isinstance(status['result'], list):
+                tuya_log.ok()
                 result_list = status['result']
                 
                 # Look for co2_value in the result list
@@ -90,13 +93,11 @@ class MOESCo2Sensor:
                         print(f"CO2 value not found in result list: {result_list}")
                     return None
             else:
-                if c["debug"]:
-                    print(f"No result list in status: {status}")
+                tuya_log.failed(f"no result in status: {status}")
                 return None
                 
         except Exception as e:
-            if c["debug"]:
-                print(f"Error getting CO2 value: {e}")
+            tuya_log.failed(e)
             return None
     
     def publish_co2_data(self, co2_value):
@@ -118,8 +119,7 @@ class MOESCo2Sensor:
         
         # Initialize Tuya device once at startup
         if not self.initialize_tuya_device():
-            if c["debug"]:
-                print("Failed to initialize Tuya device, exiting...")
+            log.error("Failed to initialize Tuya device, exiting")
             return
         
         if c["debug"]:
@@ -151,4 +151,6 @@ def main():
 
 
 if __name__ == "__main__":
+    default_requests_timeout(30)  # tinytuya calls requests with no timeout (change 020)
+    setup_logging()
     main()

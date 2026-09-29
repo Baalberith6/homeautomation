@@ -1,6 +1,5 @@
 import json
 import time as ttime
-import traceback
 from datetime import datetime, time, timedelta, timezone
 from pprint import pprint
 from zoneinfo import ZoneInfo
@@ -9,9 +8,12 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from metno_locationforecast import Place, Forecast
 
-from common import connect_mqtt
+from common import ConnectionLog, connect_mqtt, default_requests_timeout, get_logger, setup_logging
 from config import generalConfig as c, influxConfig
 from secret import influxToken
+
+log = get_logger("yr")
+yr_log = ConnectionLog(log, "yr.no")
 
 prdikov = Place("Malý Jeníkov", 49.15049, 15.23491, 578)
 forecast = Forecast(prdikov, "Matej Pristak/1.0 matej.pristak@gmail.com", "compact")
@@ -94,9 +96,9 @@ def publish(client):
                     temps[interval.start_time.timestamp()] = interval.variables["air_temperature"].value
 
                 client.publish("jsons/weatherforecast/yr/tomorrow", json.dumps(temps)).wait_for_publish()
+            yr_log.ok()
         except Exception as e:
-            print(f"[yr] Error: {e}")
-            traceback.print_exc()
+            yr_log.failed(e, exc_info=True)
         ttime.sleep(1800)
 
 
@@ -107,4 +109,6 @@ def run():
 
 
 if __name__ == '__main__':
+    default_requests_timeout(30)  # metno_locationforecast calls requests with no timeout (change 020)
+    setup_logging()
     run()
