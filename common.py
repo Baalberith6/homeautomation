@@ -1,3 +1,4 @@
+import functools
 import logging
 import sys
 import time
@@ -61,6 +62,29 @@ def setup_logging():
     handler.setLevel(logging.WARNING)
     root.addHandler(handler)
     root.setLevel(logging.WARNING)
+
+
+def default_requests_timeout(seconds):
+    """Give each requests call of this process that has no timeout this one (change 020).
+
+    For the services whose libraries call requests with no timeout and take no
+    parameter for it (metno_locationforecast in yr.py, tinytuya in moes_co2.py).
+    socket.setdefaulttimeout() does not reach them: requests passes timeout=None
+    down to the socket, and the socket then blocks.
+    """
+    import requests
+    request = requests.Session.request
+    if getattr(request, "default_timeout", None) is not None:
+        request = request.__wrapped__
+
+    @functools.wraps(request)
+    def with_timeout(self, method, url, *args, **kwargs):
+        if len(args) < 7 and kwargs.get("timeout") is None:
+            kwargs["timeout"] = seconds
+        return request(self, method, url, *args, **kwargs)
+
+    with_timeout.default_timeout = seconds
+    requests.Session.request = with_timeout
 
 
 class ConnectionLog:

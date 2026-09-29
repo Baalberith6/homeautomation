@@ -1,7 +1,7 @@
 import time
 import tinytuya
 
-from common import connect_mqtt
+from common import connect_mqtt, default_requests_timeout
 from config import moesCo2Config, generalConfig as c
 from secret import tuyaApiKey, tuyaApiSecret
 
@@ -151,4 +151,5 @@ def main():
 
 
 if __name__ == "__main__":
+    default_requests_timeout(30)  # tinytuya calls requests with no timeout (change 020)
     main()

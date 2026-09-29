@@ -1,13 +1,16 @@
 from lxml import html
 import requests
-import traceback
 
 import asyncio
 import time
 
 from config import generalConfig as c
-from common import connect_mqtt
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging
 from config import rehauConfig
+
+log = get_logger("rehau")
+rehau_log = ConnectionLog(log, "Rehau")
+REHAU_TIMEOUT = 10  # seconds; local device, 60 s scrape cycle (change 020)
 
 rooms = {
     0: "Hala",
@@ -26,7 +29,7 @@ async def main():
 
     while True:
         try:
-            r = requests.get(url=rehauConfig["ip_address"] + "installer-room-page.html")
+            r = requests.get(url=rehauConfig["ip_address"] + "installer-room-page.html", timeout=REHAU_TIMEOUT)
             tree = html.fromstring(r.text)
             elements = tree.xpath('//div[@class="textCenter"]/form/button/div/text()')
             result_dict = {}
@@ -39,7 +42,8 @@ async def main():
                 headers = {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 }
-                r = requests.post(url=rehauConfig["ip_address"] + "room-operating.html",headers=headers, data=str(room_id)+"=")
+                r = requests.post(url=rehauConfig["ip_address"] + "room-operating.html", headers=headers, data=str(room_id)+"=",
+                                  timeout=REHAU_TIMEOUT)
                 tree = html.fromstring(r.text)
                 room_name = tree.xpath('//button[@class="divRooms buttonRooms"]/input[@class="labelLeft pinkR fontArial roomName inputName"]')[0].value
                 temp = tree.xpath('//button[@class="divRooms buttonRooms"]/label/text()')[0]
@@ -50,19 +54,20 @@ async def main():
                 client.publish("home/rehau_set/" + room_name, temp_set).wait_for_publish()
                 client.publish("home/rehau_hum/" + room_name, int(humidity)).wait_for_publish()
 
-            r = requests.get(url=rehauConfig["ip_address"] + "installer-inputoutput.html")
+            r = requests.get(url=rehauConfig["ip_address"] + "installer-inputoutput.html", timeout=REHAU_TIMEOUT)
             tree = html.fromstring(r.text)
             outputs = tree.xpath('//div[@class="textCenter"]/label/text()')[1].split(':')[1].strip()
             for i, room_val in enumerate(outputs.split(' ')[:7]):
                 room_name = rooms[i]
                 if c["debug"]: print(f"OUTPUT {room_name}: {room_val}")
                 client.publish("home/rehau_output/" + room_name, room_val).wait_for_publish()
+            rehau_log.ok()
         except Exception as e:
-            print(f"[rehau] Error: {e}")
-            traceback.print_exc()
+            rehau_log.failed(e, exc_info=True)
         time.sleep(60)
 
 
 if __name__ == "__main__":
+    setup_logging()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())

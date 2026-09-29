@@ -52,7 +52,8 @@ rooms = [
 
 def _request(payload: dict, path: str):
     r = requests.post(
-        url=rehauConfig["ip_address"] + '/' + path, data=payload
+        url=rehauConfig["ip_address"] + '/' + path, data=payload,
+        timeout=10,  # seconds; the local Rehau controller (change 020)
     )
     return r
 

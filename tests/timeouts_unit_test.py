@@ -132,5 +132,38 @@ class TestEstiaApiTimeout(unittest.TestCase):
         self.assertEqual(timeout.total, 30)
 
 
+class TestDefaultRequestsTimeout(unittest.TestCase):
+    """Change 020, spec revision 1b: a requests call with no timeout gets one, in yr.py and moes_co2.py.
+
+    socket.setdefaulttimeout() does not reach requests: requests passes timeout=None to the socket.
+    """
+
+    def setUp(self):
+        self.addCleanup(setattr, requests.Session, "request", requests.Session.request)
+        self.timeouts = []
+
+        def recorder(session, method, url, *args, **kwargs):
+            self.timeouts.append(kwargs.get("timeout"))
+
+        self.recorder = recorder
+        requests.Session.request = recorder
+
+    def test_calls_without_timeout_get_one(self):
+        import common
+        common.default_requests_timeout(30)
+        requests.get("http://example.invalid/")
+        requests.post("http://example.invalid/", data="x")
+        requests.get("http://example.invalid/", timeout=5)
+        self.assertEqual(self.timeouts, [30, 30, 5])
+
+    def test_second_call_does_not_wrap_twice(self):
+        import common
+        common.default_requests_timeout(30)
+        common.default_requests_timeout(10)
+        self.assertIs(requests.Session.request.__wrapped__, self.recorder)
+        requests.get("http://example.invalid/")
+        self.assertEqual(self.timeouts, [10])
+
+
 if __name__ == '__main__':
     unittest.main()

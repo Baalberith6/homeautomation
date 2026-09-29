@@ -9,7 +9,7 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from metno_locationforecast import Place, Forecast
 
-from common import connect_mqtt
+from common import connect_mqtt, default_requests_timeout
 from config import generalConfig as c, influxConfig
 from secret import influxToken
 
@@ -107,4 +107,5 @@ def run():
 
 
 if __name__ == '__main__':
+    default_requests_timeout(30)  # metno_locationforecast calls requests with no timeout (change 020)
     run()
