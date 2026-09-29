@@ -356,7 +356,7 @@
           "change": "020"
         },
         "annotations": {
-          "summary": "mosquitto: port 1883 not reachable for 2 min"
+          "summary": "mosquitto: port 1883 not reachable for 2 min, or no data from Telegraf on lxc-monitoring"
         }
       },
       {
@@ -445,6 +445,93 @@
         },
         "annotations": {
           "summary": "lxc-scripts: no log line reached Loki for 30 min"
+        }
+      },
+      {
+        "uid": "020-scripts-metrics",
+        "title": "Metrics from lxc-scripts",
+        "orgID": 1,
+        "folderUID": "alerts",
+        "ruleGroup": "020",
+        "condition": "C",
+        "data": [
+          {
+            "refId": "A",
+            "queryType": "",
+            "relativeTimeRange": {
+              "from": 180,
+              "to": 0
+            },
+            "datasourceUid": "ceyru5v6xg3r4b",
+            "model": {
+              "refId": "A",
+              "datasource": {
+                "type": "influxdb",
+                "uid": "ceyru5v6xg3r4b"
+              },
+              "query": "from(bucket: \"default\")\n  |> range(start: -3m)\n  |> filter(fn: (r) => r._measurement == \"systemd_units\" and r._field == \"active_code\" and r.host == \"lxc-scripts\")\n  |> group()\n  |> count()\n  |> map(fn: (r) => ({r with unit: \"telegraf-lxc-scripts\", _value: float(v: r._value)}))\n  |> group(columns: [\"unit\"])\n  |> keep(columns: [\"_value\", \"unit\"])",
+              "intervalMs": 1000,
+              "maxDataPoints": 43200
+            }
+          },
+          {
+            "refId": "B",
+            "relativeTimeRange": {
+              "from": 0,
+              "to": 0
+            },
+            "datasourceUid": "__expr__",
+            "model": {
+              "refId": "B",
+              "datasource": {
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "type": "reduce",
+              "expression": "A",
+              "reducer": "last",
+              "settings": {
+                "mode": "dropNN"
+              }
+            }
+          },
+          {
+            "refId": "C",
+            "relativeTimeRange": {
+              "from": 0,
+              "to": 0
+            },
+            "datasourceUid": "__expr__",
+            "model": {
+              "refId": "C",
+              "datasource": {
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "type": "threshold",
+              "expression": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "lt",
+                    "params": [
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "for": "0s",
+        "noDataState": "Alerting",
+        "execErrState": "Alerting",
+        "isPaused": false,
+        "labels": {
+          "change": "020"
+        },
+        "annotations": {
+          "summary": "lxc-scripts: no systemd metrics for 3 min, Telegraf on lxc-scripts"
         }
       }
     ]
