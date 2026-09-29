@@ -138,7 +138,7 @@ def test_panel86_after_render_uses_car_status():
     rest = a.replace(bd.CAR_STATUS_JS, '')
     assert rest.count('carStatus(') == 2
     assert 'dataset.enyaqDriving' in rest and 'dataset.vwDriving' in rest
-    assert 'vTime>0' not in a and 'eTime>0' not in a
+    assert 'var enyaqCharging' not in a and 'var vwCharging' not in a
 
 
 @needs_node
