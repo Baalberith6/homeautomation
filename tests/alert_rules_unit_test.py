@@ -166,6 +166,29 @@ class TestRules(unittest.TestCase):
         self.assertEqual(policy["repeat_interval"], "24h")
 
 
+class TestMessages(unittest.TestCase):
+    """020 revision 3 (owner, 2026-09-30): a message shows the service and the log line."""
+
+    def test_r3_carries_the_line(self):
+        query = _query(_rules()["020-error-line"])
+        self.assertEqual(query.count("sum by (unit, line)"), 4)
+        self.assertEqual(query.count('label_format line="{{ trunc 200'), 4)
+
+    def test_message_template(self):
+        config = _config()
+        self.assertEqual(config["template"]["name"], "home")
+        with open(os.path.join(_DIR, "alerts", config["template"]["file"])) as fh:
+            text = fh.read()
+        for needle in ('define "home.title"', 'define "home.message"', ".Labels.line", ".CommonLabels.unit",
+                       ".Annotations.summary", ".Alerts.Resolved"):
+            self.assertIn(needle, text)
+
+    def test_summaries_without_unit(self):
+        # A no-data alert has no unit label: its summary must still read as a sentence.
+        for uid in ("020-unit-down", "020-restart-loop", "020-error-line"):
+            self.assertIn("{{ if $labels.unit }}", _rules()[uid]["annotations"]["summary"], uid)
+
+
 class TestPush(unittest.TestCase):
 
     TOKEN = "secret-token-020-do-not-print"
@@ -182,6 +205,15 @@ class TestPush(unittest.TestCase):
         self.assertNotIn(self.TOKEN, text)
         self.assertIn("PUT /api/v1/provisioning/folder/alerts/rule-groups/020", text)
         self.assertIn("PUT /api/v1/provisioning/policies", text)
+
+    def test_push_dry_run_lists_template(self):
+        push = _push_module()
+        with patch.dict(os.environ, {"GRAFANA_TOKEN": self.TOKEN}), \
+                patch.object(push, "requests") as requests_mock, \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            push.main(["--dry-run"])
+        self.assertEqual(requests_mock.method_calls, [])
+        self.assertIn("PUT /api/v1/provisioning/templates/home", out.getvalue())
 
     def test_push_stops_without_contact_point(self):
         push = _push_module()
