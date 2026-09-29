@@ -2,6 +2,10 @@
 vw_euda_cookies.pickle
 vw_euda_cookies.dev.pickle
 
+# Saved Toshiba access tokens (change 019, revision 2) — never commit.
+toshiba_token_*.json
+toshiba_token_*.json.tmp
+
 # Python bytecode
 __pycache__/
 *.pyc

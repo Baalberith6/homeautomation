@@ -3,7 +3,7 @@ import sys
 import traceback
 from math import dist
 
-from estia_api import LoginBackoff, ToshibaAcHttpApi
+from estia_api import LoginBackoff, ToshibaAcHttpApi, ToshibaAcHttpApiAuthError
 
 import time
 
@@ -12,6 +12,9 @@ sys.stdout.reconfigure(line_buffering=True)
 from common import connect_mqtt  # noqa: E402
 from secret import toshibaUsername, toshibaSecret  # noqa: E402
 from config import generalConfig as c, estiaConfig  # noqa: E402
+
+# This service's own Device-ID for the Toshiba firewall (change 019, revision 2).
+DEVICE_ID = "f358e8c78fffd63f"
 
 def hex_to_number(hex_code):
     num = int(hex_code, 16)
@@ -33,7 +36,8 @@ async def main():
     client = connect_mqtt("toshiba-estia")
     client.loop_start()
 
-    api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
+    token_path = "toshiba_token_estia.dev.json" if c["debug"] else "toshiba_token_estia.json"
+    api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret, device_id=DEVICE_ID, token_path=token_path)
     backoff = LoginBackoff()
     logged_in = False
     print("[estia] Started")
@@ -44,15 +48,17 @@ async def main():
         # Toshiba calls: a failure drops the token and waits for the backoff (change 019).
         try:
             if not logged_in:
-                await api.connect()
+                source = await api.connect()
                 await api.get_devices()
                 logged_in = True
-                print("[estia] Toshiba login OK")
+                print(f"[estia] Toshiba login OK ({source})")
             sensors = await api.get_device_detail(estiaConfig["device_unique_id"])
             backoff.success(time.monotonic())
         except Exception as e:
             logged_in = False
             delay = backoff.failure(time.monotonic())
+            if isinstance(e, ToshibaAcHttpApiAuthError) or delay >= backoff.last_step:
+                api.forget_token()
             print(f"[estia] Toshiba error: {e}; next login in {delay} s")
             time.sleep(delay)
             continue
