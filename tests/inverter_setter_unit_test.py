@@ -1,10 +1,14 @@
+import asyncio
+import io
 import sys
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 # Mock heavy external dependency that may not be installed locally
 sys.modules.setdefault('goodwe', MagicMock())
 
+import common  # noqa: E402
+import inverter_setter  # noqa: E402
 from inverter_setter import charging_curve, target_current  # noqa: E402
 
 
@@ -56,6 +60,48 @@ class TestTargetCurrent(unittest.TestCase):
     def test_soc_equal_to_stop_is_0(self):
         self.assertEqual(0, target_current(90, 90))
         self.assertEqual(6, target_current(89, 90))
+
+
+class TestResubscribe(unittest.TestCase):
+    """Change 020, D9: inverter_setter subscribes again after an MQTT reconnect."""
+
+    TOPICS = ['command/InverterDepthOfDischarge', 'command/InverterStopChargingAt', 'home/FVE/soc']
+
+    def test_subscribes_on_each_connect(self):
+        client = common.new_client("test020-inverter_setter")
+        client.subscribe = MagicMock()
+        inverter_setter.subscribe(client, self.TOPICS)
+        self.assertEqual(client.subscribe.call_count, 0)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            client.on_connect(client, None, {}, 0, None)
+            client.on_connect(client, None, {}, 0, None)
+        self.assertEqual([c.args[0] for c in client.subscribe.call_args_list], self.TOPICS * 2)
+
+
+class TestWriteFailure(unittest.TestCase):
+    """Change 020: a failed GoodWe write writes one ERROR, then raises as before."""
+
+    def test_charge_current_write_failure(self):
+        inverter = MagicMock()
+        inverter.write_setting = AsyncMock(side_effect=OSError("udp timeout"))
+        with patch.object(inverter_setter.goodwe, "connect", new=AsyncMock(return_value=inverter)), \
+                patch.object(inverter_setter, "last_curr_set", -1), \
+                patch.object(inverter_setter, "soc", 50), \
+                patch.object(inverter_setter, "stop_charging_at_soc", 90), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(OSError):
+                asyncio.run(inverter_setter.handle_inverter_battery_charge_current())
+        self.assertEqual(out.getvalue().count("ERROR inverter_setter:"), 1)
+
+    def test_dod_write_failure(self):
+        inverter = MagicMock()
+        inverter.set_ongrid_battery_dod = AsyncMock(side_effect=OSError("udp timeout"))
+        with patch.object(inverter_setter.goodwe, "connect", new=AsyncMock(return_value=inverter)), \
+                patch.object(inverter_setter, "last_dod_set", -1), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(OSError):
+                asyncio.run(inverter_setter.handle_inverter_depth_of_discharge(80))
+        self.assertEqual(out.getvalue().count("ERROR inverter_setter:"), 1)
 
 
 if __name__ == '__main__':

@@ -1,5 +1,8 @@
+import io
 import unittest
+from unittest.mock import MagicMock, patch
 
+import common
 import wallbox
 from wallbox import calculate_current, clean_data
 
@@ -568,6 +571,45 @@ class TestWallboxSOCDropBoundary(unittest.TestCase):
             "battery_soc": 76
         }
         self.assertEqual(0, calculate_current(data_76, 6))
+
+
+class TestResubscribe(unittest.TestCase):
+    """Change 020, D9: wallbox subscribes again after an MQTT reconnect."""
+
+    TOPICS = ['wallbox/inverter', 'go-eCharger/201630/#', 'command/WallboxMode']
+
+    def test_subscribes_on_each_connect(self):
+        client = common.new_client("test020-wallbox")
+        client.subscribe = MagicMock()
+        wallbox.subscribe(client, self.TOPICS)
+        self.assertEqual(client.subscribe.call_count, 0)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            client.on_connect(client, None, {}, 0, None)
+            client.on_connect(client, None, {}, 0, None)
+        self.assertEqual([c.args[0] for c in client.subscribe.call_args_list], self.TOPICS * 2)
+
+
+class TestOfflineLog(unittest.TestCase):
+    """Change 020: "Wallbox is OFFLINE" is an ERROR, at most one per minute, and one INFO when data is back."""
+
+    def setUp(self):
+        fresh = patch.object(wallbox, "goe_log", common.ConnectionLog(wallbox.log, "go-e MQTT"))
+        fresh.start()
+        self.addCleanup(fresh.stop)
+
+    def _call(self, now, updated_at, mode="Auto"):
+        with patch.object(wallbox, "updatedAt", updated_at), \
+                patch.object(wallbox, "wallboxMode", mode), \
+                patch("wallbox.time.time", return_value=now), \
+                patch("common.time.monotonic", return_value=now), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            wallbox.wallbox({}, MagicMock())
+        return out.getvalue()
+
+    def test_offline_error_then_restored(self):
+        out = self._call(1000.0, 0) + self._call(1005.0, 0)
+        self.assertEqual(out.count("ERROR wallbox: go-e MQTT failed"), 1)
+        self.assertEqual(self._call(2000.0, 1999.0, mode="Disable"), "INFO wallbox: go-e MQTT restored\n")
 
 
 if __name__ == '__main__':

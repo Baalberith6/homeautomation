@@ -10,6 +10,8 @@ for _mod in ('influxdb_client', 'influxdb_client.client',
              'influxdb_client.client.write_api'):
     sys.modules.setdefault(_mod, MagicMock())
 
+import common  # noqa: E402
+import estia_energy  # noqa: E402
 from estia_energy import calculate_cop, merge_arrays
 from estia_energy import replace_two_highest_with
 
@@ -161,6 +163,22 @@ class TestForgetTokenEnergy(unittest.TestCase):
         self.assertEqual(self.api.forget_token.call_count, 0)
         self._tick(38, 1960)
         self.assertEqual(self.api.forget_token.call_count, 1)
+
+
+class TestResubscribe(unittest.TestCase):
+    """Change 020, D9: estia_energy subscribes again after an MQTT reconnect."""
+
+    TOPICS = ['jsons/weather/local/temps_24h']
+
+    def test_subscribes_on_each_connect(self):
+        client = common.new_client("test020-estia_energy")
+        client.subscribe = MagicMock()
+        estia_energy.subscribe(client, self.TOPICS)
+        self.assertEqual(client.subscribe.call_count, 0)
+        with patch("sys.stdout", new_callable=io.StringIO):
+            client.on_connect(client, None, {}, 0, None)
+            client.on_connect(client, None, {}, 0, None)
+        self.assertEqual([c.args[0] for c in client.subscribe.call_args_list], self.TOPICS * 2)
 
 
 if __name__ == '__main__':
