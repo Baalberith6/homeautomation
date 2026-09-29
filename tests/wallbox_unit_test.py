@@ -606,6 +606,26 @@ class TestOfflineLog(unittest.TestCase):
             wallbox.wallbox({}, MagicMock())
         return out.getvalue()
 
+    def test_short_gap_is_warning_not_error(self):
+        # 020 revision 2 (owner, 2026-09-30): a gap of 10-60 s skips control, but it is no ERROR.
+        out = self._call(1000.0, 985.0)
+        self.assertNotIn("ERROR", out)
+        self.assertIn("WARNING wallbox: no go-e data for 15 s", out)
+
+    def test_long_gap_is_error(self):
+        out = self._call(1000.0, 939.0)
+        self.assertIn("ERROR wallbox: go-e MQTT failed: no data for more than 60 s", out)
+
+    def test_control_skipped_after_10_s(self):
+        client = MagicMock()
+        with patch.object(wallbox, "updatedAt", 985.0), \
+                patch.object(wallbox, "wallboxMode", "Start"), \
+                patch.object(wallbox, "car", 2), \
+                patch("wallbox.time.time", return_value=1000.0), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            wallbox.wallbox({"battery_soc": 50}, client)
+        client.publish.assert_not_called()
+
     def test_offline_error_then_restored(self):
         out = self._call(1000.0, 0) + self._call(1005.0, 0)
         self.assertEqual(out.count("ERROR wallbox: go-e MQTT failed"), 1)
