@@ -1,0 +1,13 @@
+{{/* Change 020 revision 3: the Pushover title and body. The contact point "Pushover" uses them:
+     Title   {{ template "home.title" . }}
+     Message {{ template "home.message" . }}
+     The body shows the log line of R3 (label "line"), or the summary of the other rules. */}}
+{{ define "home.title" -}}
+{{ if .CommonLabels.unit }}{{ .CommonLabels.unit }}{{ else }}home automation{{ end }} — {{ .CommonLabels.alertname }}{{ if eq .Status "resolved" }}: resolved{{ end }}
+{{- end }}
+
+{{ define "home.message" -}}
+{{ range .Alerts.Firing }}{{ if .Labels.line }}{{ .Labels.line }}{{ else }}{{ .Annotations.summary }}{{ end }}
+{{ end }}{{ range .Alerts.Resolved }}Resolved: {{ if .Labels.line }}{{ .Labels.line }}{{ else }}{{ .Annotations.summary }}{{ end }}
+{{ end }}
+{{- end }}

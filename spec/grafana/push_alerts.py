@@ -10,8 +10,10 @@ GRAFANA_TOKEN is the service account token (grafanaServiceAccountToken in secret
 reads it from the environment only and never prints it. --dry-run sends nothing.
 
 --push needs the contact point named in 020-rules.json; the owner makes it in the Grafana UI, so
-the Pushover keys never pass through this script. Every call sends X-Disable-Provenance, so the
-rules and the policy stay editable in the UI. The push does not touch any dashboard.
+the Pushover keys never pass through this script. --push also sends the notification template
+"home"; the contact point uses it through its Title and Message fields, which the owner sets.
+Every call sends X-Disable-Provenance, so the rules and the policy stay editable in the UI. The
+push does not touch any dashboard.
 
 Spec: ../kb/work/020-failures-visible-automatically/spec.md
 """
@@ -35,12 +37,19 @@ def load():
         return json.load(fh)
 
 
+def load_template(config):
+    """The notification template of the Pushover message (change 020 revision 3)."""
+    with open(os.path.join(HERE, "alerts", config["template"]["file"])) as fh:
+        return {"template": fh.read()}
+
+
 def planned_calls(config):
     """The calls of --push, in order: (method, path, body)."""
     folder = config["folder"]
     group = config["rule_group"]
     return [
         ("GET", "/api/v1/provisioning/contact-points", None),
+        ("PUT", f"/api/v1/provisioning/templates/{config['template']['name']}", load_template(config)),
         ("POST", "/api/folders", folder),
         ("PUT", f"/api/v1/provisioning/folder/{folder['uid']}/rule-groups/{group['title']}", group),
         ("PUT", "/api/v1/provisioning/policies", config["policy"]),
@@ -82,6 +91,9 @@ def push(api, config):
         print(f"The contact point {config['contact_point']!r} does not exist. Make it in the Grafana UI first.",
               file=sys.stderr)
         return 3
+    name = config["template"]["name"]
+    api.put(f"/api/v1/provisioning/templates/{name}", load_template(config))
+    print(f"pushed the notification template {name!r}")
     folder = config["folder"]
     if api.get(f"/api/folders/{folder['uid']}", allow=(404,)) is None:
         api.post("/api/folders", folder)
@@ -104,6 +116,8 @@ def delete(api, config):
     group = config["rule_group"]
     api.delete(f"/api/v1/provisioning/folder/{folder['uid']}/rule-groups/{group['title']}", allow=(404,))
     api.delete(f"/api/folders/{folder['uid']}", allow=(404,))
+    # The contact point may still name the template: set its Title and Message back first.
+    api.delete(f"/api/v1/provisioning/templates/{config['template']['name']}", allow=(404,))
     if os.path.exists(BACKUP):
         with open(BACKUP) as fh:
             api.put("/api/v1/provisioning/policies", json.load(fh))
@@ -111,7 +125,7 @@ def delete(api, config):
     else:
         api.delete("/api/v1/provisioning/policies")
         print("reset the policy to the Grafana default")
-    print(f"deleted rule group {group['title']!r} and folder {folder['title']!r}")
+    print(f"deleted rule group {group['title']!r}, folder {folder['title']!r} and template {config['template']['name']!r}")
     return 0
 
 
