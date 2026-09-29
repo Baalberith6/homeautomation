@@ -28,6 +28,16 @@ class FakeConnectorConnectionState(Enum):
     UNKNOWN = 'unknown unlock plug state'
 
 
+# Change 021: the library's vehicle state (carconnectivity/vehicle.py:237-246)
+class FakeVehicleState(Enum):
+    OFFLINE = 'offline'
+    PARKED = 'parked'
+    IGNITION_ON = 'ignition_on'
+    DRIVING = 'driving'
+    INVALID = 'invalid'
+    UNKNOWN = 'unknown vehicle state'
+
+
 # Wire the fake enums into mock modules before importing skoda
 mock_charging_mod = MagicMock()
 mock_charging_mod.Charging.ChargingState = FakeChargingState
@@ -39,6 +49,7 @@ mock_connector_mod.ChargingConnector.ChargingConnectorConnectionState = (
 
 mock_vehicle_mod = MagicMock()
 mock_vehicle_mod.GenericVehicle.ConnectionState = FakeConnectionState
+mock_vehicle_mod.GenericVehicle.State = FakeVehicleState
 
 sys.modules.setdefault('carconnectivity', MagicMock())
 sys.modules['carconnectivity.carconnectivity'] = MagicMock()
@@ -251,6 +262,72 @@ class TestPublishTargetSoc(unittest.TestCase):
         self.assertIsNone(
             self._get_publish_value(client, "home/Car/target_soc_vw"),
         )
+
+
+class TestIsDriving(unittest.TestCase):
+    """Change 021: Driving is the library's DRIVING or IGNITION_ON state."""
+
+    def _vehicle(self, state):
+        v = _make_vehicle("VIN1")
+        v.state.value = state
+        return v
+
+    def test_driving(self):
+        self.assertTrue(skoda.is_driving(self._vehicle(FakeVehicleState.DRIVING)))
+
+    def test_ignition_on(self):
+        self.assertTrue(skoda.is_driving(self._vehicle(FakeVehicleState.IGNITION_ON)))
+
+    def test_not_driving_states(self):
+        for state in (FakeVehicleState.PARKED, FakeVehicleState.OFFLINE,
+                      FakeVehicleState.INVALID, FakeVehicleState.UNKNOWN):
+            with self.subTest(state=state):
+                self.assertFalse(skoda.is_driving(self._vehicle(state)))
+
+    def test_missing_state(self):
+        v = _make_vehicle("VIN1")
+        del v.state
+        self.assertFalse(skoda.is_driving(v))
+
+
+class TestPublishDriving(unittest.TestCase):
+    """Change 021: the main loop publishes home/Car/driving_enyaq."""
+
+    def _run_one_cycle(self, enyaq_state, vw_state):
+        from config import skodaConfig
+        enyaq = _make_vehicle(skodaConfig["vin_skoda"])
+        enyaq.state.value = enyaq_state
+        vw = _make_vehicle(skodaConfig["vin_vw"])
+        vw.state.value = vw_state
+
+        mock_client = MagicMock()
+        mock_client.publish.return_value = MagicMock()
+        mock_cc = MagicMock()
+        mock_garage = MagicMock()
+        mock_garage.list_vehicles.return_value = [enyaq, vw]
+        mock_cc.get_garage.return_value = mock_garage
+
+        with patch('skoda.connect_mqtt', return_value=mock_client), \
+             patch('skoda.carconnectivity.CarConnectivity', return_value=mock_cc), \
+             patch('skoda.asyncio.sleep', side_effect=LoopBreak):
+            with self.assertRaises(LoopBreak):
+                asyncio.run(skoda.main())
+        return mock_client
+
+    def _values(self, client, topic):
+        return [c[0][1] for c in client.publish.call_args_list if c[0][0] == topic]
+
+    def test_publishes_driving_1(self):
+        client = self._run_one_cycle(FakeVehicleState.DRIVING, FakeVehicleState.PARKED)
+        self.assertEqual(self._values(client, "home/Car/driving_enyaq"), [1])
+
+    def test_publishes_driving_0(self):
+        client = self._run_one_cycle(FakeVehicleState.PARKED, FakeVehicleState.DRIVING)
+        self.assertEqual(self._values(client, "home/Car/driving_enyaq"), [0])
+
+    def test_no_driving_vw(self):
+        client = self._run_one_cycle(FakeVehicleState.PARKED, FakeVehicleState.DRIVING)
+        self.assertEqual(self._values(client, "home/Car/driving_vw"), [])
 
 
 if __name__ == "__main__":

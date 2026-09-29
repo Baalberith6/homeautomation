@@ -2024,6 +2024,27 @@ vw_plug_rec = union(tables: [vw_plug_default, vw_plug_real])
   |> sort(columns: ["_time"]) |> last()
   |> findRecord(fn: (key) => true, idx: 0)
 
+// -- Driving: the last 10 min only, whatever the dashboard range (change 021) --
+enyaq_driving_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+enyaq_driving_real = from(bucket: "default")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "driving_enyaq")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+enyaq_driving_rec = union(tables: [enyaq_driving_default, enyaq_driving_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
+vw_driving_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
+vw_driving_real = from(bucket: "default")
+  |> range(start: -10m)
+  |> filter(fn: (r) => r._measurement == "Car" and r._field == "driving_vw")
+  |> last()
+  |> keep(columns: ["_time", "_value"])
+vw_driving_rec = union(tables: [vw_driving_default, vw_driving_real])
+  |> sort(columns: ["_time"]) |> last()
+  |> findRecord(fn: (key) => true, idx: 0)
+
 // -- Target SoC --
 enyaq_target_default = array.from(rows: [{_time: 2000-01-01T00:00:00Z, _value: 0.0}])
 enyaq_target_real = from(bucket: "default")
@@ -2111,6 +2132,8 @@ vw_time = if exists vw_time_rec._value then math.round(x: float(v: vw_time_rec._
 charge_w = if exists charge_rec._value then float(v: charge_rec._value) else 0.0
 enyaq_plug = if exists enyaq_plug_rec._value then float(v: enyaq_plug_rec._value) else 0.0
 vw_plug = if exists vw_plug_rec._value then float(v: vw_plug_rec._value) else 0.0
+enyaq_driving = if exists enyaq_driving_rec._value then float(v: enyaq_driving_rec._value) else 0.0
+vw_driving = if exists vw_driving_rec._value then float(v: vw_driving_rec._value) else 0.0
 enyaq_target = if exists enyaq_target_rec._value then math.round(x: float(v: enyaq_target_rec._value)) else 0.0
 vw_target = if exists vw_target_rec._value then math.round(x: float(v: vw_target_rec._value)) else 0.0
 enyaq_addr = if exists enyaq_addr_rec._value then string(v: enyaq_addr_rec._value) else ""
@@ -2122,6 +2145,7 @@ array.from(rows: [{
   enyaq_soc: enyaq_soc, enyaq_range: enyaq_range, enyaq_max: enyaq_max, enyaq_time: enyaq_time, enyaq_target: enyaq_target,
   vw_soc: vw_soc, vw_range: vw_range, vw_max: vw_max, vw_time: vw_time, vw_target: vw_target,
   charge_w: charge_w, enyaq_plug: enyaq_plug, vw_plug: vw_plug,
+  enyaq_driving: enyaq_driving, vw_driving: vw_driving,
   enyaq_addr: enyaq_addr, vw_addr: vw_addr, enyaq_cap: enyaq_cap, vw_cap: vw_cap,
 }])"""
 
@@ -2147,6 +2171,7 @@ PANEL_86_CONTENT = r"""<style>
 .pill-car-disc{background:rgba(142,142,142,.10);color:#8e8e8e;border-color:rgba(142,142,142,.18)}
 .pill-car-chg{background:rgba(255,152,48,.14);color:#FF9830;border-color:rgba(255,152,48,.28)}
 .pill-car-conn{background:rgba(115,191,105,.14);color:#73bf69;border-color:rgba(115,191,105,.28)}
+.pill-car-drv{background:rgba(87,148,242,.14);color:#5794F2;border-color:rgba(87,148,242,.28)}
 .pill-car .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 @keyframes car-pulse{0%,100%{opacity:1}50%{opacity:.4}}
 .car-card.charging .car-soc-bar .gradient{animation:car-pulse 2s ease-in-out infinite}
@@ -2157,7 +2182,8 @@ PANEL_86_CONTENT = r"""<style>
   data-enyaq-soc="{{enyaq_soc}}" data-enyaq-range="{{enyaq_range}}" data-enyaq-max="{{enyaq_max}}" data-enyaq-time="{{enyaq_time}}" data-enyaq-target="{{enyaq_target}}"
   data-vw-soc="{{vw_soc}}" data-vw-range="{{vw_range}}" data-vw-max="{{vw_max}}" data-vw-time="{{vw_time}}" data-vw-target="{{vw_target}}"
   data-charge-w="{{charge_w}}" data-enyaq-plug="{{enyaq_plug}}" data-vw-plug="{{vw_plug}}"
-  data-enyaq-cap="{{enyaq_cap}}" data-vw-cap="{{vw_cap}}">
+  data-enyaq-cap="{{enyaq_cap}}" data-vw-cap="{{vw_cap}}"
+  data-enyaq-driving="{{enyaq_driving}}" data-vw-driving="{{vw_driving}}">
 
   <div class="car-card" id="car-enyaq">
     <div class="car-row1">
@@ -2204,7 +2230,24 @@ PANEL_86_CONTENT = r"""<style>
   </div>
 </div>"""
 
-PANEL_86_AFTER_RENDER = r"""var root=document.getElementById("cars-root");
+# Change 021: one status rule for both car cards. Charging comes from the wallbox
+# power and the plug flag; there is one wallbox, so only one card can win it.
+CAR_STATUS_JS = r"""function carStatus(car,other,chargeW){
+  var wins=true;
+  if(other.plug>0){
+    var a=car.timeLeft>0,b=other.timeLeft>0;
+    if(a!==b)wins=a;
+    else if(car.cap!==other.cap)wins=car.cap>other.cap;
+    else wins=car.id==="enyaq";
+  }
+  if(chargeW>0.1&&car.plug>0&&wins)return{cls:"pill-car-chg",label:"Charging"};
+  if(car.driving>0)return{cls:"pill-car-drv",label:"Driving"};
+  if(car.plug>0)return{cls:"pill-car-conn",label:"Connected"};
+  return{cls:"pill-car-disc",label:"Disconnected"};
+}
+"""
+
+PANEL_86_AFTER_RENDER = CAR_STATUS_JS + r"""var root=document.getElementById("cars-root");
 if(!root)return;
 var eSoc=parseFloat(root.dataset.enyaqSoc)||0;
 var eTime=parseFloat(root.dataset.enyaqTime)||0;
@@ -2256,37 +2299,25 @@ if(esTxt)esTxt.style.color=socColor(eSoc);
 var vsTxt=document.getElementById("vw-soc-text");
 if(vsTxt)vsTxt.style.color=socColor(vSoc);
 
-// Status pills — per-car plug state from vehicle API
+// Status pills — one rule for both cards (change 021)
 var eStat=document.getElementById("enyaq-status");
 var vStat=document.getElementById("vw-status");
-
-var enyaqCharging=ePlug>0&&chargeW>0.1&&eTime>0;
-var vwCharging=vPlug>0&&chargeW>0.1&&vTime>0;
+var eDrv=parseFloat(root.dataset.enyaqDriving)||0;
+var vDrv=parseFloat(root.dataset.vwDriving)||0;
+var eCar={id:"enyaq",plug:ePlug,timeLeft:eTime,driving:eDrv,cap:eCap};
+var vCar={id:"vw",plug:vPlug,timeLeft:vTime,driving:vDrv,cap:vCap};
 
 function pill(cls,label){return '<span class="pill-car '+cls+'"><span class="dot"></span>'+label+'</span>';}
-
-if(eStat){
-  if(enyaqCharging){
-    eStat.innerHTML=pill("pill-car-chg","Charging");
-    var eCard=document.getElementById("car-enyaq");
-    if(eCard)eCard.classList.add("charging");
-  }else if(ePlug>0){
-    eStat.innerHTML=pill("pill-car-conn","Connected");
-  }else{
-    eStat.innerHTML=pill("pill-car-disc","Disconnected");
+function showStatus(el,cardId,st){
+  if(!el)return;
+  el.innerHTML=pill(st.cls,st.label);
+  if(st.label==="Charging"){
+    var card=document.getElementById(cardId);
+    if(card)card.classList.add("charging");
   }
 }
-if(vStat){
-  if(vwCharging){
-    vStat.innerHTML=pill("pill-car-chg","Charging");
-    var vCard=document.getElementById("car-vw");
-    if(vCard)vCard.classList.add("charging");
-  }else if(vPlug>0){
-    vStat.innerHTML=pill("pill-car-conn","Connected");
-  }else{
-    vStat.innerHTML=pill("pill-car-disc","Disconnected");
-  }
-}
+showStatus(eStat,"car-enyaq",carStatus(eCar,vCar,chargeW));
+showStatus(vStat,"car-vw",carStatus(vCar,eCar,chargeW));
 
 // Time left
 var eTimeEl=document.getElementById("enyaq-time");

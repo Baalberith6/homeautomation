@@ -37,6 +37,18 @@ def is_plug_connected(vehicle):
     return state == ChargingConnector.ChargingConnectorConnectionState.CONNECTED
 
 
+def is_driving(vehicle):
+    """Driving or ignition on, from the library's vehicle state (change 021).
+
+    The connector checks offline first, so a car with cached data is not driving.
+    """
+    try:
+        state = vehicle.state.value
+    except AttributeError:
+        return False
+    return state in (GenericVehicle.State.DRIVING, GenericVehicle.State.IGNITION_ON)
+
+
 def calculate_charging_time_remaining(vehicle):
     """Calculate remaining charging time in minutes from estimated completion date"""
     if not is_charging(vehicle):
@@ -120,6 +132,9 @@ async def main():
                         plug = is_plug_connected(vehicle)
                         client.publish("home/Car/plug_connected_enyaq", int(plug)).wait_for_publish()
 
+                        driving = is_driving(vehicle)
+                        client.publish("home/Car/driving_enyaq", int(driving)).wait_for_publish()
+
                         try:
                             target_soc = vehicle.charging.settings.target_level.value
                         except (AttributeError, KeyError):
@@ -153,7 +168,11 @@ async def main():
                             client.publish("diag/Car/address_enyaq", address).wait_for_publish()
 
                         charging_state = vehicle.charging.state.value
-                        print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, captured={captured}, addr={address}")
+                        try:
+                            vehicle_state = vehicle.state.value
+                        except AttributeError:
+                            vehicle_state = None
+                        print(f"[skoda] Enyaq: SOC={soc}%, range={range_km}km, charging={charging_state}, plug={'Y' if plug else 'N'}, time_left={time_remaining}min, target={target_soc}, captured={captured}, state={vehicle_state}, addr={address}")
                     # VW ID.3 (vin_vw) is now read from the EU Data Act portal
                     # (see vw_euda.py); VW shut down the carconnectivity API.
             except asyncio.TimeoutError:
