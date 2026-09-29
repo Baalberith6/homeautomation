@@ -1,25 +1,28 @@
 import asyncio
 import json
+import sys
 import threading
+import time
 from datetime import datetime, timedelta
 
-from estia_api import ToshibaAcHttpApi
+from estia_api import LoginBackoff, ToshibaAcHttpApi
 
-from paho.mqtt import client as mqtt_client
-from common import connect_mqtt
-from config import influxConfig
-from secret import toshibaUsername, toshibaSecret, influxToken
-from config import generalConfig as c, estiaConfig
-from influxdb_client import InfluxDBClient, Point
-from influxdb_client.client.write_api import SYNCHRONOUS
+sys.stdout.reconfigure(line_buffering=True)
 
-# every 5 min, calc COP for last 24h
+from paho.mqtt import client as mqtt_client  # noqa: E402
+from common import connect_mqtt  # noqa: E402
+from config import influxConfig  # noqa: E402
+from secret import toshibaUsername, toshibaSecret, influxToken  # noqa: E402
+from config import generalConfig as c, estiaConfig  # noqa: E402
+from influxdb_client import InfluxDBClient, Point  # noqa: E402
+from influxdb_client.client.write_api import SYNCHRONOUS  # noqa: E402
+
+# once per hour at minute 22, calc COP for the last 24h
 
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
 
 api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
-connected = False
 heat_loss = 143 # W/K
 temps = [18] * 24
 
@@ -89,40 +92,79 @@ def calculate_cop(consumption_24h: list, temp_avgs_24h: list):
     if c["debug"]: print(f"COP: {cop}")
     return cop, total_consumption
 
-async def calc():
-    await asyncio.sleep(60) # wait for temps to arrive
-    # Retry logic for initial connect and get_devices
-    while True:
-        try:
+def new_state():
+    """Loop state: token, a due hourly COP, and the earliest next Toshiba try."""
+    return {"logged_in": False, "due": False, "due_hour": None, "next_try": 0.0}
+
+
+async def fetch_consumption(api):
+    """The rolling 24 h of hourly consumption, in Wh, from the Toshiba cloud."""
+    today = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
+    yesterday = (await api.get_hourly_consumption(
+        estiaConfig["device_unique_id"], datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
+    if c["debug"]:
+        print(f"Received Today Hourly usages: `{today}` from Toshiba")
+        print(f"Received Yesterday Hourly usages: `{yesterday}` from Toshiba")
+    return merge_arrays([item["Energy"] for item in today], [item["Energy"] for item in yesterday])
+
+
+async def tick(api, state, backoff, now, mono):
+    """One minute of the COP loop (change 019).
+
+    The COP falls due at minute 22, once per hour. A failed Toshiba call drops
+    the token and waits for the backoff step; the due COP stays due until a
+    try works. `now` is the wall clock, `mono` a monotonic time in seconds.
+    """
+    hour = now.strftime("%Y%m%d%H")
+    if now.minute == 22 and state["due_hour"] != hour:
+        state["due"] = True
+        state["due_hour"] = hour
+    if state["logged_in"] and not state["due"]:
+        return
+    if mono < state["next_try"]:
+        return
+
+    try:
+        if not state["logged_in"]:
             await api.connect()
             await api.get_devices()
-            break
-        except Exception as e:
-            if c["debug"]:
-                print(f"Error during api.connect/get_devices: {e}")
-            await asyncio.sleep(60)
+            state["logged_in"] = True
+            print("[estia_energy] Toshiba login OK")
+        usage = await fetch_consumption(api) if state["due"] else None
+        backoff.success(mono)
+    except Exception as e:
+        state["logged_in"] = False
+        delay = backoff.failure(mono)
+        state["next_try"] = mono + delay
+        print(f"[estia_energy] Toshiba error: {e}; next login in {delay} s")
+        return
 
+    if usage is None:
+        return
+    state["due"] = False
+    if c["debug"]:
+        print(f"Merged Hourly usages: `{usage}` from Toshiba")
+    try:
+        cop, total_consumption = calculate_cop(usage, temps)
+    except Exception as e:
+        print(f"[estia_energy] COP error: {e}")
+        return
+    try:
+        write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop_24h", float(cop)))
+        write_api.write(bucket=influxConfig["bucket"],
+                        record=Point("Estia").field("consumption_24h", float(total_consumption)))
+    except Exception as e:
+        print(f"[estia_energy] InfluxDB error: {e}")
+
+
+async def calc():
+    await asyncio.sleep(60)  # wait for temps to arrive
+    state = new_state()
+    backoff = LoginBackoff()
     while True:
-        try:
-            if datetime.now().minute != 22: # wait for 15 past
-                await asyncio.sleep(60)
-                continue
-            hourly_usage = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
-            hourly_usage_yesterday = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
-            hourly_usage_merged = merge_arrays([item["Energy"] for item in hourly_usage], [item["Energy"] for item in hourly_usage_yesterday])
+        await tick(api, state, backoff, datetime.now(), time.monotonic())
+        await asyncio.sleep(60)
 
-            if c["debug"]: print(f"Received Today Hourly usages: `{hourly_usage}` from Toshiba")
-            if c["debug"]: print(f"Received Yesterday Hourly usages: `{hourly_usage_yesterday}` from Toshiba")
-            if c["debug"]: print(f"Merged Hourly usages: `{hourly_usage_merged}` from Toshiba")
-
-            cop, total_consumption = calculate_cop(hourly_usage_merged, temps)
-            write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("cop_24h", float(cop)))
-            write_api.write(bucket=influxConfig["bucket"], record=Point("Estia").field("consumption_24h", float(total_consumption)))
-            await asyncio.sleep(60)
-        except Exception as e:
-            if c["debug"]:
-                print(f"Error in calc loop: {e}")
-            await asyncio.sleep(60)
 
 def start_async_loop():
     loop = asyncio.new_event_loop()
