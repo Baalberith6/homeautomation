@@ -358,6 +358,94 @@
         "annotations": {
           "summary": "mosquitto: port 1883 not reachable for 2 min"
         }
+      },
+      {
+        "uid": "020-log-path",
+        "title": "Log path",
+        "orgID": 1,
+        "folderUID": "alerts",
+        "ruleGroup": "020",
+        "condition": "C",
+        "data": [
+          {
+            "refId": "A",
+            "queryType": "instant",
+            "relativeTimeRange": {
+              "from": 1800,
+              "to": 0
+            },
+            "datasourceUid": "fezr2b11231fkd",
+            "model": {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "fezr2b11231fkd"
+              },
+              "expr": "sum by (host) (count_over_time({host=\"lxc-scripts\"}[30m]))",
+              "queryType": "instant",
+              "intervalMs": 1000,
+              "maxDataPoints": 43200
+            }
+          },
+          {
+            "refId": "B",
+            "relativeTimeRange": {
+              "from": 0,
+              "to": 0
+            },
+            "datasourceUid": "__expr__",
+            "model": {
+              "refId": "B",
+              "datasource": {
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "type": "reduce",
+              "expression": "A",
+              "reducer": "last",
+              "settings": {
+                "mode": "dropNN"
+              }
+            }
+          },
+          {
+            "refId": "C",
+            "relativeTimeRange": {
+              "from": 0,
+              "to": 0
+            },
+            "datasourceUid": "__expr__",
+            "model": {
+              "refId": "C",
+              "datasource": {
+                "type": "__expr__",
+                "uid": "__expr__"
+              },
+              "type": "threshold",
+              "expression": "B",
+              "conditions": [
+                {
+                  "evaluator": {
+                    "type": "lt",
+                    "params": [
+                      1
+                    ]
+                  }
+                }
+              ]
+            }
+          }
+        ],
+        "for": "0s",
+        "noDataState": "Alerting",
+        "execErrState": "Alerting",
+        "isPaused": false,
+        "labels": {
+          "change": "020"
+        },
+        "annotations": {
+          "summary": "lxc-scripts: no log line reached Loki for 30 min"
+        }
       }
     ]
   },
