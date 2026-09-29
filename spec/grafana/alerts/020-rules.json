@@ -1,6 +1,10 @@
 {
   "_comment": "Change 020: pushed by spec/grafana/push_alerts.py. Spec: ../kb/work/020-failures-visible-automatically/spec.md",
   "contact_point": "Pushover",
+  "template": {
+    "name": "home",
+    "file": "020-message.tmpl"
+  },
   "folder": {
     "uid": "alerts",
     "title": "Alerts"
@@ -94,7 +98,7 @@
           "change": "020"
         },
         "annotations": {
-          "summary": "{{ $labels.unit }}: not active for 2 min"
+          "summary": "{{ if $labels.unit }}{{ $labels.unit }}: not active for 2 min{{ else }}no systemd data: check Telegraf and InfluxDB{{ end }}"
         }
       },
       {
@@ -181,7 +185,7 @@
           "change": "020"
         },
         "annotations": {
-          "summary": "{{ $labels.unit }}: more than 3 restarts in 10 min"
+          "summary": "{{ if $labels.unit }}{{ $labels.unit }}: more than 3 restarts in 10 min{{ else }}no systemd data: check Telegraf and InfluxDB{{ end }}"
         }
       },
       {
@@ -206,7 +210,7 @@
                 "type": "loki",
                 "uid": "fezr2b11231fkd"
               },
-              "expr": "sum by (unit) (count_over_time({host=\"lxc-scripts\", unit=~\"0-.+\"} |~ \"ERROR [A-Za-z0-9_.]+: \" [65m])) or sum by (unit) (count_over_time({unit=\"telegraf\"} |= \" E! \" [65m])) or sum by (unit) (count_over_time({unit=\"influxdb\"} |= \"lvl=error\" [65m])) or sum by (unit) (count_over_time({unit=\"mosquitto\"} |= \"Error\" [65m]))",
+              "expr": "sum by (unit, line) (count_over_time({host=\"lxc-scripts\", unit=~\"0-.+\"} |~ \"ERROR [A-Za-z0-9_.]+: \" | regexp \"(?P<line>ERROR [A-Za-z0-9_.]+: .*)\" | label_format line=\"{{ trunc 200 .line }}\" [65m])) or sum by (unit, line) (count_over_time({unit=\"telegraf\"} |= \" E! \" | regexp \"(?P<line>E! .*)\" | label_format line=\"{{ trunc 200 .line }}\" [65m])) or sum by (unit, line) (count_over_time({unit=\"influxdb\"} |= \"lvl=error\" | logfmt | label_format line=\"{{ trunc 200 .msg }}\" [65m])) or sum by (unit, line) (count_over_time({unit=\"mosquitto\"} |= \"Error\" | regexp \"^[0-9]+: (?P<line>.*)\" | label_format line=\"{{ trunc 200 .line }}\" [65m]))",
               "queryType": "instant",
               "intervalMs": 1000,
               "maxDataPoints": 43200
@@ -269,7 +273,7 @@
           "change": "020"
         },
         "annotations": {
-          "summary": "{{ $labels.unit }}: error line in the log"
+          "summary": "{{ if $labels.unit }}{{ $labels.unit }}: error line in the log{{ else }}the Loki query failed{{ end }}"
         }
       },
       {
