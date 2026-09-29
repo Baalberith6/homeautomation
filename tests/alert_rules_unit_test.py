@@ -23,7 +23,10 @@ STATES = {
     "020-restart-loop": ("0s", "Alerting", "Alerting"),
     "020-error-line": ("0s", "OK", "Alerting"),
     "020-broker-port": ("2m", "Alerting", "Alerting"),
+    # R5 (spec revision 1c): silence from lxc-scripts means the log path is broken, so no data fires.
+    "020-log-path": ("0s", "Alerting", "Alerting"),
 }
+LOKI_RULES = ("020-error-line", "020-log-path")
 
 
 def _config():
@@ -56,7 +59,7 @@ def _push_module():
 
 class TestRules(unittest.TestCase):
 
-    def test_four_rules(self):
+    def test_five_rules(self):
         config = _config()
         group = config["rule_group"]
         self.assertEqual(config["folder"], {"uid": "alerts", "title": "Alerts"})
@@ -99,9 +102,16 @@ class TestRules(unittest.TestCase):
         self.assertIn('"192.168.1.52"', _query(rule))
         self.assertEqual(_threshold(rule), {"type": "gt", "params": [0]})
 
+    def test_r5_query(self):
+        rule = _rules()["020-log-path"]
+        query = _query(rule)
+        self.assertIn('{host="lxc-scripts"}', query)
+        self.assertIn("[30m]", query)
+        self.assertEqual(_threshold(rule), {"type": "lt", "params": [1]})
+
     def test_datasource_uids(self):
         for uid, rule in _rules().items():
-            want = LOKI_UID if uid == "020-error-line" else INFLUX_UID
+            want = LOKI_UID if uid in LOKI_RULES else INFLUX_UID
             self.assertEqual(rule["data"][0]["datasourceUid"], want, uid)
 
     def test_summary_names_unit(self):
@@ -109,6 +119,8 @@ class TestRules(unittest.TestCase):
             summary = rule["annotations"]["summary"]
             if uid == "020-broker-port":
                 self.assertTrue(summary.startswith("mosquitto: "), summary)
+            elif uid == "020-log-path":
+                self.assertTrue(summary.startswith("lxc-scripts: "), summary)
             else:
                 self.assertIn("{{ $labels.unit }}", summary, uid)
 
