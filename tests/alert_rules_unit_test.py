@@ -131,6 +131,15 @@ class TestRules(unittest.TestCase):
         self.assertIn("range(start: -3m)", query)
         self.assertEqual(_threshold(rule), {"type": "lt", "params": [1]})
 
+    def test_influx_rules_return_time_series(self):
+        # Grafana alerting takes a Flux result with no _time column as one number: it keeps only the
+        # first frame and drops the labels, and Reduce then gives no data (R2 fired "no data" on
+        # 2026-09-29; spec revision 1f). Each InfluxDB rule must keep _time.
+        for uid, rule in _rules().items():
+            if uid in LOKI_RULES:
+                continue
+            self.assertIn('keep(columns: ["_time", "_value", "unit"])', _query(rule), uid)
+
     def test_datasource_uids(self):
         for uid, rule in _rules().items():
             want = LOKI_UID if uid in LOKI_RULES else INFLUX_UID
