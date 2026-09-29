@@ -421,5 +421,49 @@ class TestLogInAgain(unittest.TestCase):
         self.assertEqual(order, ["connect", "read", "connect", "read"])
 
 
+class TestForgetToken(unittest.TestCase):
+    """Change 019 revision 2: the Device-ID, the token file, and when to forget the token."""
+
+    def _run(self, detail_error, sleeps):
+        from estia_api import ToshibaAcHttpApiError  # noqa: F401
+        with patch('estia.time.sleep', side_effect=sleeps) as mock_sleep, \
+             patch('estia.connect_mqtt', return_value=MagicMock()), \
+             patch('estia.ToshibaAcHttpApi') as mock_api_cls:
+            mock_api = AsyncMock()
+            mock_api.forget_token = MagicMock()
+            mock_api_cls.return_value = mock_api
+            if detail_error is None:
+                mock_api.get_device_detail = AsyncMock(return_value=_good_detail())
+            else:
+                mock_api.get_device_detail = AsyncMock(side_effect=detail_error)
+            import estia
+            with self.assertRaises(LoopBreak):
+                asyncio.run(estia.main())
+        return estia, mock_api_cls, mock_api, mock_sleep
+
+    def test_client_gets_device_id_and_token_path(self):
+        estia, cls, _, _ = self._run(None, LoopBreak)
+        name = "toshiba_token_estia.dev.json" if estia.c["debug"] else "toshiba_token_estia.json"
+        self.assertEqual(cls.call_args.kwargs["device_id"], "f358e8c78fffd63f")
+        self.assertEqual(cls.call_args.kwargs["token_path"], name)
+
+    def test_auth_error_forgets_token(self):
+        from estia_api import ToshibaAcHttpApiAuthError
+        _, _, api, _ = self._run(ToshibaAcHttpApiAuthError("HTTP 401: "), LoopBreak)
+        self.assertEqual(api.forget_token.call_count, 1)
+
+    def test_generic_error_keeps_token(self):
+        from estia_api import ToshibaAcHttpApiError
+        _, _, api, _ = self._run(ToshibaAcHttpApiError("HTTP 500: x"), LoopBreak)
+        self.assertEqual(api.forget_token.call_count, 0)
+
+    def test_fourth_failure_forgets_token(self):
+        from estia_api import ToshibaAcHttpApiError
+        _, _, api, sleep = self._run(ToshibaAcHttpApiError("HTTP 500: x"),
+                                     [None, None, None, LoopBreak])
+        self.assertEqual([c[0][0] for c in sleep.call_args_list], [60, 300, 600, 3600])
+        self.assertEqual(api.forget_token.call_count, 1)
+
+
 if __name__ == '__main__':
     unittest.main()

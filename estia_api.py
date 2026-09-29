@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import typing as t
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -74,6 +75,10 @@ class LoginBackoff:
         if self._last_failure is None or now - self._last_failure >= self._reset_after:
             self._index = 0
 
+    @property
+    def last_step(self) -> int:
+        return self._steps[-1]
+
 
 class ToshibaAcHttpApi:
     BASE_URL = "https://mobileapi.toshibahomeaccontrols.com"
@@ -83,13 +88,52 @@ class ToshibaAcHttpApi:
     AC_STATE_PATH = "/api/Estia/GetCurrentEstiaStateByUniqueDeviceId"
     AC_ENERGY_CONSUMPTION_PATH = "/api/AC/GetGroupACEnergyConsumption"
 
-    def __init__(self, username: str, password: str) -> None:
+    def __init__(self, username: str, password: str, device_id: t.Optional[str] = None,
+                 token_path: t.Optional[str] = None) -> None:
         self.username = username
         self.password = password
+        # Since ~2026-07-16 the cloud's firewall answers 429 to a login without a
+        # Device-ID header (change 019, revision 2).
+        self.device_id = device_id
+        self.token_path = token_path
         self.access_token: t.Optional[str] = None
         self.access_token_type: t.Optional[str] = None
         self.consumer_id: t.Optional[str] = None
         self.session: t.Optional[aiohttp.ClientSession] = None
+
+    def _load_token(self) -> bool:
+        """Take the token from `token_path`; False when there is no usable file."""
+        if not self.token_path or not os.path.exists(self.token_path):
+            return False
+        try:
+            with open(self.token_path) as fh:
+                saved = json.load(fh)
+            token, token_type, consumer_id = saved["access_token"], saved["token_type"], saved["consumer_id"]
+        except Exception as e:
+            print(f"[estia_api] Could not load token: {e}")
+            return False
+        self.access_token, self.access_token_type, self.consumer_id = token, token_type, consumer_id
+        return True
+
+    def _save_token(self) -> None:
+        if not self.token_path:
+            return
+        saved = {"access_token": self.access_token, "token_type": self.access_token_type,
+                 "consumer_id": self.consumer_id}
+        tmp = self.token_path + ".tmp"
+        fd = os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+        with os.fdopen(fd, "w") as fh:
+            json.dump(saved, fh)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, self.token_path)
+
+    def forget_token(self) -> None:
+        """Drop the token in memory and on disk, so the next connect() logs in."""
+        self.access_token = None
+        self.access_token_type = None
+        self.consumer_id = None
+        if self.token_path and os.path.exists(self.token_path):
+            os.remove(self.token_path)
 
     async def request_api(
         self,
@@ -105,6 +149,12 @@ class ToshibaAcHttpApi:
             headers = {}
             headers["Content-Type"] = "application/json"
             headers["Authorization"] = self.access_token_type + " " + self.access_token
+            authenticated = True
+        else:
+            headers = dict(headers)
+            authenticated = False
+        if self.device_id:
+            headers["Device-ID"] = self.device_id
 
         url = self.BASE_URL + path
 
@@ -130,20 +180,39 @@ class ToshibaAcHttpApi:
             body = json.loads(text)
         except ValueError:
             body = None
+
+        if isinstance(body, dict):
+            message = f"HTTP {status}: {_pick(body, 'Message', 'message') or ''}"
+        else:
+            message = f"HTTP {status}: {' '.join(text.split())[:200]}"
+        # The status decides before the body: the gateway's 403 is an HTML page.
+        if status in (403, 429):
+            raise ToshibaAcHttpApiRateLimitError(message)
+        if status == 401:
+            if authenticated:
+                self.forget_token()
+            raise ToshibaAcHttpApiAuthError(message)
         if not isinstance(body, dict):
-            raise ToshibaAcHttpApiError(f"HTTP {status}: {text[:200]}")
+            raise ToshibaAcHttpApiError(message)
 
         if status == 200 and _pick(body, "IsSuccess", "isSuccess"):
             return _pick(body, "ResObj", "resObj")
 
-        message = f"HTTP {status}: {_pick(body, 'Message', 'message') or ''}"
-        if status == 429:
-            raise ToshibaAcHttpApiRateLimitError(message)
         if _pick(body, "StatusCode", "statusCode") == "InvalidUserNameorPassword":
             raise ToshibaAcHttpApiAuthError(message)
         raise ToshibaAcHttpApiError(message)
 
-    async def connect(self) -> None:
+    async def connect(self) -> str:
+        """Get a session: the token in memory, else the token file, else a network login.
+
+        Returns "memory", "file" or "login". The token lasts years, so a restart
+        needs no login while the file is good (change 019, revision 2).
+        """
+        if self.access_token and self.access_token_type and self.consumer_id:
+            return "memory"
+        if self._load_token():
+            return "file"
+
         headers = {"Content-Type": "application/json"}
         post = {"Username": self.username, "Password": self.password}
 
@@ -152,6 +221,8 @@ class ToshibaAcHttpApi:
         self.access_token = res["access_token"]
         self.access_token_type = res["token_type"]
         self.consumer_id = res["consumerId"]
+        self._save_token()
+        return "login"
 
     async def get_devices(self) -> t.List[ToshibaAcDeviceInfo]:
         if not self.consumer_id:

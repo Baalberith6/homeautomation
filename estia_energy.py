@@ -5,7 +5,7 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-from estia_api import LoginBackoff, ToshibaAcHttpApi
+from estia_api import LoginBackoff, ToshibaAcHttpApi, ToshibaAcHttpApiAuthError
 
 sys.stdout.reconfigure(line_buffering=True)
 
@@ -22,7 +22,10 @@ from influxdb_client.client.write_api import SYNCHRONOUS  # noqa: E402
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
 
-api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret)
+# This service's own Device-ID for the Toshiba firewall (change 019, revision 2).
+DEVICE_ID = "14c2a40d2951f0e0"
+TOKEN_PATH = "toshiba_token_estia_energy.dev.json" if c["debug"] else "toshiba_token_estia_energy.json"
+api = ToshibaAcHttpApi(toshibaUsername, toshibaSecret, device_id=DEVICE_ID, token_path=TOKEN_PATH)
 heat_loss = 143 # W/K
 temps = [18] * 24
 
@@ -126,15 +129,17 @@ async def tick(api, state, backoff, now, mono):
 
     try:
         if not state["logged_in"]:
-            await api.connect()
+            source = await api.connect()
             await api.get_devices()
             state["logged_in"] = True
-            print("[estia_energy] Toshiba login OK")
+            print(f"[estia_energy] Toshiba login OK ({source})")
         usage = await fetch_consumption(api) if state["due"] else None
         backoff.success(mono)
     except Exception as e:
         state["logged_in"] = False
         delay = backoff.failure(mono)
+        if isinstance(e, ToshibaAcHttpApiAuthError) or delay >= backoff.last_step:
+            api.forget_token()
         state["next_try"] = mono + delay
         print(f"[estia_energy] Toshiba error: {e}; next login in {delay} s")
         return

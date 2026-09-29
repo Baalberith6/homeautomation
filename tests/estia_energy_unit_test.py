@@ -109,5 +109,59 @@ class TestTick(unittest.TestCase):
         self.assertEqual(self.api.get_hourly_consumption.await_count, 2)
 
 
+class TestForgetTokenEnergy(unittest.TestCase):
+    """Change 019 revision 2: the Device-ID, the token file, and when to forget the token."""
+
+    def setUp(self):
+        import estia_energy
+        from estia_api import LoginBackoff
+        self.ee = estia_energy
+        self.backoff = LoginBackoff()
+        self.state = estia_energy.new_state()
+        self.api = AsyncMock()
+        self.api.forget_token = MagicMock()
+        self.write = patch.object(estia_energy, "write_api", MagicMock())
+        self.write.start()
+        self.debug = patch.dict(estia_energy.c, {"debug": False})
+        self.debug.start()
+
+    def tearDown(self):
+        self.write.stop()
+        self.debug.stop()
+
+    def _tick(self, minute, mono):
+        with patch("sys.stdout", new_callable=io.StringIO):
+            asyncio.run(self.ee.tick(self.api, self.state, self.backoff, _at(minute), mono))
+
+    def test_client_gets_device_id_and_token_path(self):
+        import estia_energy
+        from config import generalConfig
+        name = ("toshiba_token_estia_energy.dev.json" if generalConfig["debug"]
+                else "toshiba_token_estia_energy.json")
+        self.assertEqual(estia_energy.api.device_id, "14c2a40d2951f0e0")
+        self.assertEqual(estia_energy.api.token_path, name)
+
+    def test_auth_error_forgets_token(self):
+        from estia_api import ToshibaAcHttpApiAuthError
+        self.api.get_hourly_consumption = AsyncMock(side_effect=ToshibaAcHttpApiAuthError("HTTP 401: "))
+        self._tick(22, 1000)
+        self.assertEqual(self.api.forget_token.call_count, 1)
+
+    def test_generic_error_keeps_token(self):
+        from estia_api import ToshibaAcHttpApiError
+        self.api.get_hourly_consumption = AsyncMock(side_effect=ToshibaAcHttpApiError("HTTP 500: x"))
+        self._tick(22, 1000)
+        self.assertEqual(self.api.forget_token.call_count, 0)
+
+    def test_fourth_failure_forgets_token(self):
+        from estia_api import ToshibaAcHttpApiError
+        self.api.get_hourly_consumption = AsyncMock(side_effect=ToshibaAcHttpApiError("HTTP 500: x"))
+        for minute, mono in ((22, 1000), (23, 1060), (28, 1360)):
+            self._tick(minute, mono)
+        self.assertEqual(self.api.forget_token.call_count, 0)
+        self._tick(38, 1960)
+        self.assertEqual(self.api.forget_token.call_count, 1)
+
+
 if __name__ == '__main__':
     unittest.main()
