@@ -1,0 +1,14 @@
+{
+  "_note": "Change 018. Rebuilt from a read-only portal scan on 2026-09-29: the 9 files 20260928234423..20260929014431 all held this snapshot. Range and target come from the vw_euda journal of the same morning. Not a byte copy of a portal file.",
+  "Data": [
+    {"key": "f25e91bb-c5f3-3e35-b54b-4bcccbdc4cb9", "dataFieldName": "car_captured_time", "value": "2026-09-28T10:57:58Z"},
+    {"key": "battery_level_HV.value", "dataFieldName": "battery_level_HV.value", "value": "65.0"},
+    {"key": "battery_level_HV.state", "dataFieldName": "battery_level_HV.state", "value": "VALID"},
+    {"key": "battery_state_report.soc", "dataFieldName": "battery_state_report.soc", "value": "65"},
+    {"key": "battery_state_report.charge_power", "dataFieldName": "battery_state_report.charge_power", "value": "6.700012"},
+    {"key": "battery_state_report.remaining_charging_time_complete", "dataFieldName": "battery_state_report.remaining_charging_time_complete", "value": "2400s"},
+    {"key": "charging_state_report.current_charge_state", "dataFieldName": "charging_state_report.current_charge_state", "value": "CHARGE_STATE_CHARGING_HV_BATTERY"},
+    {"key": "settings.target_soc", "dataFieldName": "settings.target_soc", "value": "60"},
+    {"key": "value", "dataFieldName": "value", "value": "369"}
+  ]
+}
