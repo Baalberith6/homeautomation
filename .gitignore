@@ -9,3 +9,8 @@ toshiba_token_*.json.tmp
 # Python bytecode
 __pycache__/
 *.pyc
+
+# The host virtualenv and the forecast cache of metno_locationforecast (change 022).
+# deploy.sh stashed them as untracked files, which removed the venv under the running services.
+/venv*/
+/data/
