@@ -5,9 +5,11 @@ from datetime import datetime
 from flask import Flask, request
 
 from config import generalConfig as c
-from common import connect_mqtt
+from common import connect_mqtt, get_logger, setup_logging
 
 api = Flask(__name__)
+# Flask's app logger is "localweather": a handler error is an ERROR line in the 020 format.
+get_logger("localweather")
 
 
 class SkipWeather200(logging.Filter):
@@ -66,5 +68,6 @@ def get_weather():
 
 
 if __name__ == '__main__':
+    setup_logging()
     client.loop_start()
     api.run(host="0.0.0.0", port=5005)

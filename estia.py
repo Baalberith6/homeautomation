@@ -1,6 +1,5 @@
 import asyncio
 import sys
-import traceback
 from math import dist
 
 from estia_api import LoginBackoff, ToshibaAcHttpApi, ToshibaAcHttpApiAuthError
@@ -9,9 +8,11 @@ import time
 
 sys.stdout.reconfigure(line_buffering=True)
 
-from common import connect_mqtt  # noqa: E402
+from common import connect_mqtt, get_logger, setup_logging  # noqa: E402
 from secret import toshibaUsername, toshibaSecret  # noqa: E402
 from config import generalConfig as c, estiaConfig  # noqa: E402
+
+log = get_logger("estia")
 
 # This service's own Device-ID for the Toshiba firewall (change 019, revision 2).
 DEVICE_ID = "f358e8c78fffd63f"
@@ -51,7 +52,7 @@ async def main():
                 source = await api.connect()
                 await api.get_devices()
                 logged_in = True
-                print(f"[estia] Toshiba login OK ({source})")
+                log.info(f"Toshiba login OK ({source})")
             sensors = await api.get_device_detail(estiaConfig["device_unique_id"])
             backoff.success(time.monotonic())
         except Exception as e:
@@ -59,7 +60,7 @@ async def main():
             delay = backoff.failure(time.monotonic())
             if isinstance(e, ToshibaAcHttpApiAuthError) or delay >= backoff.last_step:
                 api.forget_token()
-            print(f"[estia] Toshiba error: {e}; next login in {delay} s")
+            log.error(f"Toshiba error: {e}; next login in {delay} s")
             time.sleep(delay)
             continue
 
@@ -115,10 +116,10 @@ async def main():
             previous_in_temp = in_temp
             previous_out_temp = out_temp
         except Exception as e:
-            print(f"[estia] Error: {e}")
-            traceback.print_exc()
+            log.exception(f"Error: {e}")
         time.sleep(60)
 
 if __name__ == "__main__":
+    setup_logging()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())

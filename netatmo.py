@@ -1,17 +1,18 @@
 import pyatmo
 import logging
-import traceback
 
 import asyncio
 import time
 
-from common import connect_mqtt
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging
 from secret import netatmoClientId, netatmoClientSecret
 from config import netatmoConfig
 from config import generalConfig as c
 
 # logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
+log = get_logger("netatmo")
+api_log = ConnectionLog(log, "Netatmo")
 
 def save_string_to_file(content):
     """
@@ -55,7 +56,11 @@ async def main():
 
     auth.extra["refresh_token"] = read_string_from_file()
     auth.token_updater = save_string_to_file
-    auth.refresh_tokens()
+    try:
+        auth.refresh_tokens()
+    except Exception as e:
+        log.error(f"Netatmo login failed: {e}")
+        raise
     print("[netatmo] Started, token refreshed")
     tokenRefresher = 0
 
@@ -80,12 +85,13 @@ async def main():
 
                 if c["debug"]: print(room['therm_measured_temperature'])
                 if c["debug"]: print(room['heating_power_request'])
+            api_log.ok()
         except Exception as e:
-            print(f"[netatmo] Error: {e}")
-            traceback.print_exc()
+            api_log.failed(e, exc_info=True)
         time.sleep(60)
 
 
 if __name__ == "__main__":
+    setup_logging()
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
