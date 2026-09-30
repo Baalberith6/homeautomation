@@ -181,11 +181,11 @@ class TestResubscribe(unittest.TestCase):
         self.assertEqual([c.args[0] for c in client.subscribe.call_args_list], self.TOPICS * 2)
 
 
-class TestFreshSession(unittest.TestCase):
-    """Change 019 revision 3: each Toshiba try of the COP loop starts with a new HTTP session.
+class TestDataRetry(unittest.TestCase):
+    """Change 019 revision 4: a 403 or 429 on the consumption call keeps the token and retries in 5 min.
 
-    On 2026-09-30 the first call of the old session after an idle hour got the gateway's 403,
-    while the same token worked from a new session.
+    From 2026-09-29 12:22 to 2026-09-30 11:22, a retry 5-6 min after a 403 worked 4 of 4 times, and a
+    retry after 10 min or an hourly login and call worked 0 of 14 times.
     """
 
     def setUp(self):
@@ -197,27 +197,81 @@ class TestFreshSession(unittest.TestCase):
         self.api = AsyncMock()
         self.api.forget_token = MagicMock()
         write = patch.object(estia_energy, "write_api", MagicMock())
-        write.start()
+        self.mock_write = write.start()
         self.addCleanup(write.stop)
         debug = patch.dict(estia_energy.c, {"debug": False})
         debug.start()
         self.addCleanup(debug.stop)
+        fresh = patch.object(estia_energy, "cop_log",
+                             common.ConnectionLog(estia_energy.log, "Toshiba consumption", grace=3600))
+        fresh.start()
+        self.addCleanup(fresh.stop)
+
+    def _tick_at(self, when, mono):
+        with patch("common.time.monotonic", return_value=mono), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            asyncio.run(self.ee.tick(self.api, self.state, self.backoff, when, mono))
+        return out.getvalue()
 
     def _tick(self, minute, mono):
-        with patch("sys.stdout", new_callable=io.StringIO):
-            asyncio.run(self.ee.tick(self.api, self.state, self.backoff, _at(minute), mono))
+        return self._tick_at(_at(minute), mono)
 
-    def test_new_session_before_the_calls(self):
-        self.api.get_hourly_consumption = AsyncMock(return_value=_day())
-        self._tick(22, 1000)
-        names = [c[0] for c in self.api.mock_calls]
-        self.assertEqual(names[0], "reset_session", names)
-        self.assertIn("get_hourly_consumption", names)
-
-    def test_no_new_session_when_nothing_is_due(self):
+    def test_403_keeps_token_and_retries_in_5_min(self):
+        from estia_api import ToshibaAcHttpApiRateLimitError
         self.state["logged_in"] = True
-        self._tick(30, 1000)
-        self.api.reset_session.assert_not_awaited()
+        self.api.get_hourly_consumption = AsyncMock(side_effect=[
+            ToshibaAcHttpApiRateLimitError("HTTP 403: <html>"), _day(), _day()])
+        out = self._tick(22, 1000)
+        self.assertEqual(self.state["next_try"], 1300)
+        self.assertTrue(self.state["logged_in"])
+        self.api.forget_token.assert_not_called()
+        self.assertIn("WARNING estia_energy: Toshiba consumption failed: HTTP 403: <html> (today); next try in 300 s", out)
+        self.assertNotIn("ERROR", out)
+        self._tick(23, 1060)
+        self.assertEqual(self.api.get_hourly_consumption.await_count, 1)
+        out = self._tick(27, 1300)
+        self.assertEqual(self.api.connect.await_count, 0)
+        self.assertEqual(self.mock_write.write.call_count, 2)
+        self.assertIn("INFO estia_energy: Toshiba consumption restored", out)
+
+    def test_retry_steps_and_error_after_an_hour(self):
+        from estia_api import ToshibaAcHttpApiRateLimitError
+        self.state["logged_in"] = True
+        self.api.get_hourly_consumption = AsyncMock(side_effect=ToshibaAcHttpApiRateLimitError("HTTP 403: x"))
+        levels, tries = [], []
+        for minute, mono in ((22, 1000), (27, 1300), (37, 1900), (7, 3700), (7, 7300)):
+            out = self._tick(minute, mono)
+            levels.append("ERROR" if "ERROR" in out else "WARNING" if "WARNING" in out else "-")
+            tries.append(self.state["next_try"])
+        self.assertEqual(tries, [1300, 1900, 3700, 7300, 10900])
+        self.assertEqual(levels, ["WARNING", "WARNING", "WARNING", "WARNING", "ERROR"])
+        self.api.forget_token.assert_not_called()
+
+    def test_success_resets_the_retry(self):
+        from estia_api import ToshibaAcHttpApiRateLimitError
+        self.state["logged_in"] = True
+        self.api.get_hourly_consumption = AsyncMock(side_effect=[
+            ToshibaAcHttpApiRateLimitError("HTTP 403: x"), _day(), _day(), ToshibaAcHttpApiRateLimitError("HTTP 403: x")])
+        self._tick(22, 1000)
+        self._tick(27, 1300)
+        self._tick_at(datetime(2026, 9, 29, 11, 22), 5000)
+        self.assertEqual(self.state["next_try"], 5300)
+
+    def test_login_rate_limit_keeps_the_login_backoff(self):
+        from estia_api import ToshibaAcHttpApiRateLimitError
+        self.api.connect = AsyncMock(side_effect=ToshibaAcHttpApiRateLimitError("HTTP 429: Too many requests"))
+        out = self._tick(22, 1000)
+        self.assertEqual(self.state["next_try"], 1060)
+        self.assertFalse(self.state["logged_in"])
+        self.assertIn("ERROR estia_energy: Toshiba error: HTTP 429: Too many requests; next login in 60 s", out)
+
+    def test_the_failing_call_is_named(self):
+        from estia_api import ToshibaAcHttpApiRateLimitError
+        self.state["logged_in"] = True
+        self.api.get_hourly_consumption = AsyncMock(side_effect=[_day(), ToshibaAcHttpApiRateLimitError("HTTP 403: x")])
+        out = self._tick(22, 1000)
+        self.assertIn("HTTP 403: x (yesterday)", out)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -226,26 +226,5 @@ class TestStatusRules(unittest.TestCase):
             self.assertIsNone(api.access_token)
 
 
-class TestResetSession(unittest.TestCase):
-    """Change 019 revision 3: reset_session() closes the HTTP session; the next request opens a new one."""
-
-    def test_reset_closes_and_drops_the_session(self):
-        api = ToshibaAcHttpApi("user", "pass")
-        closed = []
-
-        class _Session:
-            async def close(self):
-                closed.append(True)
-
-        api.session = _Session()
-        asyncio.run(api.reset_session())
-        self.assertEqual(closed, [True])
-        self.assertIsNone(api.session)
-
-    def test_reset_without_session(self):
-        api = ToshibaAcHttpApi("user", "pass")
-        asyncio.run(api.reset_session())
-        self.assertIsNone(api.session)
-
 if __name__ == "__main__":
     unittest.main()
