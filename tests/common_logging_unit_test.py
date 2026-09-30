@@ -149,6 +149,21 @@ class TestConnectionLog(unittest.TestCase):
         self.assertEqual(self._at(1010, self.conn.ok), "INFO svc020conn: Thing restored\n")
         self.assertEqual(self._at(1020, self.conn.ok), "")
 
+    def test_grace_warns_then_errors(self):
+        # 020 revision 4 (owner, 2026-09-30): a short failure is a WARNING, a long one an ERROR.
+        conn = common.ConnectionLog(self.log, "Portal", grace=900)
+        out = (self._at(1000, lambda: conn.failed("boom"))
+               + self._at(1061, lambda: conn.failed("boom")))
+        self.assertNotIn("ERROR", out)
+        self.assertEqual(out.count("WARNING svc020conn: Portal failed: boom"), 2)
+        self.assertIn("ERROR svc020conn: Portal failed: boom", self._at(1901, lambda: conn.failed("boom")))
+
+    def test_grace_blip_is_warning_only(self):
+        conn = common.ConnectionLog(self.log, "Portal", grace=900)
+        out = self._at(1000, lambda: conn.failed("boom")) + self._at(1060, conn.ok)
+        self.assertNotIn("ERROR", out)
+        self.assertIn("INFO svc020conn: Portal restored", out)
+
     def test_new_failure_after_restore_logs_at_once(self):
         self._at(1000, lambda: self.conn.failed("boom"))
         self._at(1010, self.conn.ok)

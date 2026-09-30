@@ -23,7 +23,10 @@ from config import skodaConfig, vwEudaConfig as cfg  # noqa: E402
 from vw_euda_auth import ApiError, EudaClient  # noqa: E402
 
 log = get_logger("vw_euda")
-portal_log = ConnectionLog(log, "EU Data Act portal")
+# A failed poll is a WARNING for the first 15 min, then an ERROR (change 020 revision 4). The
+# portal delivers a new file about every 15 min, and the last values stay published meanwhile.
+PORTAL_GRACE_S = 15 * 60
+portal_log = ConnectionLog(log, "EU Data Act portal", grace=PORTAL_GRACE_S)
 
 CHARGING_STATE = "CHARGE_STATE_CHARGING_HV_BATTERY"
 # The export repeats car_captured_(utc_)time once per vehicle data domain and
