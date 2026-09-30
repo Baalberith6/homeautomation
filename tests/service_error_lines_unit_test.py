@@ -179,6 +179,75 @@ class TestVwEudaGrace(unittest.TestCase):
         self.assertIn("WARNING vw_euda: EU Data Act portal failed: API error: GET x -> HTTP 429", out.getvalue())
 
 
+class TestNetatmoRevision5(unittest.TestCase):
+    """020 revision 5: the 2 h token refresh runs, and a short Netatmo failure is a WARNING.
+
+    On 2026-09-30 Netatmo failed for one poll at 12:07 (access token expired) and at 18:00
+    (MissingTokenError in the refresh); the next poll worked both times.
+    """
+
+    def test_netatmo_grace_is_15_min(self):
+        import netatmo
+        self.assertEqual(netatmo.NETATMO_GRACE_S, 15 * 60)
+        self.assertEqual(netatmo.api_log.grace, netatmo.NETATMO_GRACE_S)
+
+    @patch('netatmo.time.sleep', side_effect=LoopBreak)
+    @patch('netatmo.pyatmo.HomeStatus')
+    @patch('netatmo.pyatmo.NetatmoOAuth2')
+    @patch('netatmo.read_string_from_file', return_value="fake_token")
+    @patch('netatmo.connect_mqtt')
+    def test_first_update_error_is_warning(self, mock_mqtt, mock_read, mock_oauth, mock_home, mock_sleep):
+        import netatmo
+        mock_home.return_value.update.side_effect = Exception("403 - Forbidden - Access token expired (3)")
+        fresh = common.ConnectionLog(netatmo.log, "Netatmo", grace=netatmo.NETATMO_GRACE_S)
+        with patch.object(netatmo, "api_log", fresh), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(LoopBreak):
+                asyncio.run(netatmo.main())
+        self.assertNotIn("ERROR netatmo", out.getvalue())
+        self.assertIn("WARNING netatmo: Netatmo failed: 403 - Forbidden - Access token expired (3)", out.getvalue())
+
+    @patch('netatmo.pyatmo.HomeStatus')
+    @patch('netatmo.pyatmo.NetatmoOAuth2')
+    @patch('netatmo.read_string_from_file', return_value="fake_token")
+    @patch('netatmo.connect_mqtt')
+    def test_token_refreshes_every_2_h(self, mock_mqtt, mock_read, mock_oauth, mock_home):
+        import netatmo
+        mock_home.return_value.rooms.get.return_value = {"therm_measured_temperature": 21.0,
+                                                         "heating_power_request": 0}
+        sleeps = {"n": 0}
+
+        def sleep(seconds):
+            sleeps["n"] += 1
+            if sleeps["n"] >= 122:
+                raise LoopBreak
+
+        with patch("netatmo.time.sleep", side_effect=sleep), \
+                patch("sys.stdout", new_callable=io.StringIO):
+            with self.assertRaises(LoopBreak):
+                asyncio.run(netatmo.main())
+        # Once at the start, and once after 121 polls of 60 s.
+        self.assertEqual(mock_oauth.return_value.refresh_tokens.call_count, 2)
+
+
+class TestVwEudaRelogin(unittest.TestCase):
+    """020 revision 5: the hourly re-login after a 401 is an INFO line, not a WARNING."""
+
+    def test_relogin_is_info(self):
+        import vw_euda_auth
+        client = vw_euda_auth.EudaClient.__new__(vw_euda_auth.EudaClient)
+        client._logged_in = True
+        client._session = MagicMock()
+        client._session.get.side_effect = [MagicMock(status_code=401), MagicMock(status_code=200)]
+        client.login = MagicMock(side_effect=lambda: setattr(client, "_logged_in", True))
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            r = client._get("https://example.invalid/list")
+        self.assertEqual(r.status_code, 200)
+        client.login.assert_called_once()
+        self.assertIn("INFO vw_euda: Session expired (401); re-authenticating", out.getvalue())
+        self.assertNotIn("WARNING", out.getvalue())
+
+
 class TestRehauErrors(unittest.TestCase):
 
     @patch('rehau.time.sleep', side_effect=LoopBreak)
