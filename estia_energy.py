@@ -5,12 +5,13 @@ import threading
 import time
 from datetime import datetime, timedelta
 
-from estia_api import LoginBackoff, ToshibaAcHttpApi, ToshibaAcHttpApiAuthError
+from estia_api import (LoginBackoff, ToshibaAcHttpApi, ToshibaAcHttpApiAuthError, ToshibaAcHttpApiError,
+                       ToshibaAcHttpApiRateLimitError)
 
 sys.stdout.reconfigure(line_buffering=True)
 
 from paho.mqtt import client as mqtt_client  # noqa: E402
-from common import connect_mqtt, get_logger, setup_logging, subscribe_on_connect  # noqa: E402
+from common import ConnectionLog, connect_mqtt, get_logger, setup_logging, subscribe_on_connect  # noqa: E402
 from config import influxConfig  # noqa: E402
 from secret import toshibaUsername, toshibaSecret, influxToken  # noqa: E402
 from config import generalConfig as c, estiaConfig  # noqa: E402
@@ -20,6 +21,11 @@ from influxdb_client.client.write_api import SYNCHRONOUS  # noqa: E402
 # once per hour at minute 22, calc COP for the last 24h
 
 log = get_logger("estia_energy")
+# After a 403 or 429 on the consumption call: keep the token and try again in 5 min, then 10, 30,
+# 60 min; a COP resets it (change 019 revision 4). A retry 5-6 min after a 403 worked 4 of 4 times.
+DATA_RETRY_STEPS = (300, 600, 1800, 3600)
+# WARNING while the consumption call fails for less than an hour, then ERROR (fires R3).
+cop_log = ConnectionLog(log, "Toshiba consumption", grace=3600)
 
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)
@@ -99,14 +105,23 @@ def calculate_cop(consumption_24h: list, temp_avgs_24h: list):
 
 def new_state():
     """Loop state: token, a due hourly COP, and the earliest next Toshiba try."""
-    return {"logged_in": False, "due": False, "due_hour": None, "next_try": 0.0}
+    return {"logged_in": False, "due": False, "due_hour": None, "next_try": 0.0, "data_failures": 0}
 
 
 async def fetch_consumption(api):
-    """The rolling 24 h of hourly consumption, in Wh, from the Toshiba cloud."""
-    today = (await api.get_hourly_consumption(estiaConfig["device_unique_id"], datetime.now()))[0]["EnergyConsumption"]
-    yesterday = (await api.get_hourly_consumption(
-        estiaConfig["device_unique_id"], datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
+    """The rolling 24 h of hourly consumption, in Wh, from the Toshiba cloud.
+
+    A Toshiba error names the call that failed, "(today)" or "(yesterday)" (change 019 revision 4).
+    """
+    device = estiaConfig["device_unique_id"]
+    try:
+        today = (await api.get_hourly_consumption(device, datetime.now()))[0]["EnergyConsumption"]
+    except ToshibaAcHttpApiError as e:
+        raise type(e)(f"{e} (today)") from e
+    try:
+        yesterday = (await api.get_hourly_consumption(device, datetime.now() - timedelta(days=1)))[0]["EnergyConsumption"]
+    except ToshibaAcHttpApiError as e:
+        raise type(e)(f"{e} (yesterday)") from e
     if c["debug"]:
         print(f"Received Today Hourly usages: `{today}` from Toshiba")
         print(f"Received Yesterday Hourly usages: `{yesterday}` from Toshiba")
@@ -116,9 +131,10 @@ async def fetch_consumption(api):
 async def tick(api, state, backoff, now, mono):
     """One minute of the COP loop (change 019).
 
-    The COP falls due at minute 22, once per hour. A failed Toshiba call drops
-    the token and waits for the backoff step; the due COP stays due until a
-    try works. `now` is the wall clock, `mono` a monotonic time in seconds.
+    The COP falls due at minute 22, once per hour. A failed login waits for the
+    login backoff. A 403 or 429 on the consumption call keeps the token and
+    waits for DATA_RETRY_STEPS (revision 4). The due COP stays due until a try
+    works. `now` is the wall clock, `mono` a monotonic time in seconds.
     """
     hour = now.strftime("%Y%m%d%H")
     if now.minute == 22 and state["due_hour"] != hour:
@@ -137,6 +153,21 @@ async def tick(api, state, backoff, now, mono):
             log.info(f"Toshiba login OK ({source})")
         usage = await fetch_consumption(api) if state["due"] else None
         backoff.success(mono)
+    except ToshibaAcHttpApiRateLimitError as e:
+        if state["logged_in"]:
+            # The login worked or was not needed, so the consumption call failed: keep the token.
+            delay = DATA_RETRY_STEPS[min(state["data_failures"], len(DATA_RETRY_STEPS) - 1)]
+            state["data_failures"] += 1
+            state["next_try"] = mono + delay
+            cop_log.failed(f"{e}; next try in {delay} s")
+            return
+        state["logged_in"] = False
+        delay = backoff.failure(mono)
+        if delay >= backoff.last_step:
+            api.forget_token()
+        state["next_try"] = mono + delay
+        log.error(f"Toshiba error: {e}; next login in {delay} s")
+        return
     except Exception as e:
         state["logged_in"] = False
         delay = backoff.failure(mono)
@@ -148,6 +179,8 @@ async def tick(api, state, backoff, now, mono):
 
     if usage is None:
         return
+    state["data_failures"] = 0
+    cop_log.ok()
     state["due"] = False
     if c["debug"]:
         print(f"Merged Hourly usages: `{usage}` from Toshiba")
