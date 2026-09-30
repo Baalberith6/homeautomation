@@ -88,26 +88,39 @@ def default_requests_timeout(seconds):
 
 
 class ConnectionLog:
-    """At most one ERROR per interval while a connection is down, one INFO when it is back (change 020)."""
+    """At most one line per interval while a connection is down, one INFO when it is back (change 020).
 
-    def __init__(self, logger, name, interval=60):
+    The line is an ERROR, which fires the alert R3. With a grace time (revision 4), a connection
+    that has been down for less than grace seconds writes a WARNING instead, so a short outage of
+    a cloud API sends no message.
+    """
+
+    def __init__(self, logger, name, interval=60, grace=0):
         self.logger = logger
         self.name = name
         self.interval = interval
+        self.grace = grace
         self.down = False
-        self.last_error = None
+        self.down_since = None
+        self.last_line = None
 
     def failed(self, err, exc_info=False):
         now = time.monotonic()
-        self.down = True
-        if self.last_error is None or now - self.last_error >= self.interval:
-            self.last_error = now
-            self.logger.error("%s failed: %s", self.name, err, exc_info=exc_info)
+        if not self.down:
+            self.down = True
+            self.down_since = now
+        if self.last_line is None or now - self.last_line >= self.interval:
+            self.last_line = now
+            if now - self.down_since >= self.grace:
+                self.logger.error("%s failed: %s", self.name, err, exc_info=exc_info)
+            else:
+                self.logger.warning("%s failed: %s", self.name, err)
 
     def ok(self):
         if self.down:
             self.down = False
-            self.last_error = None
+            self.down_since = None
+            self.last_line = None
             self.logger.info("%s restored", self.name)
 
 
