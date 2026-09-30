@@ -127,6 +127,16 @@ class ToshibaAcHttpApi:
         os.chmod(tmp, 0o600)
         os.replace(tmp, self.token_path)
 
+    async def reset_session(self) -> None:
+        """Close the HTTP session; the next request opens a new one (change 019 revision 3).
+
+        After an idle hour, the first call of an old session got the Azure gateway's 403 page,
+        while the same token worked from a new session (2026-09-30).
+        """
+        if self.session:
+            await self.session.close()
+            self.session = None
+
     def forget_token(self) -> None:
         """Drop the token in memory and on disk, so the next connect() logs in."""
         self.access_token = None
