@@ -183,6 +183,16 @@ class TestMessages(unittest.TestCase):
                        ".Annotations.summary", ".Alerts.Resolved"):
             self.assertIn(needle, text)
 
+    def test_message_links(self):
+        # 020 revision 6 (owner, 2026-09-30): the message ends with a link to Grafana.
+        # R3 opens Explore on Loki for the unit; the other rules open the rule page.
+        config = _config()
+        with open(os.path.join(_DIR, "alerts", config["template"]["file"])) as fh:
+            text = fh.read()
+        for needle in (".ExternalURL", "explore?", "urlquery", LOKI_UID, "unit=", "now-6h", ".GeneratorURL",
+                       'eq .CommonLabels.alertname "Error line"'):
+            self.assertIn(needle, text)
+
     def test_summaries_without_unit(self):
         # A no-data alert has no unit label: its summary must still read as a sentence.
         for uid in ("020-unit-down", "020-restart-loop", "020-error-line"):
