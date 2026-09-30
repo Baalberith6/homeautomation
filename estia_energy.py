@@ -129,6 +129,9 @@ async def tick(api, state, backoff, now, mono):
     if mono < state["next_try"]:
         return
 
+    # A new HTTP session for each try: after an idle hour the old one got the gateway's 403
+    # (change 019 revision 3). The token stays; this is not a new login.
+    await api.reset_session()
     try:
         if not state["logged_in"]:
             source = await api.connect()
