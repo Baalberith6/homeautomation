@@ -156,6 +156,29 @@ class TestVwEudaErrors(unittest.TestCase):
         self.assertIn("ERROR vw_euda: EU Data Act portal failed: API error: GET x -> HTTP 500", out.getvalue())
 
 
+class TestVwEudaGrace(unittest.TestCase):
+    """020 revision 4: a short portal failure is a WARNING; only 15 min of failure is an ERROR."""
+
+    def test_portal_grace_is_15_min(self):
+        import vw_euda
+        self.assertEqual(vw_euda.PORTAL_GRACE_S, 15 * 60)
+        self.assertEqual(vw_euda.portal_log.grace, vw_euda.PORTAL_GRACE_S)
+
+    @patch('vw_euda.time.sleep', side_effect=LoopBreak)
+    @patch('vw_euda.EudaClient')
+    @patch('vw_euda.connect_mqtt')
+    def test_first_api_error_is_warning(self, mock_mqtt, mock_client_cls, mock_sleep):
+        import vw_euda
+        mock_client_cls.return_value.get_identifier.side_effect = vw_euda.ApiError("GET x -> HTTP 429")
+        fresh = common.ConnectionLog(vw_euda.log, "EU Data Act portal", grace=vw_euda.PORTAL_GRACE_S)
+        with patch.object(vw_euda, "portal_log", fresh), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(LoopBreak):
+                vw_euda.main()
+        self.assertNotIn("ERROR vw_euda", out.getvalue())
+        self.assertIn("WARNING vw_euda: EU Data Act portal failed: API error: GET x -> HTTP 429", out.getvalue())
+
+
 class TestRehauErrors(unittest.TestCase):
 
     @patch('rehau.time.sleep', side_effect=LoopBreak)
