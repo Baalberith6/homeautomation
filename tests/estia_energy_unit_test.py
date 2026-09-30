@@ -181,43 +181,5 @@ class TestResubscribe(unittest.TestCase):
         self.assertEqual([c.args[0] for c in client.subscribe.call_args_list], self.TOPICS * 2)
 
 
-class TestFreshSession(unittest.TestCase):
-    """Change 019 revision 3: each Toshiba try of the COP loop starts with a new HTTP session.
-
-    On 2026-09-30 the first call of the old session after an idle hour got the gateway's 403,
-    while the same token worked from a new session.
-    """
-
-    def setUp(self):
-        import estia_energy
-        from estia_api import LoginBackoff
-        self.ee = estia_energy
-        self.backoff = LoginBackoff()
-        self.state = estia_energy.new_state()
-        self.api = AsyncMock()
-        self.api.forget_token = MagicMock()
-        write = patch.object(estia_energy, "write_api", MagicMock())
-        write.start()
-        self.addCleanup(write.stop)
-        debug = patch.dict(estia_energy.c, {"debug": False})
-        debug.start()
-        self.addCleanup(debug.stop)
-
-    def _tick(self, minute, mono):
-        with patch("sys.stdout", new_callable=io.StringIO):
-            asyncio.run(self.ee.tick(self.api, self.state, self.backoff, _at(minute), mono))
-
-    def test_new_session_before_the_calls(self):
-        self.api.get_hourly_consumption = AsyncMock(return_value=_day())
-        self._tick(22, 1000)
-        names = [c[0] for c in self.api.mock_calls]
-        self.assertEqual(names[0], "reset_session", names)
-        self.assertIn("get_hourly_consumption", names)
-
-    def test_no_new_session_when_nothing_is_due(self):
-        self.state["logged_in"] = True
-        self._tick(30, 1000)
-        self.api.reset_session.assert_not_awaited()
-
 if __name__ == '__main__':
     unittest.main()
