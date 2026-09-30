@@ -1,7 +1,8 @@
 {{/* Change 020 revision 3: the Pushover title and body. The contact point "Pushover" uses them:
      Title   {{ template "home.title" . }}
      Message {{ template "home.message" . }}
-     The body shows the log line of R3 (label "line"), or the summary of the other rules. */}}
+     The body shows the log line of R3 (label "line"), or the summary of the other rules.
+     Revision 6: the body ends with a link to Grafana (home.link). The links use root_url of .50. */}}
 {{ define "home.title" -}}
 {{ if .CommonLabels.unit }}{{ .CommonLabels.unit }}{{ else }}home automation{{ end }} — {{ .CommonLabels.alertname }}{{ if eq .Status "resolved" }}: resolved{{ end }}
 {{- end }}
@@ -9,5 +10,12 @@
 {{ define "home.message" -}}
 {{ range .Alerts.Firing }}{{ if .Labels.line }}{{ .Labels.line }}{{ else }}{{ .Annotations.summary }}{{ end }}
 {{ end }}{{ range .Alerts.Resolved }}Resolved: {{ if .Labels.line }}{{ .Labels.line }}{{ else }}{{ .Annotations.summary }}{{ end }}
-{{ end }}
+{{ end }}{{ template "home.link" . }}
+{{- end }}
+
+{{/* R3: Explore on Loki for the unit, the last 6 h. The other rules: the rule page. */}}
+{{ define "home.link" -}}
+{{ if and (eq .CommonLabels.alertname "Error line") .CommonLabels.unit -}}
+{{ .ExternalURL }}explore?schemaVersion=1&orgId=1&panes={{ printf `{"a":{"datasource":"fezr2b11231fkd","queries":[{"refId":"A","expr":"{host=\"lxc-scripts\", unit=\"%s\"}","datasource":{"type":"loki","uid":"fezr2b11231fkd"}}],"range":{"from":"now-6h","to":"now"}}}` .CommonLabels.unit | urlquery }}
+{{- else if .Alerts }}{{ (index .Alerts 0).GeneratorURL }}{{ end }}
 {{- end }}
