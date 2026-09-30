@@ -1,4 +1,5 @@
 import json
+import sys
 from datetime import timedelta, datetime
 from pprint import pprint
 
@@ -8,17 +9,18 @@ import requests
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
-from common import connect_mqtt
+from common import connect_mqtt, get_logger, setup_logging
 from config import generalConfig as c, influxConfig
 from secret import influxToken
 
+log = get_logger("oteforecast")
 local_tz = pytz.timezone('Europe/Prague')
 
 EUR_CZK = 24
 
 
 def _request(date: datetime):
-    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d") + '&time_resolution=PT60M')
+    r = requests.get('https://www.ote-cr.cz/cs/kratkodobe-trhy/elektrina/denni-trh/@@chart-data?report_date=' + date.strftime("%Y-%m-%d") + '&time_resolution=PT60M', timeout=30)
     return r.json()
 
 
@@ -77,6 +79,7 @@ def send_to_mqtt(r, client, date: datetime):
                     .field("price_czk_kwh", hour_prices_zal[min_hour] * EUR_CZK / 1000)  # noqa: E501
                     .tag("type", "min")
                     .time(date + timedelta(hours=int(min_hour))))
+    log.info(f"OTE prices for {date:%Y-%m-%d}: {len(hour_prices_zal)} hours written")
 
     # hour_prices
     # for key in r["result"]["watt_hours_period"].keys():
@@ -354,5 +357,15 @@ def run():
         send_to_mqtt(_request(d), client, d)
 
 
+def main():
+    """Cron runs this once a day. A failure is one ERROR line and exit code 1 (change 020 revision 7)."""
+    setup_logging()
+    try:
+        run()
+    except Exception as e:
+        log.error(f"OTE forecast failed: {e}")
+        sys.exit(1)
+
+
 if __name__ == '__main__':
-    run()
+    main()

@@ -288,5 +288,37 @@ class TestMoesCo2Errors(unittest.TestCase):
         self.assertIn("ERROR moes_co2: Failed to initialize Tuya device, exiting", out.getvalue())
 
 
+class TestOteForecastErrors(unittest.TestCase):
+    """020 revision 7: the cron script oteforecast.py writes one ERROR line and exits 1."""
+
+    @staticmethod
+    def _response(hours=24):
+        points = [{"x": str(h), "y": 100.0 + h} for h in range(1, hours + 1)]
+        return {"data": {"dataLine": [{"title": "Cena (EUR/MWh)", "point": points}]}}
+
+    def test_request_has_timeout(self):
+        import oteforecast
+        with patch.object(oteforecast.requests, "get") as mock_get:
+            oteforecast._request(oteforecast.datetime(2026, 10, 1))
+        self.assertEqual(mock_get.call_args.kwargs.get("timeout"), 30)
+
+    def test_failure_is_one_error_line(self):
+        import oteforecast
+        with patch.object(oteforecast, "run", side_effect=Exception("Failed to resolve 'www.ote-cr.cz'")), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(SystemExit) as ctx:
+                oteforecast.main()
+        self.assertEqual(ctx.exception.code, 1)
+        self.assertIn("ERROR oteforecast: OTE forecast failed: Failed to resolve 'www.ote-cr.cz'", out.getvalue())
+
+    def test_success_is_info_line(self):
+        import oteforecast
+        date = oteforecast.local_tz.localize(oteforecast.datetime(2026, 10, 1))
+        with patch.object(oteforecast, "InfluxDBClient"), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            oteforecast.send_to_mqtt(self._response(), MagicMock(), date)
+        self.assertIn("INFO oteforecast: OTE prices for 2026-10-01: 24 hours written", out.getvalue())
+
+
 if __name__ == '__main__':
     unittest.main()
