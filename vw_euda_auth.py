@@ -284,7 +284,8 @@ class EudaClient:
         except requests.RequestException as e:
             raise ApiError(f"Connection error for {url}: {e}") from e
         if r.status_code in (401, 403) and _retry:
-            log.warning(f"Session expired ({r.status_code}); re-authenticating")
+            # The normal hourly re-login: INFO, not WARNING (change 020 revision 5).
+            log.info(f"Session expired ({r.status_code}); re-authenticating")
             self._logged_in = False
             self.login()
             return self._get(url, headers=headers, _retry=False)
