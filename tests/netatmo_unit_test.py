@@ -216,10 +216,9 @@ class TestHeatingPowerNormalization(unittest.TestCase):
         self.assertEqual(0, len(target_calls))
 
 
-# NOTE: netatmo.py has a likely bug — tokenRefresher is initialized to 0
-# but never incremented inside the loop, so the token refresh condition
-# (tokenRefresher > 120) is never triggered. The token only gets refreshed
-# once during startup. A fix would add tokenRefresher += 1 to the loop body.
+# NOTE: until change 020 revision 5 (2026-09-30), tokenRefresher was never
+# incremented, so the 2 h token refresh never ran. The loop now counts one per
+# poll; tests/service_error_lines_unit_test.py::TestNetatmoRevision5 covers it.
 
 
 if __name__ == '__main__':
