@@ -12,7 +12,9 @@ from config import generalConfig as c
 # logging.basicConfig(filename='myapp.log', level=logging.DEBUG)
 LOG = logging.getLogger(__name__)
 log = get_logger("netatmo")
-api_log = ConnectionLog(log, "Netatmo")
+# A failed poll is a WARNING for the first 15 min, then an ERROR (change 020 revision 5).
+NETATMO_GRACE_S = 15 * 60
+api_log = ConnectionLog(log, "Netatmo", grace=NETATMO_GRACE_S)
 
 def save_string_to_file(content):
     """
@@ -89,6 +91,9 @@ async def main():
         except Exception as e:
             api_log.failed(e, exc_info=True)
         time.sleep(60)
+        # One poll a minute: the token is refreshed after 121 polls, before it expires after 3 h.
+        # Before change 020 revision 5 nothing counted up, so this refresh never ran.
+        tokenRefresher += 1
 
 
 if __name__ == "__main__":
