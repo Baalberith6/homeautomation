@@ -1,3 +1,5 @@
+import sys
+
 import requests
 import base64
 import hashlib
@@ -5,7 +7,7 @@ import os
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse, parse_qs
 
-from common import connect_mqtt
+from common import connect_mqtt, get_logger, setup_logging
 from config import cezConfig, generalConfig as c
 from secret import cezUsername, cezPassword
 
@@ -14,6 +16,8 @@ TOKEN_URL = "https://api.cez.cz/token"
 CLIENT_ID = "wu2tPrszYcFOKPAA2DUdDehONGAa"
 REDIRECT_URI = "https://muj.cez.cz/col/"
 API_BASE = "https://muj.cez.cz/col-api/prod/1.0"
+
+log = get_logger("cez_battery")
 
 
 def authenticate():
@@ -115,7 +119,7 @@ def run():
     consumption = data["virtualBatteryAggregatedConsumption"]
     discount = data["virtualBatteryDiscountAmount"]
 
-    print(f"[cez] Virtual battery: {charge} kWh, "
+    log.info(f"Virtual battery: {charge} kWh, "
           f"production: {production} kWh, consumption: {consumption} kWh, "
           f"discount: {discount} CZK")
 
@@ -128,8 +132,18 @@ def run():
     client.publish("home/cez/discount_amount", discount).wait_for_publish()
 
     client.disconnect()
-    print("[cez] Published to MQTT")
+    log.info("Published to MQTT")
+
+
+def main():
+    """Cron runs this once a day. A failure is one ERROR line and exit code 1 (change 020 revision 8)."""
+    setup_logging()
+    try:
+        run()
+    except Exception as e:
+        log.error(f"ČEZ virtual battery failed: {e}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":
-    run()
+    main()
