@@ -1,4 +1,5 @@
 import json
+import sys
 from datetime import datetime, timedelta
 from pprint import pprint
 
@@ -8,9 +9,17 @@ import requests
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 
+from common import get_logger, setup_logging
 from config import influxConfig
 from secret import influxToken, solcastKey
 from config import generalConfig as c
+
+log = get_logger("solarforecast")
+
+
+def _redact(text):
+    """The Solcast key is in the URL, and a requests error shows the URL: hide it (change 020 revision 8)."""
+    return text.replace(solcastKey, "***") if solcastKey else text
 
 
 def _request():
@@ -23,7 +32,7 @@ def _request():
             return r.json()
         except (requests.RequestException, ValueError) as e:
             last_err = e
-            print(f"Solcast API attempt {attempt + 1}/3 failed: {e}")
+            log.warning(_redact(f"Solcast API attempt {attempt + 1}/3 failed: {e}"))
             if attempt < 2:
                 import time
                 time.sleep(10 * (attempt + 1))
@@ -35,12 +44,14 @@ def store_runtime_data(r):
     write_api = client.write_api(write_options=SYNCHRONOUS)
 
     daily_sum = 0
+    periods = 0
     daily_sum_p10 = 0
     daily_sum_p90 = 0
     for estimate in r["forecasts"]:
         timestamp = parser.parse(estimate["period_end"]) - timedelta(minutes=5) # so it is not counted towards next interval
         if timestamp.date() == datetime.today().date():
             daily_sum += estimate["pv_estimate"]/2
+            periods += 1
             daily_sum_p10 += estimate["pv_estimate10"]/2
             daily_sum_p90 += estimate["pv_estimate90"]/2
             if c["debug"]:
@@ -51,6 +62,7 @@ def store_runtime_data(r):
             write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_50p_cummulative", float(daily_sum)).time(timestamp))
             write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_10p_cummulative", float(daily_sum_p10)).time(timestamp))
             write_api.write(bucket=influxConfig["bucket"], record=Point("SolarForecast").field("30m_90p_cummulative", float(daily_sum_p90)).time(timestamp))
+    log.info(f"Solcast forecast: {periods} periods written")
 
 
 def run():
@@ -745,5 +757,15 @@ def run():
         store_runtime_data(_request())
 
 
+def main():
+    """Cron runs this once a day. A failure is one ERROR line and exit code 1 (change 020 revision 8)."""
+    setup_logging()
+    try:
+        run()
+    except Exception as e:
+        log.error(_redact(f"Solcast forecast failed: {e}"))
+        sys.exit(1)
+
+
 if __name__ == '__main__':
-    run()
+    main()

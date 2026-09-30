@@ -13,7 +13,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 # The committed secret.py is a stub without the Tuya names. Add them before moes_co2 is imported.
 import secret
-for _name in ("tuyaApiKey", "tuyaApiSecret"):
+for _name in ("tuyaApiKey", "tuyaApiSecret", "solcastKey"):
     if not hasattr(secret, _name):
         setattr(secret, _name, "")
 
@@ -318,6 +318,72 @@ class TestOteForecastErrors(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             oteforecast.send_to_mqtt(self._response(), MagicMock(), date)
         self.assertIn("INFO oteforecast: OTE prices for 2026-10-01: 24 hours written", out.getvalue())
+
+
+class TestSolarForecastErrors(unittest.TestCase):
+    """020 revision 8: solarforecast.py writes one ERROR line, exits 1, and never logs the key."""
+
+    KEY = "solcast-key-020-do-not-log"
+
+    def test_failure_is_one_error_line(self):
+        import solarforecast
+        with patch.object(solarforecast, "run", side_effect=Exception("Expecting value")), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(SystemExit) as ctx:
+                solarforecast.main()
+        self.assertEqual(ctx.exception.code, 1)
+        self.assertIn("ERROR solarforecast: Solcast forecast failed: Expecting value", out.getvalue())
+
+    def test_key_not_in_log_lines(self):
+        import solarforecast
+        err = solarforecast.requests.HTTPError(
+            "429 Client Error: Too Many Requests for url: https://api.solcast.com.au/x?api_key=" + self.KEY)
+        with patch.object(solarforecast, "solcastKey", self.KEY), \
+                patch.object(solarforecast.requests, "get", side_effect=err), \
+                patch("time.sleep"), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(SystemExit):
+                solarforecast.main()
+        text = out.getvalue()
+        self.assertIn("WARNING solarforecast: Solcast API attempt 1/3 failed: ", text)
+        self.assertIn("ERROR solarforecast: Solcast forecast failed: 429 Client Error", text)
+        self.assertIn("api_key=***", text)
+        self.assertNotIn(self.KEY, text)
+
+    def test_success_is_info_line(self):
+        import solarforecast
+        today = solarforecast.datetime.today().strftime("%Y-%m-%d")
+        forecasts = [{"pv_estimate": 1.0, "pv_estimate10": 0.5, "pv_estimate90": 1.5,
+                      "period_end": f"{today}T{h:02d}:30:00.0000000Z", "period": "PT30M"} for h in (9, 10)]
+        with patch.object(solarforecast, "InfluxDBClient"), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            solarforecast.store_runtime_data({"forecasts": forecasts})
+        self.assertIn("INFO solarforecast: Solcast forecast: 2 periods written", out.getvalue())
+
+
+class TestCezBatteryErrors(unittest.TestCase):
+    """020 revision 8: cez_battery.py writes one ERROR line and exits 1; the prints are INFO lines."""
+
+    def test_failure_is_one_error_line(self):
+        import cez_battery
+        with patch.object(cez_battery, "authenticate", side_effect=Exception("Could not find login form")), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(SystemExit) as ctx:
+                cez_battery.main()
+        self.assertEqual(ctx.exception.code, 1)
+        self.assertIn("ERROR cez_battery: ČEZ virtual battery failed: Could not find login form", out.getvalue())
+
+    def test_success_is_info_line(self):
+        import cez_battery
+        data = {"virtualBatteryActualCharge": 895.81, "virtualBatteryAggregatedProduction": 3650.99,
+                "virtualBatteryAggregatedConsumption": 2755.18, "virtualBatteryDiscountAmount": 9064.54}
+        with patch.object(cez_battery, "authenticate", return_value="t"), \
+                patch.object(cez_battery, "fetch_virtual_battery", return_value=data), \
+                patch.object(cez_battery, "connect_mqtt", return_value=MagicMock()), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            cez_battery.main()
+        self.assertIn("INFO cez_battery: Virtual battery: 895.81 kWh", out.getvalue())
+        self.assertIn("INFO cez_battery: Published to MQTT", out.getvalue())
 
 
 if __name__ == '__main__':
