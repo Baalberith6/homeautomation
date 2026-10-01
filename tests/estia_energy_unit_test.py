@@ -263,7 +263,17 @@ class TestDataRetry(unittest.TestCase):
         out = self._tick(22, 1000)
         self.assertEqual(self.state["next_try"], 1060)
         self.assertFalse(self.state["logged_in"])
-        self.assertIn("ERROR estia_energy: Toshiba error: HTTP 429: Too many requests; next login in 60 s", out)
+        self.assertIn("WARNING estia_energy: Toshiba error: HTTP 429: Too many requests; next login in 60 s", out)
+        self.assertNotIn("ERROR", out)
+
+    def test_login_error_on_the_third_failure_in_row(self):
+        self.api.connect = AsyncMock(side_effect=Exception("Cannot connect to host"))
+        levels = []
+        for minute, mono in ((22, 1000), (23, 1060), (29, 1360)):
+            out = self._tick(minute, mono)
+            levels.append("ERROR" if "ERROR" in out else "WARNING" if "WARNING" in out else "-")
+        self.assertEqual(levels, ["WARNING", "WARNING", "ERROR"])
+        self.assertIn("ERROR estia_energy: Toshiba error: Cannot connect to host; next login in 600 s", out)
 
     def test_the_failing_call_is_named(self):
         from estia_api import ToshibaAcHttpApiRateLimitError
