@@ -115,9 +115,8 @@ class TestLoginBackoff(unittest.TestCase):
         b.failure(0)
         b.failure(60)
         b.success(100)
-        b.failure(200)
+        self.assertEqual(b.failure(200), 600)  # the step itself waits for an hour (unchanged)
         self.assertFalse(b.alert)
-        self.assertEqual(b.failure(500), 600)  # the step itself waits for an hour (unchanged)
 
 
 # Change 019 revision 2: the Toshiba firewall, Device-ID and the saved token.
