@@ -5,10 +5,10 @@ import requests
 
 from config import generalConfig as c, grafanaConfig
 from secret import grafanaApiKey
-from common import ConnectionLog, connect_mqtt, get_logger, setup_logging
+from common import HTTP_ALERT_AFTER, ConnectionLog, connect_mqtt, get_logger, setup_logging
 
 log = get_logger("grafana_setter")
-api_log = ConnectionLog(log, "Grafana API")
+api_log = ConnectionLog(log, "Grafana API", alert_after=HTTP_ALERT_AFTER)
 
 
 def _request():

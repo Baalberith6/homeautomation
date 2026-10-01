@@ -87,36 +87,45 @@ def default_requests_timeout(seconds):
     requests.Session.request = with_timeout
 
 
+# An HTTP poll alerts on the third failure in a row (change 020 revision 9).
+HTTP_ALERT_AFTER = 3
+
+
 class ConnectionLog:
     """At most one line per interval while a connection is down, one INFO when it is back (change 020).
 
     The line is an ERROR, which fires the alert R3. With a grace time (revision 4), a connection
     that has been down for less than grace seconds writes a WARNING instead, so a short outage of
-    a cloud API sends no message.
+    a cloud API sends no message. With alert_after (revision 9), the line is a WARNING until that
+    many failures in a row; both conditions must hold for an ERROR.
     """
 
-    def __init__(self, logger, name, interval=60, grace=0):
+    def __init__(self, logger, name, interval=60, grace=0, alert_after=1):
         self.logger = logger
         self.name = name
         self.interval = interval
         self.grace = grace
+        self.alert_after = alert_after
+        self.failures = 0
         self.down = False
         self.down_since = None
         self.last_line = None
 
     def failed(self, err, exc_info=False):
         now = time.monotonic()
+        self.failures += 1
         if not self.down:
             self.down = True
             self.down_since = now
         if self.last_line is None or now - self.last_line >= self.interval:
             self.last_line = now
-            if now - self.down_since >= self.grace:
+            if now - self.down_since >= self.grace and self.failures >= self.alert_after:
                 self.logger.error("%s failed: %s", self.name, err, exc_info=exc_info)
             else:
                 self.logger.warning("%s failed: %s", self.name, err)
 
     def ok(self):
+        self.failures = 0
         if self.down:
             self.down = False
             self.down_since = None

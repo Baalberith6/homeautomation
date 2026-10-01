@@ -1,12 +1,12 @@
 import time
 import tinytuya
 
-from common import ConnectionLog, connect_mqtt, default_requests_timeout, get_logger, setup_logging
+from common import HTTP_ALERT_AFTER, ConnectionLog, connect_mqtt, default_requests_timeout, get_logger, setup_logging
 from config import moesCo2Config, generalConfig as c
 from secret import tuyaApiKey, tuyaApiSecret
 
 log = get_logger("moes_co2")
-tuya_log = ConnectionLog(log, "Tuya cloud")
+tuya_log = ConnectionLog(log, "Tuya cloud", alert_after=HTTP_ALERT_AFTER)
 
 
 class MOESCo2Sensor:

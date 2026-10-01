@@ -8,12 +8,12 @@ from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
 from metno_locationforecast import Place, Forecast
 
-from common import ConnectionLog, connect_mqtt, default_requests_timeout, get_logger, setup_logging
+from common import HTTP_ALERT_AFTER, ConnectionLog, connect_mqtt, default_requests_timeout, get_logger, setup_logging
 from config import generalConfig as c, influxConfig
 from secret import influxToken
 
 log = get_logger("yr")
-yr_log = ConnectionLog(log, "yr.no")
+yr_log = ConnectionLog(log, "yr.no", alert_after=HTTP_ALERT_AFTER)
 
 prdikov = Place("Malý Jeníkov", 49.15049, 15.23491, 578)
 forecast = Forecast(prdikov, "Matej Pristak/1.0 matej.pristak@gmail.com", "compact")

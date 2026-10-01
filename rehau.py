@@ -5,11 +5,11 @@ import asyncio
 import time
 
 from config import generalConfig as c
-from common import ConnectionLog, connect_mqtt, get_logger, setup_logging
+from common import HTTP_ALERT_AFTER, ConnectionLog, connect_mqtt, get_logger, setup_logging
 from config import rehauConfig
 
 log = get_logger("rehau")
-rehau_log = ConnectionLog(log, "Rehau")
+rehau_log = ConnectionLog(log, "Rehau", alert_after=HTTP_ALERT_AFTER)
 REHAU_TIMEOUT = 10  # seconds; local device, 60 s scrape cycle (change 020)
 
 rooms = {

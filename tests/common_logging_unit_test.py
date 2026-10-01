@@ -164,6 +164,29 @@ class TestConnectionLog(unittest.TestCase):
         self.assertNotIn("ERROR", out)
         self.assertIn("INFO svc020conn: Portal restored", out)
 
+    def test_alert_after_three_failures(self):
+        # 020 revision 9 (owner, 2026-10-01): an HTTP failure alerts on the third failure in a row.
+        conn = common.ConnectionLog(self.log, "Api", alert_after=3)
+        levels = [self._at(mono, lambda: conn.failed("boom")).split(" ")[0] for mono in (1000, 1060, 1120)]
+        self.assertEqual(levels, ["WARNING", "WARNING", "ERROR"])
+
+    def test_ok_resets_the_count(self):
+        conn = common.ConnectionLog(self.log, "Api", alert_after=3)
+        self._at(1000, lambda: conn.failed("boom"))
+        self._at(1060, lambda: conn.failed("boom"))
+        self._at(1070, conn.ok)
+        out = self._at(1130, lambda: conn.failed("boom")) + self._at(1190, lambda: conn.failed("boom"))
+        self.assertNotIn("ERROR", out)
+
+    def test_alert_after_and_grace_both_hold(self):
+        conn = common.ConnectionLog(self.log, "Api", grace=900, alert_after=3)
+        out = "".join(self._at(mono, lambda: conn.failed("boom")) for mono in (1000, 1060, 1120))
+        self.assertNotIn("ERROR", out)
+        self.assertIn("ERROR svc020conn: Api failed: boom", self._at(1900, lambda: conn.failed("boom")))
+        slow = common.ConnectionLog(self.log, "Slow", alert_after=3)
+        out = self._at(1000, lambda: slow.failed("boom")) + self._at(5000, lambda: slow.failed("boom"))
+        self.assertNotIn("ERROR", out)
+
     def test_new_failure_after_restore_logs_at_once(self):
         self._at(1000, lambda: self.conn.failed("boom"))
         self._at(1010, self.conn.ok)

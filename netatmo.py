@@ -4,7 +4,7 @@ import logging
 import asyncio
 import time
 
-from common import ConnectionLog, connect_mqtt, get_logger, setup_logging
+from common import HTTP_ALERT_AFTER, ConnectionLog, connect_mqtt, get_logger, setup_logging
 from secret import netatmoClientId, netatmoClientSecret
 from config import netatmoConfig
 from config import generalConfig as c
@@ -14,7 +14,7 @@ LOG = logging.getLogger(__name__)
 log = get_logger("netatmo")
 # A failed poll is a WARNING for the first 15 min, then an ERROR (change 020 revision 5).
 NETATMO_GRACE_S = 15 * 60
-api_log = ConnectionLog(log, "Netatmo", grace=NETATMO_GRACE_S)
+api_log = ConnectionLog(log, "Netatmo", grace=NETATMO_GRACE_S, alert_after=HTTP_ALERT_AFTER)
 
 def save_string_to_file(content):
     """

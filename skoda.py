@@ -11,12 +11,13 @@ from carconnectivity.charging import Charging  # noqa: E402
 from carconnectivity.charging_connector import ChargingConnector  # noqa: E402
 from carconnectivity.vehicle import GenericVehicle  # noqa: E402
 
-from common import ConnectionLog, connect_mqtt, get_logger, setup_logging  # noqa: E402
+from common import HTTP_ALERT_AFTER, ConnectionLog, connect_mqtt, get_logger, setup_logging  # noqa: E402
 from config import skodaConfig  # noqa: E402
 from secret import carConnectivityConfig  # noqa: E402
 
 log = get_logger("skoda")
-cc_log = ConnectionLog(log, "CarConnectivity")
+cc_log = ConnectionLog(log, "CarConnectivity", alert_after=HTTP_ALERT_AFTER)
+geo_log = ConnectionLog(log, "Geocode", alert_after=HTTP_ALERT_AFTER)
 
 
 def is_charging(vehicle):
@@ -97,9 +98,10 @@ def get_address(lat, lon):
             parts.append(city)
         result = ", ".join(parts) if parts else ""
         _geo_cache[key] = result
+        geo_log.ok()
         return result
     except Exception as e:
-        log.error(f"Geocode error: {e}")
+        geo_log.failed(e)
         return ""
 
 
