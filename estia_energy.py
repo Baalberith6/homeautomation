@@ -166,7 +166,7 @@ async def tick(api, state, backoff, now, mono):
         if delay >= backoff.last_step:
             api.forget_token()
         state["next_try"] = mono + delay
-        log.error(f"Toshiba error: {e}; next login in {delay} s")
+        (log.error if backoff.alert else log.warning)(f"Toshiba error: {e}; next login in {delay} s")
         return
     except Exception as e:
         state["logged_in"] = False
@@ -174,7 +174,7 @@ async def tick(api, state, backoff, now, mono):
         if isinstance(e, ToshibaAcHttpApiAuthError) or delay >= backoff.last_step:
             api.forget_token()
         state["next_try"] = mono + delay
-        log.error(f"Toshiba error: {e}; next login in {delay} s")
+        (log.error if backoff.alert else log.warning)(f"Toshiba error: {e}; next login in {delay} s")
         return
 
     if usage is None:

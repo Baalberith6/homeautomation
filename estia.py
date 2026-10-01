@@ -60,7 +60,7 @@ async def main():
             delay = backoff.failure(time.monotonic())
             if isinstance(e, ToshibaAcHttpApiAuthError) or delay >= backoff.last_step:
                 api.forget_token()
-            log.error(f"Toshiba error: {e}; next login in {delay} s")
+            (log.error if backoff.alert else log.warning)(f"Toshiba error: {e}; next login in {delay} s")
             time.sleep(delay)
             continue
 

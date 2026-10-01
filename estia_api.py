@@ -53,31 +53,41 @@ class LoginBackoff:
 
     The step goes back to the first only after an hour with no failure, so two
     sessions that end each other cannot log in every minute (change 019).
+    `alert` is true from the third failure in a row: the first two are a WARNING,
+    then an ERROR, which fires R3 (change 019 revision 5).
     `now` is a monotonic time in seconds.
     """
 
     STEPS = (60, 300, 600, 3600)
     RESET_AFTER = 3600
+    ALERT_AFTER = 3
 
     def __init__(self, steps: t.Sequence[int] = STEPS, reset_after: int = RESET_AFTER) -> None:
         self._steps = tuple(steps)
         self._reset_after = reset_after
         self._index = 0
         self._last_failure: t.Optional[float] = None
+        self._in_row = 0
 
     def failure(self, now: float) -> int:
         delay = self._steps[min(self._index, len(self._steps) - 1)]
         self._index += 1
+        self._in_row += 1
         self._last_failure = now
         return delay
 
     def success(self, now: float) -> None:
+        self._in_row = 0
         if self._last_failure is None or now - self._last_failure >= self._reset_after:
             self._index = 0
 
     @property
     def last_step(self) -> int:
         return self._steps[-1]
+
+    @property
+    def alert(self) -> bool:
+        return self._in_row >= self.ALERT_AFTER
 
 
 class ToshibaAcHttpApi:

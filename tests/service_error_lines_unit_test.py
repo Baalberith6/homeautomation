@@ -138,7 +138,23 @@ class TestEstiaErrors(unittest.TestCase):
         with patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaises(LoopBreak):
                 asyncio.run(estia.main())
-        self.assertIn("ERROR estia: Toshiba error: API timeout; next login in 60 s", out.getvalue())
+        self.assertIn("WARNING estia: Toshiba error: API timeout; next login in 60 s", out.getvalue())
+        self.assertNotIn("ERROR", out.getvalue())
+
+    @patch('estia.time.sleep', side_effect=[None, None, LoopBreak])
+    @patch('estia.connect_mqtt')
+    @patch('estia.ToshibaAcHttpApi')
+    def test_api_error_on_the_third_failure_in_row(self, mock_api_cls, mock_mqtt, mock_sleep):
+        import estia
+        mock_api_cls.return_value = AsyncMock()
+        mock_api_cls.return_value.get_device_detail = AsyncMock(side_effect=Exception("API timeout"))
+        mock_api_cls.return_value.forget_token = MagicMock()
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            with self.assertRaises(LoopBreak):
+                asyncio.run(estia.main())
+        lines = [line for line in out.getvalue().splitlines() if "Toshiba error" in line]
+        self.assertEqual([line.split()[0] for line in lines], ["WARNING", "WARNING", "ERROR"])
+        self.assertIn("ERROR estia: Toshiba error: API timeout; next login in 600 s", out.getvalue())
 
 
 class TestVwEudaErrors(unittest.TestCase):
