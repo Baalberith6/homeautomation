@@ -60,7 +60,8 @@ class TestGrafanaSetter(unittest.TestCase):
         import common
         import grafana_setter
         client = MagicMock()
-        fresh = common.ConnectionLog(grafana_setter.log, "Grafana API")
+        fresh = common.ConnectionLog(grafana_setter.log, "Grafana API",
+                                     alert_after=grafana_setter.api_log.alert_after)
         with patch.object(grafana_setter, "api_log", fresh), \
                 patch("grafana_setter.requests.get") as get, \
                 patch("grafana_setter.time.sleep", side_effect=LoopBreak), \
@@ -78,17 +79,20 @@ class TestGrafanaSetter(unittest.TestCase):
     def test_skips_cycle_on_timeout(self):
         client, out = self._one_cycle(side_effect=requests.Timeout("read timed out"))
         client.publish.assert_not_called()
-        self.assertEqual(out.count("ERROR grafana_setter:"), 1)
+        self.assertEqual(out.count("WARNING grafana_setter:"), 1)
+        self.assertNotIn("ERROR", out)
 
     def test_skips_cycle_on_bad_json(self):
         client, out = self._one_cycle(json_error=json.JSONDecodeError("Expecting value", "", 0))
         client.publish.assert_not_called()
-        self.assertEqual(out.count("ERROR grafana_setter:"), 1)
+        self.assertEqual(out.count("WARNING grafana_setter:"), 1)
+        self.assertNotIn("ERROR", out)
 
     def test_skips_cycle_on_missing_key(self):
         client, out = self._one_cycle(json_value={"message": "Unauthorized"})
         client.publish.assert_not_called()
-        self.assertEqual(out.count("ERROR grafana_setter:"), 1)
+        self.assertEqual(out.count("WARNING grafana_setter:"), 1)
+        self.assertNotIn("ERROR", out)
 
     def test_publishes_on_success(self):
         variables = {"dashboard": {"templating": {"list": [

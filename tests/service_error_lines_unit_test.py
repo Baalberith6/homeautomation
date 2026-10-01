@@ -41,7 +41,28 @@ class LoopBreak(Exception):
 
 
 def _fresh(module, attr, name):
-    return patch.object(module, attr, common.ConnectionLog(module.log, name))
+    """A new log with the rules of the service's own log (grace, alert_after)."""
+    own = getattr(module, attr)
+    return patch.object(module, attr, common.ConnectionLog(module.log, name, grace=own.grace,
+                                                           alert_after=own.alert_after))
+
+
+class TestHttpAlertAfter(unittest.TestCase):
+    """020 revision 9: every HTTP poll alerts on the third failure in a row."""
+
+    def test_http_logs_use_three(self):
+        import estia_energy
+        import grafana_setter
+        import moes_co2
+        import netatmo
+        import rehau
+        import skoda
+        import vw_euda
+        import yr
+        logs = [rehau.rehau_log, yr.yr_log, skoda.cc_log, skoda.geo_log, moes_co2.tuya_log,
+                grafana_setter.api_log, netatmo.api_log, vw_euda.portal_log, estia_energy.cop_log]
+        self.assertEqual(common.HTTP_ALERT_AFTER, 3)
+        self.assertEqual([log.alert_after for log in logs], [3] * len(logs))
 
 
 class TestInverterErrors(unittest.TestCase):
@@ -107,7 +128,8 @@ class TestYrErrors(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaises(LoopBreak):
                 yr.publish(MagicMock())
-        self.assertIn("ERROR yr: yr.no failed: network error", out.getvalue())
+        self.assertIn("WARNING yr: yr.no failed: network error", out.getvalue())
+        self.assertNotIn("ERROR", out.getvalue())
 
 
 class TestSkodaErrors(unittest.TestCase):
@@ -122,7 +144,17 @@ class TestSkodaErrors(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaises(LoopBreak):
                 asyncio.run(skoda.main())
-        self.assertIn("ERROR skoda: CarConnectivity failed: network error", out.getvalue())
+        self.assertIn("WARNING skoda: CarConnectivity failed: network error", out.getvalue())
+        self.assertNotIn("ERROR", out.getvalue())
+
+    def test_geocode_error_is_a_warning(self):
+        import skoda
+        with _fresh(skoda, "geo_log", "Geocode"), \
+                patch("skoda.urllib.request.urlopen", side_effect=Exception("timed out")), \
+                patch("sys.stdout", new_callable=io.StringIO) as out:
+            self.assertEqual(skoda.get_address(48.1001, 17.1001), "")
+        self.assertIn("WARNING skoda: Geocode failed: timed out", out.getvalue())
+        self.assertNotIn("ERROR", out.getvalue())
 
 
 class TestEstiaErrors(unittest.TestCase):
@@ -259,7 +291,8 @@ class TestRehauErrors(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaises(LoopBreak):
                 asyncio.run(rehau.main())
-        self.assertIn("ERROR rehau: Rehau failed: connection refused", out.getvalue())
+        self.assertIn("WARNING rehau: Rehau failed: connection refused", out.getvalue())
+        self.assertNotIn("ERROR", out.getvalue())
 
 
 class TestMoesCo2Errors(unittest.TestCase):
@@ -273,8 +306,9 @@ class TestMoesCo2Errors(unittest.TestCase):
         with _fresh(moes_co2, "tuya_log", "Tuya cloud"), \
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             self.assertIsNone(sensor.get_co2_value())
-        self.assertIn("ERROR moes_co2: Tuya cloud failed: ", out.getvalue())
+        self.assertIn("WARNING moes_co2: Tuya cloud failed: ", out.getvalue())
         self.assertIn("token invalid", out.getvalue())
+        self.assertNotIn("ERROR", out.getvalue())
 
     def test_init_failure_exits_with_error(self):
         import moes_co2
@@ -284,7 +318,7 @@ class TestMoesCo2Errors(unittest.TestCase):
                 _fresh(moes_co2, "tuya_log", "Tuya cloud"), \
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             sensor.run()
-        self.assertIn("ERROR moes_co2: Tuya cloud failed: ", out.getvalue())
+        self.assertIn("WARNING moes_co2: Tuya cloud failed: ", out.getvalue())
         self.assertIn("ERROR moes_co2: Failed to initialize Tuya device, exiting", out.getvalue())
 
 
