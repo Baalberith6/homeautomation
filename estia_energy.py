@@ -11,7 +11,7 @@ from estia_api import (LoginBackoff, ToshibaAcHttpApi, ToshibaAcHttpApiAuthError
 sys.stdout.reconfigure(line_buffering=True)
 
 from paho.mqtt import client as mqtt_client  # noqa: E402
-from common import ConnectionLog, connect_mqtt, get_logger, setup_logging, subscribe_on_connect  # noqa: E402
+from common import HTTP_ALERT_AFTER, ConnectionLog, connect_mqtt, get_logger, setup_logging, subscribe_on_connect  # noqa: E402
 from config import influxConfig  # noqa: E402
 from secret import toshibaUsername, toshibaSecret, influxToken  # noqa: E402
 from config import generalConfig as c, estiaConfig  # noqa: E402
@@ -25,7 +25,7 @@ log = get_logger("estia_energy")
 # 60 min; a COP resets it (change 019 revision 4). A retry 5-6 min after a 403 worked 4 of 4 times.
 DATA_RETRY_STEPS = (300, 600, 1800, 3600)
 # WARNING while the consumption call fails for less than an hour, then ERROR (fires R3).
-cop_log = ConnectionLog(log, "Toshiba consumption", grace=3600)
+cop_log = ConnectionLog(log, "Toshiba consumption", grace=3600, alert_after=HTTP_ALERT_AFTER)
 
 influx_client = InfluxDBClient(url=influxConfig["url"], token=influxToken, org=influxConfig["org"])
 write_api = influx_client.write_api(write_options=SYNCHRONOUS)

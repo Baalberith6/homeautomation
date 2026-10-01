@@ -103,7 +103,7 @@ class TestNetatmoErrors(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaises(LoopBreak):
                 asyncio.run(netatmo.main())
-        self.assertIn("ERROR netatmo: Netatmo failed: API error", out.getvalue())
+        self.assertIn("WARNING netatmo: Netatmo failed: API error", out.getvalue())  # grace 15 min
 
     @patch('netatmo.pyatmo.NetatmoOAuth2')
     @patch('netatmo.read_string_from_file', return_value="fake_token")
@@ -185,7 +185,7 @@ class TestVwEudaErrors(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaises(LoopBreak):
                 vw_euda.main()
-        self.assertIn("ERROR vw_euda: EU Data Act portal failed: API error: GET x -> HTTP 500", out.getvalue())
+        self.assertIn("WARNING vw_euda: EU Data Act portal failed: API error: GET x -> HTTP 500", out.getvalue())
 
 
 class TestVwEudaGrace(unittest.TestCase):
