@@ -182,7 +182,7 @@ class TestResubscribe(unittest.TestCase):
 
 
 class TestDataRetry(unittest.TestCase):
-    """Change 019 revision 4: a 403 or 429 on the consumption call keeps the token and retries in 5 min.
+    """Change 019 revisions 4 and 6: a 403 or 429 on the consumption call keeps the token and retries every 5 min.
 
     From 2026-09-29 12:22 to 2026-09-30 11:22, a retry 5-6 min after a 403 worked 4 of 4 times, and a
     retry after 10 min or an hourly login and call worked 0 of 14 times.
@@ -234,18 +234,22 @@ class TestDataRetry(unittest.TestCase):
         self.assertEqual(self.mock_write.write.call_count, 2)
         self.assertIn("INFO estia_energy: Toshiba consumption restored", out)
 
-    def test_retry_steps_and_error_after_an_hour(self):
+    def test_retry_every_5_min_and_error_after_an_hour(self):
+        """Revision 6: the retry stays at 300 s. On 2026-10-13 the steps 600, 1800 and 3600 s
+        made every try the first call after an idle hour, and each got the 403 from 05:08 to 16:08."""
         from estia_api import ToshibaAcHttpApiRateLimitError
         self.state["logged_in"] = True
         self.api.get_hourly_consumption = AsyncMock(side_effect=ToshibaAcHttpApiRateLimitError("HTTP 403: x"))
         levels, tries = [], []
-        for minute, mono in ((22, 1000), (27, 1300), (37, 1900), (7, 3700), (7, 7300)):
-            out = self._tick(minute, mono)
+        for i in range(14):
+            mono = 1000 + 300 * i
+            out = self._tick((22 + 5 * i) % 60, mono)
             levels.append("ERROR" if "ERROR" in out else "WARNING" if "WARNING" in out else "-")
-            tries.append(self.state["next_try"])
-        self.assertEqual(tries, [1300, 1900, 3700, 7300, 10900])
-        self.assertEqual(levels, ["WARNING", "WARNING", "WARNING", "WARNING", "ERROR"])
+            tries.append(self.state["next_try"] - mono)
+        self.assertEqual(tries, [300] * 14)
+        self.assertEqual(levels, ["WARNING"] * 12 + ["ERROR"] * 2)
         self.api.forget_token.assert_not_called()
+        self.assertEqual(self.api.connect.await_count, 0)
 
     def test_success_resets_the_retry(self):
         from estia_api import ToshibaAcHttpApiRateLimitError

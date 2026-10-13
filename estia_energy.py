@@ -21,9 +21,10 @@ from influxdb_client.client.write_api import SYNCHRONOUS  # noqa: E402
 # once per hour at minute 22, calc COP for the last 24h
 
 log = get_logger("estia_energy")
-# After a 403 or 429 on the consumption call: keep the token and try again in 5 min, then 10, 30,
-# 60 min; a COP resets it (change 019 revision 4). A retry 5-6 min after a 403 worked 4 of 4 times.
-DATA_RETRY_STEPS = (300, 600, 1800, 3600)
+# After a 403 or 429 on the consumption call: keep the token and try again every 5 min until a COP
+# (change 019 revisions 4 and 6). A retry 5-6 min after a 403 worked 4 of 4 times; a try after 10 min
+# or more never worked, so a longer step stops the COP for good (2026-10-13, 05:08-16:08).
+DATA_RETRY_STEPS = (300,)
 # WARNING while the consumption call fails for less than an hour, then ERROR (fires R3).
 cop_log = ConnectionLog(log, "Toshiba consumption", grace=3600, alert_after=HTTP_ALERT_AFTER)
 
