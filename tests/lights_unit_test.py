@@ -92,6 +92,7 @@ class TestConfig(unittest.TestCase):
             ("08:00", [10, 11, 12], "off"),
             ("18:00", [5, 12], "on"),
             ("18:45", [10, 11], "orange"),
+            ("21:00", [10, 11], "orange_dim"),
             ("23:59", [2, 3, 5], "off"),
         ])
         self.assertEqual(cfg["colour_zones"], [10, 11])
@@ -120,8 +121,9 @@ class TestColour(unittest.TestCase):
         cfg = config.lightsConfig
         self.assertEqual(lights.action_dps("off", cfg), {"20": False})
         self.assertEqual(lights.action_dps("on", cfg), {"20": True})
-        self.assertEqual(lights.action_dps("orange", cfg), {"20": True, "21": "colour", "24": "001e03e801f4"})
-        self.assertEqual(lights.action_dps("blue", cfg), {"20": True, "21": "colour", "24": "00f003e801f4"})
+        self.assertEqual(lights.action_dps("orange", cfg), {"20": True, "21": "colour", "24": "001e03e803e8"})
+        self.assertEqual(lights.action_dps("blue", cfg), {"20": True, "21": "colour", "24": "00f003e803e8"})
+        self.assertEqual(lights.action_dps("orange_dim", cfg), {"20": True, "21": "colour", "24": "001e03e8000a"})
 
 
 class TestDue(unittest.TestCase):
@@ -144,10 +146,13 @@ class TestDue(unittest.TestCase):
         self.assertEqual(self._due(_at(18, 10, 1)), [])
 
     def test_2359_after_restart_at_0005(self):
-        self.assertEqual(self._due(_at(0, 5, day=21)), [(4, _at(23, 59, day=20))])
+        self.assertEqual(self._due(_at(0, 5, day=21)), [(5, _at(23, 59, day=20))])
 
     def test_2359_not_after_restart_at_0015(self):
         self.assertEqual(self._due(_at(0, 15, day=21)), [])
+
+    def test_dim_at_2100(self):
+        self.assertEqual(self._due(_at(21, 0, 10)), [(4, _at(21, 0))])
 
     def test_two_entries_in_time_order(self):
         self.assertEqual(self._due(_at(18, 46)), [(3, _at(18, 45))])
@@ -263,7 +268,7 @@ class TestMain(unittest.TestCase):
                 patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaises(LoopBreak):
                 lights.main(config.lightsConfig, make)
-        self.assertIn("INFO lights: started, 5 entries, next 18:45", out.getvalue())
+        self.assertIn("INFO lights: started, 6 entries, next 18:45", out.getvalue())
         self.assertIn("INFO lights: zone 5 on ok (try 1)", out.getvalue())
 
 
