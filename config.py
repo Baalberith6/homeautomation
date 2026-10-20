@@ -93,6 +93,31 @@ moesCo2Config = {
     "update_interval": 60  # seconds
 }
 
+# Change 023: the light zones of the MiBoxer WL-Box2, over the local Tuya protocol.
+lightsConfig = {
+    "enabled": True,
+    "device_id": "bfcb1fe44950f0d011tdkd",  # MiBoxer WL-Box2, "2.4G Gateway" in the Tuya app
+    "ip": "192.168.1.142",                  # DHCP reservation in UniFi
+    "version": 3.5,
+    "tries": 3,
+    "retry_wait_s": 10,
+    "select_wait_s": 1,
+    "zone_wait_s": 2,
+    "catch_up_min": 10,
+    "loop_s": 30,
+    # Zones: 2 Chodba 1NP, 3 Kuchyna 1NP, 5 Chodba 2NP, 10 Kubo 2NP, 11 Julinka 2NP, 12 Spalna 2NP.
+    # Only 10 and 11 are colour strips; the others are warm white.
+    "colour_zones": [10, 11],
+    "colours": {"orange": (30, 1000, 500), "blue": (240, 1000, 500)},  # h 0-360, s 0-1000, v 0-1000
+    "schedule": [
+        ("06:00", [10, 11], "blue"),
+        ("08:00", [10, 11, 12], "off"),
+        ("18:00", [5, 12], "on"),
+        ("18:45", [10, 11], "orange"),
+        ("23:59", [2, 3, 5], "off"),
+    ],
+}
+
 import os
 
 generalConfig = {
