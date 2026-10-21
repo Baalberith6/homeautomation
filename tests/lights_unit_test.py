@@ -88,8 +88,8 @@ class TestConfig(unittest.TestCase):
     def test_first_table_matches_spec(self):
         cfg = config.lightsConfig
         self.assertEqual([tuple(e) for e in cfg["schedule"]], [
-            ("06:00", [10, 11], "blue"),
-            ("08:00", [10, 11, 12], "off"),
+            ("06:00", [10, 11], "blue_dim"),
+            ("08:00", [10, 11, 12, 2, 3, 5], "off"),
             ("18:00", [5, 12], "on"),
             ("18:45", [10, 11], "orange"),
             ("21:00", [10, 11], "orange_dim"),
@@ -124,6 +124,7 @@ class TestColour(unittest.TestCase):
         self.assertEqual(lights.action_dps("orange", cfg), {"20": True, "21": "colour", "24": "001e03e803e8"})
         self.assertEqual(lights.action_dps("blue", cfg), {"20": True, "21": "colour", "24": "00f003e803e8"})
         self.assertEqual(lights.action_dps("orange_dim", cfg), {"20": True, "21": "colour", "24": "001e03e8000a"})
+        self.assertEqual(lights.action_dps("blue_dim", cfg), {"20": True, "21": "colour", "24": "00f003e8000a"})
 
 
 class TestDue(unittest.TestCase):
