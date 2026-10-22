@@ -1,5 +1,6 @@
 import io
 import unittest
+from datetime import datetime
 from unittest.mock import patch, MagicMock
 
 import requests
@@ -212,6 +213,131 @@ class TestRehauPost(unittest.TestCase):
     def test_timeout_is_error(self, post):
         out = self._apply()
         self.assertEqual(out.count("ERROR estia_optimizer:"), 1)
+
+
+
+class TestNightSetback(unittest.TestCase):
+    """Change 024: the ground floor drops 1 C at night; the boost is +1 C on both floors."""
+
+    def setUp(self):
+        estia_optimizer.is_boosting = False
+        estia_optimizer.termostat_temp_1np = 21.0
+        estia_optimizer.applied_is_day = None
+        self._reset_rooms()
+        self.addCleanup(self._reset_state)
+        self.clock = patch.object(estia_optimizer, "_now", return_value=datetime(2026, 10, 22, 12, 0))
+        self.now = self.clock.start()
+        self.addCleanup(self.clock.stop)
+        fresh = patch.object(estia_optimizer, "rehau_log", common.ConnectionLog(estia_optimizer.log, "Rehau"))
+        fresh.start()
+        self.addCleanup(fresh.stop)
+
+    @staticmethod
+    def _reset_rooms():
+        for room in estia_optimizer.rooms:
+            room.currentTemp = 0
+
+    def _reset_state(self):
+        estia_optimizer.is_boosting = False
+        estia_optimizer.termostat_temp_1np = 21.0
+        estia_optimizer.applied_is_day = None
+        self._reset_rooms()
+
+    def _at(self, hour, minute=0):
+        self.now.return_value = datetime(2026, 10, 22, hour, minute)
+
+    @staticmethod
+    def _send(topic, payload):
+        msg = MagicMock()
+        msg.topic = topic
+        msg.payload.decode.return_value = payload
+        client = MagicMock()
+        estia_optimizer.subscribe(client, [topic])
+        with patch("sys.stdout", new_callable=io.StringIO) as out:
+            client.on_message(client, None, msg)
+        return out.getvalue()
+
+    def test_is_day_boundaries(self):
+        self.assertTrue(estia_optimizer.is_day(7))
+        self.assertTrue(estia_optimizer.is_day(18))
+        self.assertFalse(estia_optimizer.is_day(19))
+        self.assertFalse(estia_optimizer.is_day(6))
+        self.assertFalse(estia_optimizer.is_day(0))
+
+    def test_setpoints_table(self):
+        sp = estia_optimizer.setpoints
+        self.assertEqual(sp(21.0, True, False), (21.0, 21.0))
+        self.assertEqual(sp(21.0, True, True), (22.0, 22.0))
+        self.assertEqual(sp(21.0, False, False), (20.0, 21.0))
+        self.assertEqual(sp(21.0, False, True), (21.0, 22.0))
+
+    @patch("estia_optimizer.read_string_from_file", return_value="token")
+    @patch("estia_optimizer.pyatmo")
+    @patch("estia_optimizer.requests.post")
+    def test_apply_sends_night_boost_values(self, post, pyatmo, _token):
+        post.return_value = MagicMock(status_code=200)
+        self._at(23)
+        estia_optimizer.is_boosting = True
+        with patch("sys.stdout", new_callable=io.StringIO):
+            estia_optimizer.apply_thermostats()
+        self.assertEqual(post.call_count, 7)
+        for call in post.call_args_list:
+            self.assertEqual(call.kwargs["data"]["RSH"], 21.0)
+            self.assertEqual(call.kwargs["data"]["temp"], estia_optimizer.calc_rehau_temp(21.0))
+        thermpoint = pyatmo.HomeStatus.return_value.set_room_thermpoint
+        self.assertEqual(thermpoint.call_count, 7)
+        for call in thermpoint.call_args_list:
+            self.assertEqual(call.kwargs["temp"], 22.0)
+
+    @patch("estia_optimizer.apply_thermostats")
+    def test_window_change_on_termostat_message(self, mock_apply):
+        estia_optimizer.applied_is_day = True
+        self._at(19)
+        self._send("command/Termostat1NP", "21.0")
+        mock_apply.assert_called_once_with(include_netatmo=False)
+        self._send("command/Termostat1NP", "21.0")
+        mock_apply.assert_called_once_with(include_netatmo=False)
+
+    @patch("estia_optimizer.apply_thermostats")
+    def test_window_change_on_compressor_message(self, mock_apply):
+        estia_optimizer.applied_is_day = False
+        self._at(7)
+        self._send("bool/estia/heating_compressor_active", "False")
+        mock_apply.assert_called_once_with(include_netatmo=False)
+        self.assertFalse(estia_optimizer.is_boosting)
+
+    @patch("estia_optimizer.apply_thermostats")
+    def test_first_termostat_message_writes_rehau(self, mock_apply):
+        estia_optimizer.termostat_temp_1np = None
+        self._send("command/Termostat1NP", "21.0")
+        mock_apply.assert_called_once_with(include_netatmo=False)
+        self._send("command/Termostat1NP", "21.0")
+        mock_apply.assert_called_once_with(include_netatmo=False)
+
+    @patch("estia_optimizer.apply_thermostats")
+    def test_no_window_write_before_first_termostat(self, mock_apply):
+        estia_optimizer.termostat_temp_1np = None
+        estia_optimizer.applied_is_day = True
+        self._at(20)
+        self._send("bool/estia/heating_compressor_active", "False")
+        mock_apply.assert_not_called()
+
+    @patch("estia_optimizer.apply_thermostats")
+    def test_window_change_while_boosting(self, mock_apply):
+        estia_optimizer.is_boosting = True
+        estia_optimizer.applied_is_day = True
+        self._at(19)
+        self._send("bool/estia/heating_compressor_active", "True")
+        mock_apply.assert_called_once_with(include_netatmo=False)
+        self.assertTrue(estia_optimizer.is_boosting)
+        self.assertFalse(estia_optimizer.applied_is_day)
+
+    @patch("estia_optimizer.apply_thermostats")
+    def test_window_change_logs_one_info_line(self, mock_apply):
+        estia_optimizer.applied_is_day = True
+        self._at(19)
+        out = self._send("command/Termostat1NP", "21.0")
+        self.assertEqual(out.count("Window day -> night: Rehau base 20.0C"), 1)
 
 
 if __name__ == '__main__':
