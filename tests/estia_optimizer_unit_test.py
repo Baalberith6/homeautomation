@@ -257,10 +257,10 @@ class TestNightSetback(unittest.TestCase):
         return out.getvalue()
 
     def test_is_day_boundaries(self):
-        self.assertTrue(estia_optimizer.is_day(7))
-        self.assertTrue(estia_optimizer.is_day(18))
-        self.assertFalse(estia_optimizer.is_day(19))
-        self.assertFalse(estia_optimizer.is_day(6))
+        self.assertTrue(estia_optimizer.is_day(6))
+        self.assertTrue(estia_optimizer.is_day(17))
+        self.assertFalse(estia_optimizer.is_day(18))
+        self.assertFalse(estia_optimizer.is_day(5))
         self.assertFalse(estia_optimizer.is_day(0))
 
     def test_setpoints_table(self):
