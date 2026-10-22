@@ -21,8 +21,8 @@ applied_is_day = None      # the window of the last Rehau write
 
 BOOST_OFFSET = 1.0         # both floors, while the heating compressor runs (024, D5)
 NIGHT_OFFSET = -1.0        # ground floor only, outside the day window (024, D2)
-DAY_START_HOUR = 7         # the day window is 07:00-18:59 local time (024, D7)
-DAY_END_HOUR = 19
+DAY_START_HOUR = 6         # the day window is 06:00-17:59 local time (024, D12)
+DAY_END_HOUR = 18
 
 file_path = ('netatmo_optimizer.dev.token' if c["debug"]
              else 'netatmo_optimizer.token')
