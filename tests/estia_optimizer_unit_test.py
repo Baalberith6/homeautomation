@@ -215,7 +215,6 @@ class TestRehauPost(unittest.TestCase):
         self.assertEqual(out.count("ERROR estia_optimizer:"), 1)
 
 
-
 class TestNightSetback(unittest.TestCase):
     """Change 024: the ground floor drops 1 C at night; the boost is +1 C on both floors."""
 

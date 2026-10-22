@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 import pyatmo
 import requests
@@ -13,10 +14,15 @@ from common import ConnectionLog, connect_mqtt, get_logger, setup_logging, subsc
 log = get_logger("estia_optimizer")
 rehau_log = ConnectionLog(log, "Rehau")
 
-termostat_temp_1np = 21.0
+termostat_temp_1np = None  # None until the first command/Termostat1NP (change 024, D10)
+TERMOSTAT_DEFAULT = 21.0   # used by a boost that comes before the first command/Termostat1NP
 is_boosting = False
+applied_is_day = None      # the window of the last Rehau write
 
-BOOST_OFFSET = 1.5
+BOOST_OFFSET = 1.0         # both floors, while the heating compressor runs (024, D5)
+NIGHT_OFFSET = -1.0        # ground floor only, outside the day window (024, D2)
+DAY_START_HOUR = 7         # the day window is 07:00-18:59 local time (024, D7)
+DAY_END_HOUR = 19
 
 file_path = ('netatmo_optimizer.dev.token' if c["debug"]
              else 'netatmo_optimizer.token')
@@ -80,14 +86,40 @@ def calc_rehau_temp(param):
     return 320 + 18 * param
 
 
+def _now():
+    return datetime.now()
+
+
+def is_day(hour):
+    return DAY_START_HOUR <= hour < DAY_END_HOUR
+
+
+def setpoints(termostat, day, boosting):
+    """Returns (rehau, netatmo). Rehau drops at night; both get the boost (change 024)."""
+    boost = BOOST_OFFSET if boosting else 0
+    rehau = termostat + (0 if day else NIGHT_OFFSET) + boost
+    return rehau, termostat + boost
+
+
+def _log_window(old_day, new_day):
+    termostat = (termostat_temp_1np if termostat_temp_1np is not None
+                 else TERMOSTAT_DEFAULT)
+    base = termostat + (0 if new_day else NIGHT_OFFSET)
+    names = {True: "day", False: "night"}
+    log.info(f"Window {names[old_day]} -> {names[new_day]}: "
+             f"Rehau base {base}C")
+
+
 def apply_thermostats(include_netatmo=True):
-    temp = (termostat_temp_1np + BOOST_OFFSET
-            if is_boosting else termostat_temp_1np)
+    termostat = (termostat_temp_1np if termostat_temp_1np is not None
+                 else TERMOSTAT_DEFAULT)
+    temp, netatmo_temp = setpoints(termostat, is_day(_now().hour),
+                                   is_boosting)
 
     if c["debug"]:
         print(f"[estia_optimizer] apply_thermostats: "
-              f"boosting={is_boosting}, temp={temp}, "
-              f"rehau={include_netatmo}")
+              f"boosting={is_boosting}, rehau={temp}, "
+              f"netatmo={netatmo_temp}, include_netatmo={include_netatmo}")
 
     # Rehau zones
     for room in rooms:
@@ -135,16 +167,18 @@ def apply_thermostats(include_netatmo=True):
                 room_id = netatmoConfig["room_id_" + room_name]
                 if c["debug"]:
                     print(f"[estia_optimizer] Netatmo {room_name}: "
-                          f"manual {temp}C, "
+                          f"manual {netatmo_temp}C, "
                           f"end_time +{NETATMO_END_TIME_SECONDS}s")
                 home_status.set_room_thermpoint(
-                    mode="manual", temp=temp,
+                    mode="manual", temp=netatmo_temp,
                     room_id=room_id, end_time=end_time
                 )
         except Exception as e:
             log.error(f"Netatmo error: {e}")
 
-    print(f"[estia_optimizer] Thermostats set to {temp}C "
+    netatmo_note = "" if include_netatmo else " (Netatmo not written)"
+    print(f"[estia_optimizer] Thermostats set: Rehau {temp}C, "
+          f"Netatmo {netatmo_temp}C{netatmo_note} "
           f"(boosting={is_boosting})")
 
 
@@ -154,9 +188,10 @@ def subscribe(client: mqtt_client, topics: [str]):
         if len(topicParts) < 2:
             return
 
+        global applied_is_day, is_boosting, termostat_temp_1np
         if topicParts[1] == "estia":  # heating compressor state
-            global is_boosting
             active = msg.payload.decode() == "True"
+            day = is_day(_now().hour)
             if c["debug"]:
                 print(f"[estia_optimizer] heating_compressor_active="
                       f"{active}, is_boosting={is_boosting}")
@@ -164,12 +199,20 @@ def subscribe(client: mqtt_client, topics: [str]):
                 print("[estia_optimizer] Starting boost: "
                       "heating compressor active")
                 is_boosting = True
+                applied_is_day = day
                 apply_thermostats()
             elif not active and is_boosting:
                 print("[estia_optimizer] Stopping boost: "
                       "heating compressor inactive")
                 is_boosting = False
+                applied_is_day = day
                 apply_thermostats()
+            elif (termostat_temp_1np is not None
+                  and applied_is_day is not None
+                  and day != applied_is_day):  # change 024, rules 1 and 2
+                _log_window(applied_is_day, day)
+                applied_is_day = day
+                apply_thermostats(include_netatmo=False)
         elif topicParts[1] == "rehau_set":
             if c["debug"]:
                 print(f"Received `{msg.payload.decode()}` "
@@ -178,16 +221,25 @@ def subscribe(client: mqtt_client, topics: [str]):
                 if room.name == topicParts[2]:
                     room.currentTemp = float(msg.payload.decode())
         elif topicParts[1] == "Termostat1NP":
-            global termostat_temp_1np
             new_temp = float(msg.payload.decode())
-            if new_temp != termostat_temp_1np:
-                print(f"[estia_optimizer] Termostat1NP changed: "
-                      f"{termostat_temp_1np} -> {new_temp}")
+            day = is_day(_now().hour)
+            first = termostat_temp_1np is None  # change 024, rule 3
+            window_changed = (applied_is_day is not None
+                              and day != applied_is_day)  # rule 1
+            if first or new_temp != termostat_temp_1np or window_changed:
+                if new_temp != termostat_temp_1np:
+                    print(f"[estia_optimizer] Termostat1NP changed: "
+                          f"{termostat_temp_1np} -> {new_temp}")
                 termostat_temp_1np = new_temp
+                if window_changed:
+                    _log_window(applied_is_day, day)
+                applied_is_day = day
                 apply_thermostats(include_netatmo=False)
-            elif c["debug"]:
-                print(f"Received `{msg.payload.decode()}` "
-                      f"from `{msg.topic}` topic")
+            else:
+                applied_is_day = day
+                if c["debug"]:
+                    print(f"Received `{msg.payload.decode()}` "
+                          f"from `{msg.topic}` topic")
 
     subscribe_on_connect(client, topics)
     client.on_message = on_message
