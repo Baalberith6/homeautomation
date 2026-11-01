@@ -93,3 +93,5 @@ The energy loop: `../kb/architecture/data-flows.md`
 `spec/grafana/prdikov.json` is the generated artefact and the sync-back target after a deploy.
 
 Panel map and field reference: `../kb/architecture/grafana.md`
+
+**The AI dashboard** (UID `ai`, change 028) is `spec/grafana/ai.json`, built-in panels only, Flux on the InfluxDB bucket `ai` that the librarian of `../ai` writes. `spec/grafana/ai.json` is the source: edit it (or the dashboard in the UI), push with `GRAFANA_TOKEN=... python3 spec/grafana/push_ai_dashboard.py --push`, which saves the live JSON to `~/homeautomation/grafana-backups/` first and syncs the live JSON back into `ai.json` after the push; commit the sync-back. After an edit in the UI, run `--fetch` and commit. The script never touches Prdikov or the alert rules.
