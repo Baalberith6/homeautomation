@@ -1,84 +1,51 @@
 {
-  "uid": "ai",
-  "title": "AI",
-  "id": null,
-  "description": "The cost and the runs of the family AI assistant on lxc-ai (kb change 028). Data: the InfluxDB bucket ai, written by the librarian every 300 s.",
-  "tags": [
-    "ai",
-    "028"
-  ],
-  "timezone": "browser",
-  "refresh": "5m",
-  "time": {
-    "from": "now/M",
-    "to": "now"
-  },
-  "timepicker": {
-    "refresh_intervals": [
-      "1m",
-      "5m",
-      "15m",
-      "1h"
-    ]
-  },
-  "editable": true,
-  "graphTooltip": 1,
-  "schemaVersion": 41,
-  "version": 0,
-  "links": [],
   "annotations": {
     "list": []
   },
-  "templating": {
-    "list": []
-  },
+  "description": "The cost and the runs of the family AI assistant on lxc-ai (kb change 028). Data: the InfluxDB bucket ai, written by the librarian every 300 s.",
+  "editable": true,
+  "graphTooltip": 1,
+  "id": 9,
+  "links": [],
   "panels": [
     {
-      "id": 1,
-      "type": "stat",
-      "title": "Total cost",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
       "description": "The cost of every call to a cloud model in the time range, in EUR at the rate of prices.yaml (028 D6).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 2,
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#73BF69",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyEUR"
+        },
+        "overrides": []
       },
       "gridPos": {
+        "h": 4,
+        "w": 4,
         "x": 0,
-        "y": 0,
-        "w": 4,
-        "h": 4
+        "y": 0
       },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ceyru5v6xg3r4b"
-          },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group()\n  |> sum()"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyEUR",
-          "color": {
-            "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              }
-            ]
-          },
-          "decimals": 2,
-          "noValue": "0"
-        },
-        "overrides": []
-      },
+      "id": 1,
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -86,104 +53,34 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "textMode": "value",
-        "orientation": "auto"
-      }
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ceyru5v6xg3r4b"
+          },
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group()\n  |> sum()",
+          "refId": "A"
+        }
+      ],
+      "title": "Total cost",
+      "type": "stat"
     },
     {
-      "id": 2,
-      "type": "stat",
-      "title": "Month-end projection",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
       "description": "The cost of the current month so far divided by the elapsed share of the month. It ignores the time picker (028 S1).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 4,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ceyru5v6xg3r4b"
-          },
-          "query": "import \"date\"\nimport \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nstart = date.truncate(t: now(), unit: 1mo)\nstop = date.add(d: 1mo, to: start)\nelapsed = float(v: int(v: now()) - int(v: start))\nmonth = float(v: int(v: stop) - int(v: start))\nfrom(bucket: \"ai\")\n  |> range(start: start)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group()\n  |> sum()\n  |> map(fn: (r) => ({r with _value: r._value * month / elapsed}))"
-        }
-      ],
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyEUR",
           "color": {
             "mode": "thresholds"
-          },
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "#73BF69",
-                "value": null
-              }
-            ]
           },
           "decimals": 2,
-          "noValue": "0"
-        },
-        "overrides": []
-      },
-      "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "textMode": "value",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 3,
-      "type": "stat",
-      "title": "Cost of one answer",
-      "description": "The mean cost of one chat answer in the time range (028 S8).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 0,
-        "w": 4,
-        "h": 4
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ceyru5v6xg3r4b"
-          },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\" and r.kind == \"chat\")\n  |> group()\n  |> mean()"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "currencyEUR",
-          "color": {
-            "mode": "thresholds"
-          },
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -193,11 +90,22 @@
               }
             ]
           },
-          "decimals": 4
+          "unit": "currencyEUR"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 4,
+        "y": 0
+      },
+      "id": 2,
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -205,44 +113,93 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "textMode": "value",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 4,
-      "type": "stat",
-      "title": "Calls with no price",
-      "description": "Calls whose model is not in prices.yaml. It must be 0 (028 S5).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 0,
-        "w": 4,
-        "h": 4
+        "textMode": "value"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"unpriced\")\n  |> group()\n  |> sum()"
+          "query": "import \"date\"\nimport \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nstart = date.truncate(t: now(), unit: 1mo)\nstop = date.add(d: 1mo, to: start)\nelapsed = float(v: int(v: now()) - int(v: start))\nmonth = float(v: int(v: stop) - int(v: start))\nfrom(bucket: \"ai\")\n  |> range(start: start)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group()\n  |> sum()\n  |> map(fn: (r) => ({r with _value: r._value * month / elapsed}))",
+          "refId": "A"
         }
       ],
+      "title": "Month-end projection",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The mean cost of one chat answer in the time range (028 S8).",
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "#73BF69",
+                "value": null
+              }
+            ]
+          },
+          "unit": "currencyEUR"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 8,
+        "y": 0
+      },
+      "id": 3,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ceyru5v6xg3r4b"
+          },
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\" and r.kind == \"chat\")\n  |> group()\n  |> mean()",
+          "refId": "A"
+        }
+      ],
+      "title": "Cost of one answer",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "Calls whose model is not in prices.yaml. It must be 0 (028 S5).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "decimals": 0,
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -256,12 +213,22 @@
               }
             ]
           },
-          "decimals": 0,
-          "noValue": "0"
+          "unit": "none"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 0
+      },
+      "id": 4,
       "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -269,44 +236,33 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "background",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "textMode": "value",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 5,
-      "type": "stat",
-      "title": "Retried jobs",
-      "description": "The jobs that needed more than one attempt (028 S6).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 0,
-        "w": 4,
-        "h": 4
+        "textMode": "value"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"ai_queue\" and r._field == \"retried\")\n  |> last()"
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"unpriced\")\n  |> group()\n  |> sum()",
+          "refId": "A"
         }
       ],
+      "title": "Calls with no price",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The jobs that needed more than one attempt (028 S6).",
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -316,11 +272,22 @@
               }
             ]
           },
-          "decimals": 0
+          "unit": "none"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 16,
+        "y": 0
+      },
+      "id": 5,
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -328,44 +295,33 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "textMode": "value",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 6,
-      "type": "stat",
-      "title": "Data age",
-      "description": "The time since the last export reached InfluxDB. Above 15 min the export has missed two runs (028 §2.5).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 20,
-        "y": 0,
-        "w": 4,
-        "h": 4
+        "textMode": "value"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"ai_queue\" and r._field == \"done\")\n  |> group()\n  |> last()\n  |> map(fn: (r) => ({_value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0}))"
+          "query": "from(bucket: \"ai\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"ai_queue\" and r._field == \"retried\")\n  |> last()",
+          "refId": "A"
         }
       ],
+      "title": "Retried jobs",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The time since the last export reached InfluxDB. Above 15 min the export has missed two runs (028 §2.5).",
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -383,63 +339,72 @@
               }
             ]
           },
-          "decimals": 0
+          "unit": "s"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "id": 6,
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
         "colorMode": "background",
         "graphMode": "none",
         "justifyMode": "auto",
-        "textMode": "value",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 7,
-      "type": "bargauge",
-      "title": "Cost per user",
-      "description": "The cost in the time range per user of the ledger (028 O2).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 4,
-        "w": 8,
-        "h": 8
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group(columns: [\"user\"])\n  |> sum()"
+          "query": "from(bucket: \"ai\")\n  |> range(start: -30d)\n  |> filter(fn: (r) => r._measurement == \"ai_queue\" and r._field == \"done\")\n  |> group()\n  |> last()\n  |> map(fn: (r) => ({_value: float(v: int(v: now()) - int(v: r._time)) / 1000000000.0}))",
+          "refId": "A"
         }
       ],
+      "title": "Data age",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The cost in the time range per user of the ledger (028 O2).",
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyEUR",
+          "color": {
+            "mode": "continuous-BlYlRd"
+          },
           "decimals": 2,
           "displayName": "${__field.labels.user}",
           "min": 0,
-          "color": {
-            "mode": "continuous-BlYlRd"
-          }
+          "unit": "currencyEUR"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 4
+      },
+      "id": 7,
       "options": {
+        "displayMode": "gradient",
+        "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -447,57 +412,47 @@
           "fields": "",
           "values": false
         },
-        "orientation": "horizontal",
-        "displayMode": "gradient",
         "showUnfilled": true,
         "valueMode": "color"
-      }
-    },
-    {
-      "id": 8,
-      "type": "piechart",
-      "title": "Cost by agent",
-      "description": "The cost in the time range per kind of work: chat or ingest. A new kind shows up by itself (028 D1, D12).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 4,
-        "w": 6,
-        "h": 8
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group(columns: [\"kind\"])\n  |> sum()"
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group(columns: [\"user\"])\n  |> sum()",
+          "refId": "A"
         }
       ],
+      "title": "Cost per user",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The cost in the time range per kind of work: chat or ingest. A new kind shows up by itself (028 D1, D12).",
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyEUR",
-          "decimals": 2,
-          "displayName": "${__field.labels.kind}",
           "color": {
             "mode": "palette-classic"
-          }
+          },
+          "decimals": 2,
+          "displayName": "${__field.labels.kind}",
+          "unit": "currencyEUR"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 6,
+        "x": 8,
+        "y": 4
+      },
+      "id": 8,
       "options": {
-        "reduceOptions": {
-          "calcs": [
-            "lastNotNull"
-          ],
-          "fields": "",
-          "values": false
-        },
-        "pieType": "donut",
         "displayLabels": [
           "name",
           "percent"
@@ -511,36 +466,37 @@
             "percent"
           ]
         },
+        "pieType": "donut",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "tooltip": {
           "mode": "single"
         }
-      }
-    },
-    {
-      "id": 9,
-      "type": "table",
-      "title": "Cost by model",
-      "description": "The calls and the cost per model in the time range (028 S3).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 14,
-        "y": 4,
-        "w": 10,
-        "h": 8
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and (r._field == \"id\" or r._field == \"cost_eur\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"model\"])\n  |> reduce(identity: {calls: 0, cost_eur: 0.0}, fn: (r, accumulator) => ({\n      calls: accumulator.calls + 1,\n      cost_eur: accumulator.cost_eur + (if exists r.cost_eur then r.cost_eur else 0.0)}))\n  |> group()\n  |> sort(columns: [\"cost_eur\"], desc: true)"
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group(columns: [\"kind\"])\n  |> sum()",
+          "refId": "A"
         }
       ],
+      "title": "Cost by agent",
+      "type": "piechart"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The calls and the cost per model in the time range (028 S3).",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -594,60 +550,67 @@
           }
         ]
       },
+      "gridPos": {
+        "h": 8,
+        "w": 10,
+        "x": 14,
+        "y": 4
+      },
+      "id": 9,
       "options": {
-        "showHeader": true,
         "cellHeight": "sm",
         "footer": {
           "show": false
-        }
-      }
-    },
-    {
-      "id": 10,
-      "type": "timeseries",
-      "title": "Cost per day",
-      "description": "The cost per day (Prague time), one series per user (028 S1).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 12,
-        "w": 24,
-        "h": 9
+        },
+        "showHeader": true
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "import \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nfrom(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group(columns: [\"user\"])\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: \"_start\")"
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and (r._field == \"id\" or r._field == \"cost_eur\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"model\"])\n  |> reduce(identity: {calls: 0, cost_eur: 0.0}, fn: (r, accumulator) => ({\n      calls: accumulator.calls + 1,\n      cost_eur: accumulator.cost_eur + (if exists r.cost_eur then r.cost_eur else 0.0)}))\n  |> group()\n  |> sort(columns: [\"cost_eur\"], desc: true)",
+          "refId": "A"
         }
       ],
+      "title": "Cost by model",
+      "type": "table"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The cost per day (Prague time), one series per user (028 S1).",
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyEUR",
-          "displayName": "${__field.labels.user}",
           "color": {
             "mode": "palette-classic"
           },
           "custom": {
-            "drawStyle": "bars",
             "barAlignment": 1,
+            "drawStyle": "bars",
             "fillOpacity": 80,
             "lineWidth": 1,
+            "showPoints": "never",
             "stacking": {
-              "mode": "normal",
-              "group": "A"
-            },
-            "showPoints": "never"
-          }
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "displayName": "${__field.labels.user}",
+          "unit": "currencyEUR"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 9,
+        "w": 24,
+        "x": 0,
+        "y": 12
+      },
+      "id": 10,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -658,53 +621,46 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
-    },
-    {
-      "id": 11,
-      "type": "timeseries",
-      "title": "Runs",
-      "description": "One point per ingest job at the time of its upload: the time from the upload to the last update. Green done, red failed, orange retrying (028 D2, D3).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 21,
-        "w": 24,
-        "h": 10
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_jobs\" and (r._field == \"run_s\" or r._field == \"state\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"state\"])\n  |> keep(columns: [\"_time\", \"run_s\", \"state\"])\n  |> sort(columns: [\"_time\"])"
+          "query": "import \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nfrom(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"cost_eur\")\n  |> group(columns: [\"user\"])\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: \"_start\")",
+          "refId": "A"
         }
       ],
+      "title": "Cost per day",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "One point per ingest job at the time of its upload: the time from the upload to the last update. Green done, red failed, orange retrying (028 D2, D3).",
       "fieldConfig": {
         "defaults": {
-          "unit": "s",
-          "displayName": "${__field.labels.state}",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "#8e8e8e"
+            "fixedColor": "#8e8e8e",
+            "mode": "fixed"
           },
           "custom": {
+            "axisLabel": "run time",
             "drawStyle": "points",
-            "pointSize": 8,
-            "showPoints": "always",
-            "lineWidth": 0,
             "fillOpacity": 0,
+            "lineWidth": 0,
+            "pointSize": 8,
             "scaleDistribution": {
-              "type": "log",
-              "log": 10
+              "log": 10,
+              "type": "log"
             },
-            "axisLabel": "run time"
-          }
+            "showPoints": "always"
+          },
+          "displayName": "${__field.labels.state}",
+          "unit": "s"
         },
         "overrides": [
           {
@@ -716,8 +672,8 @@
               {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#73BF69"
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
                 }
               }
             ]
@@ -731,8 +687,8 @@
               {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#F2495C"
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
                 }
               }
             ]
@@ -746,14 +702,21 @@
               {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#FF9830"
+                  "fixedColor": "#FF9830",
+                  "mode": "fixed"
                 }
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 21
+      },
+      "id": 11,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -763,112 +726,54 @@
         "tooltip": {
           "mode": "single"
         }
-      }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ceyru5v6xg3r4b"
+          },
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_jobs\" and (r._field == \"run_s\" or r._field == \"state\"))\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group(columns: [\"state\"])\n  |> keep(columns: [\"_time\", \"run_s\", \"state\"])\n  |> sort(columns: [\"_time\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Runs",
+      "type": "timeseries"
     },
     {
-      "id": 12,
-      "type": "timeseries",
-      "title": "Tokens per day",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
       "description": "The tokens per day by type (028 S4).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 31,
-        "w": 12,
-        "h": 8
-      },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ceyru5v6xg3r4b"
-          },
-          "query": "import \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nfrom(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and (r._field == \"input_tokens\" or r._field == \"output_tokens\" or r._field == \"cache_read_tokens\" or r._field == \"cache_write_tokens\"))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: \"_start\")"
-        }
-      ],
       "fieldConfig": {
         "defaults": {
-          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "barAlignment": 1,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
           "displayName": "${__field.labels._field}",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "bars",
-            "barAlignment": 1,
-            "fillOpacity": 80,
-            "lineWidth": 1,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            },
-            "showPoints": "never"
-          }
+          "unit": "short"
         },
         "overrides": []
       },
-      "options": {
-        "legend": {
-          "displayMode": "list",
-          "placement": "bottom",
-          "showLegend": true
-        },
-        "tooltip": {
-          "mode": "multi",
-          "sort": "desc"
-        }
-      }
-    },
-    {
-      "id": 13,
-      "type": "timeseries",
-      "title": "Answers per day",
-      "description": "The chat answers per day (Prague time), one series per user (028 S8).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
       "gridPos": {
-        "x": 12,
-        "y": 31,
+        "h": 8,
         "w": 12,
-        "h": 8
+        "x": 0,
+        "y": 31
       },
-      "targets": [
-        {
-          "refId": "A",
-          "datasource": {
-            "type": "influxdb",
-            "uid": "ceyru5v6xg3r4b"
-          },
-          "query": "import \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nfrom(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"id\" and r.kind == \"chat\")\n  |> group(columns: [\"user\"])\n  |> aggregateWindow(every: 1d, fn: count, createEmpty: false, timeSrc: \"_start\")"
-        }
-      ],
-      "fieldConfig": {
-        "defaults": {
-          "unit": "short",
-          "displayName": "${__field.labels.user}",
-          "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "drawStyle": "bars",
-            "barAlignment": 1,
-            "fillOpacity": 80,
-            "lineWidth": 1,
-            "stacking": {
-              "mode": "normal",
-              "group": "A"
-            },
-            "showPoints": "never"
-          }
-        },
-        "overrides": []
-      },
+      "id": 12,
       "options": {
         "legend": {
           "displayMode": "list",
@@ -879,42 +784,93 @@
           "mode": "multi",
           "sort": "desc"
         }
-      }
-    },
-    {
-      "id": 14,
-      "type": "bargauge",
-      "title": "Queue now",
-      "description": "The ingest jobs per state at the last export (028 S6).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 39,
-        "w": 8,
-        "h": 8
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"ai_queue\" and r._field != \"retried\")\n  |> last()"
+          "query": "import \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nfrom(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and (r._field == \"input_tokens\" or r._field == \"output_tokens\" or r._field == \"cache_read_tokens\" or r._field == \"cache_write_tokens\"))\n  |> group(columns: [\"_field\"])\n  |> aggregateWindow(every: 1d, fn: sum, createEmpty: false, timeSrc: \"_start\")",
+          "refId": "A"
         }
       ],
+      "title": "Tokens per day",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The chat answers per day (Prague time), one series per user (028 S8).",
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "barAlignment": 1,
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "lineWidth": 1,
+            "showPoints": "never",
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            }
+          },
+          "displayName": "${__field.labels.user}",
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 31
+      },
+      "id": 13,
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ceyru5v6xg3r4b"
+          },
+          "query": "import \"timezone\"\noption location = timezone.location(name: \"Europe/Prague\")\nfrom(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and r._field == \"id\" and r.kind == \"chat\")\n  |> group(columns: [\"user\"])\n  |> aggregateWindow(every: 1d, fn: count, createEmpty: false, timeSrc: \"_start\")",
+          "refId": "A"
+        }
+      ],
+      "title": "Answers per day",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The ingest jobs per state at the last export (028 S6).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#5794F2",
+            "mode": "fixed"
+          },
           "decimals": 0,
           "min": 0,
-          "color": {
-            "mode": "fixed",
-            "fixedColor": "#5794F2"
-          }
+          "unit": "none"
         },
         "overrides": [
           {
@@ -926,8 +882,8 @@
               {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#F2495C"
+                  "fixedColor": "#F2495C",
+                  "mode": "fixed"
                 }
               }
             ]
@@ -941,8 +897,8 @@
               {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#FF9830"
+                  "fixedColor": "#FF9830",
+                  "mode": "fixed"
                 }
               }
             ]
@@ -956,15 +912,24 @@
               {
                 "id": "color",
                 "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#73BF69"
+                  "fixedColor": "#73BF69",
+                  "mode": "fixed"
                 }
               }
             ]
           }
         ]
       },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 39
+      },
+      "id": 14,
       "options": {
+        "displayMode": "basic",
+        "orientation": "horizontal",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -972,46 +937,36 @@
           "fields": "",
           "values": false
         },
-        "orientation": "horizontal",
-        "displayMode": "basic",
         "showUnfilled": true,
         "valueMode": "color"
-      }
-    },
-    {
-      "id": 15,
-      "type": "gauge",
-      "title": "Pushover sends",
-      "description": "The Pushover sends of the AI assistant this month against its cap of 3000 (027, 028 S9).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 8,
-        "y": 39,
-        "w": 4,
-        "h": 8
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"ai_pushover\" and r._field == \"sent\")\n  |> last()"
+          "query": "from(bucket: \"ai\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"ai_queue\" and r._field != \"retried\")\n  |> last()",
+          "refId": "A"
         }
       ],
+      "title": "Queue now",
+      "type": "bargauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The Pushover sends of the AI assistant this month against its cap of 3000 (027, 028 S9).",
       "fieldConfig": {
         "defaults": {
-          "unit": "none",
-          "decimals": 0,
-          "min": 0,
-          "max": 3000,
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 0,
+          "max": 3000,
+          "min": 0,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1028,10 +983,18 @@
                 "value": 3000
               }
             ]
-          }
+          },
+          "unit": "none"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 4,
+        "x": 8,
+        "y": 39
+      },
+      "id": 15,
       "options": {
         "reduceOptions": {
           "calcs": [
@@ -1040,41 +1003,34 @@
           "fields": "",
           "values": false
         },
-        "showThresholdMarkers": true,
-        "showThresholdLabels": false
-      }
-    },
-    {
-      "id": 16,
-      "type": "stat",
-      "title": "Cache share",
-      "description": "The share of the input read from the prompt cache: cache read / (input + cache read + cache write) (028 S4).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 12,
-        "y": 39,
-        "w": 4,
-        "h": 4
+        "showThresholdLabels": false,
+        "showThresholdMarkers": true
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and (r._field == \"input_tokens\" or r._field == \"cache_read_tokens\" or r._field == \"cache_write_tokens\"))\n  |> group()\n  |> reduce(identity: {input: 0.0, read: 0.0, write: 0.0}, fn: (r, accumulator) => ({\n      input: accumulator.input + (if r._field == \"input_tokens\" then float(v: r._value) else 0.0),\n      read: accumulator.read + (if r._field == \"cache_read_tokens\" then float(v: r._value) else 0.0),\n      write: accumulator.write + (if r._field == \"cache_write_tokens\" then float(v: r._value) else 0.0)}))\n  |> map(fn: (r) => ({_value: if r.input + r.read + r.write > 0.0 then r.read / (r.input + r.read + r.write) else 0.0}))"
+          "query": "from(bucket: \"ai\")\n  |> range(start: -1d)\n  |> filter(fn: (r) => r._measurement == \"ai_pushover\" and r._field == \"sent\")\n  |> last()",
+          "refId": "A"
         }
       ],
+      "title": "Pushover sends",
+      "type": "gauge"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The share of the input read from the prompt cache: cache read / (input + cache read + cache write) (028 S4).",
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
           "color": {
             "mode": "thresholds"
           },
+          "decimals": 1,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -1084,11 +1040,22 @@
               }
             ]
           },
-          "decimals": 1
+          "unit": "percentunit"
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 12,
+        "y": 39
+      },
+      "id": 16,
       "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
         "reduceOptions": {
           "calcs": [
             "lastNotNull"
@@ -1096,72 +1063,52 @@
           "fields": "",
           "values": false
         },
-        "colorMode": "value",
-        "graphMode": "none",
-        "justifyMode": "auto",
-        "textMode": "value",
-        "orientation": "auto"
-      }
-    },
-    {
-      "id": 17,
-      "type": "state-timeline",
-      "title": "Space sync",
-      "description": "The GitHub sync state of each space at each export (026, 028 S10).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 16,
-        "y": 39,
-        "w": 8,
-        "h": 8
+        "textMode": "value"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_sync\" and r._field == \"state\")\n  |> group(columns: [\"space\"])\n  |> keep(columns: [\"_time\", \"_value\", \"space\"])"
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_usage\" and (r._field == \"input_tokens\" or r._field == \"cache_read_tokens\" or r._field == \"cache_write_tokens\"))\n  |> group()\n  |> reduce(identity: {input: 0.0, read: 0.0, write: 0.0}, fn: (r, accumulator) => ({\n      input: accumulator.input + (if r._field == \"input_tokens\" then float(v: r._value) else 0.0),\n      read: accumulator.read + (if r._field == \"cache_read_tokens\" then float(v: r._value) else 0.0),\n      write: accumulator.write + (if r._field == \"cache_write_tokens\" then float(v: r._value) else 0.0)}))\n  |> map(fn: (r) => ({_value: if r.input + r.read + r.write > 0.0 then r.read / (r.input + r.read + r.write) else 0.0}))",
+          "refId": "A"
         }
       ],
+      "title": "Cache share",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The GitHub sync state of each space at each export (026, 028 S10).",
       "fieldConfig": {
         "defaults": {
-          "displayName": "${__field.labels.space}",
           "color": {
-            "mode": "fixed",
-            "fixedColor": "#8e8e8e"
+            "fixedColor": "#8e8e8e",
+            "mode": "fixed"
           },
           "custom": {
             "fillOpacity": 80,
             "lineWidth": 0
           },
+          "displayName": "${__field.labels.space}",
           "mappings": [
             {
-              "type": "value",
               "options": {
-                "in-sync": {
-                  "color": "#73BF69",
-                  "index": 0
-                },
-                "unpushed": {
-                  "color": "#FF9830",
-                  "index": 1
-                },
-                "unreachable": {
-                  "color": "#FF9830",
-                  "index": 2
+                "dirty": {
+                  "color": "#F2495C",
+                  "index": 4
                 },
                 "diverged": {
                   "color": "#F2495C",
                   "index": 3
                 },
-                "dirty": {
-                  "color": "#F2495C",
-                  "index": 4
+                "in-sync": {
+                  "color": "#73BF69",
+                  "index": 0
                 },
                 "off": {
                   "color": "#8e8e8e",
@@ -1170,50 +1117,59 @@
                 "unknown": {
                   "color": "#8e8e8e",
                   "index": 6
+                },
+                "unpushed": {
+                  "color": "#FF9830",
+                  "index": 1
+                },
+                "unreachable": {
+                  "color": "#FF9830",
+                  "index": 2
                 }
-              }
+              },
+              "type": "value"
             }
           ]
         },
         "overrides": []
       },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 39
+      },
+      "id": 17,
       "options": {
-        "showValue": "auto",
-        "mergeValues": true,
-        "rowHeight": 0.8,
         "alignValue": "left",
         "legend": {
           "displayMode": "list",
           "placement": "bottom",
           "showLegend": false
-        }
-      }
-    },
-    {
-      "id": 18,
-      "type": "table",
-      "title": "Most expensive jobs",
-      "description": "The 10 ingest jobs with the highest cost among the jobs uploaded in the time range (028 S7).",
-      "datasource": {
-        "type": "influxdb",
-        "uid": "ceyru5v6xg3r4b"
-      },
-      "gridPos": {
-        "x": 0,
-        "y": 47,
-        "w": 24,
-        "h": 10
+        },
+        "mergeValues": true,
+        "rowHeight": 0.8,
+        "showValue": "auto"
       },
       "targets": [
         {
-          "refId": "A",
           "datasource": {
             "type": "influxdb",
             "uid": "ceyru5v6xg3r4b"
           },
-          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_jobs\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> sort(columns: [\"cost_eur\"], desc: true)\n  |> limit(n: 10)\n  |> keep(columns: [\"_time\", \"space\", \"raw_path\", \"pages\", \"state\", \"attempts\", \"run_s\", \"cost_eur\"])"
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_sync\" and r._field == \"state\")\n  |> group(columns: [\"space\"])\n  |> keep(columns: [\"_time\", \"_value\", \"space\"])",
+          "refId": "A"
         }
       ],
+      "title": "Space sync",
+      "type": "state-timeline"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The 10 ingest jobs with the highest cost among the jobs uploaded in the time range (028 S7).",
       "fieldConfig": {
         "defaults": {
           "custom": {
@@ -1283,19 +1239,63 @@
           }
         ]
       },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      },
+      "id": 18,
       "options": {
-        "showHeader": true,
         "cellHeight": "sm",
         "footer": {
           "show": false
         },
+        "showHeader": true,
         "sortBy": [
           {
-            "displayName": "Cost",
-            "desc": true
+            "desc": true,
+            "displayName": "Cost"
           }
         ]
-      }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ceyru5v6xg3r4b"
+          },
+          "query": "from(bucket: \"ai\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"ai_jobs\")\n  |> pivot(rowKey: [\"_time\"], columnKey: [\"_field\"], valueColumn: \"_value\")\n  |> group()\n  |> sort(columns: [\"cost_eur\"], desc: true)\n  |> limit(n: 10)\n  |> keep(columns: [\"_time\", \"space\", \"raw_path\", \"pages\", \"state\", \"attempts\", \"run_s\", \"cost_eur\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Most expensive jobs",
+      "type": "table"
     }
-  ]
+  ],
+  "refresh": "5m",
+  "schemaVersion": 41,
+  "tags": [
+    "ai",
+    "028"
+  ],
+  "templating": {
+    "list": []
+  },
+  "time": {
+    "from": "now/M",
+    "to": "now"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "1m",
+      "5m",
+      "15m",
+      "1h"
+    ]
+  },
+  "timezone": "browser",
+  "title": "AI",
+  "uid": "ai",
+  "version": 1
 }
