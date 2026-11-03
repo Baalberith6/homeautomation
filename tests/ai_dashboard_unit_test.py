@@ -1,6 +1,7 @@
 """Change 028: the AI dashboard (spec/grafana/ai.json) and its push script.
 
-Spec: ../kb/work/028-ai-cost-dashboard/spec.md, section 2.3 "The dashboard" and 2.4 "The push of the dashboard".
+Spec: ../kb/work/028-ai-cost-dashboard/spec.md, section 2.3 "The dashboard" and 2.4 "The push of the dashboard";
+revision 1 (section 9, D13): the sync state in the top row, the sync timeline over 24 hours.
 The files are read inside the tests, so the other tests still run before they exist.
 """
 import importlib.util
@@ -36,7 +37,11 @@ PANELS = {
     "Pushover sends": "gauge",
     "Space sync": "state-timeline",
     "Data age": "stat",
+    "Sync": "stat",                    # revision 1, D13
 }
+# Revision 1, D13: the top row, from the left.
+TOP_ROW = ["Total cost", "Month-end projection", "Cost of one answer", "Calls with no price", "Retried jobs",
+           "Data age", "Sync"]
 BUILT_IN = {"stat", "timeseries", "bargauge", "piechart", "table", "gauge", "state-timeline", "row"}
 
 
@@ -76,7 +81,7 @@ def test_only_built_in_panel_types():
     assert "marcusolsson-dynamictext-panel" not in types
 
 
-def test_the_eighteen_panels():
+def test_the_panels():
     titles = [p["title"] for p in _panels()]
     assert sorted(titles) == sorted(PANELS)
     for p in _panels():
@@ -122,6 +127,44 @@ def test_state_colours():
     for m in _panel("Space sync")["fieldConfig"]["defaults"]["mappings"]:
         mapped |= set(m["options"])
     assert mapped == {"in-sync", "unpushed", "unreachable", "diverged", "dirty", "off", "unknown"}
+    # revision 1, D13: the tile has the colours of the timeline, as its background
+    tile = _panel("Sync")
+    assert tile["fieldConfig"]["defaults"]["mappings"] == _panel("Space sync")["fieldConfig"]["defaults"]["mappings"]
+    assert tile["options"]["colorMode"] == "background"
+
+
+def test_the_sync_tile():
+    """Revision 1, D13: the state of now, whatever range is picked; one tile per space."""
+    tile = _panel("Sync")
+    assert tile["type"] == "stat"
+    q = _queries(tile)[0]
+    assert 'r._measurement == "ai_sync"' in q and 'r._field == "state"' in q
+    assert "range(start: -1h)" in q and "v.timeRangeStart" not in q
+    assert 'group(columns: ["space"])' in q and "last()" in q
+
+
+def _box(p):
+    g = p["gridPos"]
+    return g["x"], g["y"], g["w"], g["h"]
+
+
+def test_the_top_row():
+    """Revision 1, D13: seven tiles at y 0, the sync last; no two panels overlap."""
+    top = sorted((p for p in _panels() if p["gridPos"]["y"] == 0), key=lambda p: p["gridPos"]["x"])
+    assert [p["title"] for p in top] == TOP_ROW
+    assert sum(p["gridPos"]["w"] for p in top) == 24
+    boxes = [(p["title"], _box(p)) for p in _panels()]
+    for i, (a, (ax, ay, aw, ah)) in enumerate(boxes):
+        assert ax + aw <= 24, a
+        for b, (bx, by, bw, bh) in boxes[i + 1:]:
+            assert ax + aw <= bx or bx + bw <= ax or ay + ah <= by or by + bh <= ay, (a, b)
+
+
+def test_space_sync_shows_a_day():
+    """Revision 1, D13: a stop of minutes stays a visible band for a day, beside "Runs"."""
+    timeline = _panel("Space sync")
+    assert timeline.get("timeFrom") == "24h"
+    assert timeline["gridPos"]["y"] == _panel("Runs")["gridPos"]["y"]
 
 
 def _response(status, body=None):

@@ -155,7 +155,7 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
+        "w": 3,
         "x": 8,
         "y": 0
       },
@@ -219,8 +219,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 12,
+        "w": 3,
+        "x": 11,
         "y": 0
       },
       "id": 4,
@@ -278,8 +278,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 16,
+        "w": 3,
+        "x": 14,
         "y": 0
       },
       "id": 5,
@@ -345,8 +345,8 @@
       },
       "gridPos": {
         "h": 4,
-        "w": 4,
-        "x": 20,
+        "w": 3,
+        "x": 17,
         "y": 0
       },
       "id": 6,
@@ -375,6 +375,91 @@
         }
       ],
       "title": "Data age",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "description": "The GitHub sync state of each space now: the last export of the last hour, whatever range is picked. Red: diverged or dirty; orange: unpushed or unreachable (026, 028 revision 1, D13).",
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "fixedColor": "#8e8e8e",
+            "mode": "fixed"
+          },
+          "displayName": "${__field.labels.space}",
+          "mappings": [
+            {
+              "options": {
+                "dirty": {
+                  "color": "#F2495C",
+                  "index": 4
+                },
+                "diverged": {
+                  "color": "#F2495C",
+                  "index": 3
+                },
+                "in-sync": {
+                  "color": "#73BF69",
+                  "index": 0
+                },
+                "off": {
+                  "color": "#8e8e8e",
+                  "index": 5
+                },
+                "unknown": {
+                  "color": "#8e8e8e",
+                  "index": 6
+                },
+                "unpushed": {
+                  "color": "#FF9830",
+                  "index": 1
+                },
+                "unreachable": {
+                  "color": "#FF9830",
+                  "index": 2
+                }
+              },
+              "type": "value"
+            }
+          ]
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 20,
+        "y": 0
+      },
+      "id": 19,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "/.*/",
+          "values": false
+        },
+        "textMode": "value_and_name"
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ceyru5v6xg3r4b"
+          },
+          "query": "from(bucket: \"ai\")\n  |> range(start: -1h)\n  |> filter(fn: (r) => r._measurement == \"ai_sync\" and r._field == \"state\")\n  |> group(columns: [\"space\"])\n  |> last()\n  |> keep(columns: [\"_value\", \"space\"])",
+          "refId": "A"
+        }
+      ],
+      "title": "Sync",
       "type": "stat"
     },
     {
@@ -712,7 +797,7 @@
       },
       "gridPos": {
         "h": 10,
-        "w": 24,
+        "w": 16,
         "x": 0,
         "y": 21
       },
@@ -922,7 +1007,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 8,
+        "w": 10,
         "x": 0,
         "y": 39
       },
@@ -990,8 +1075,8 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 4,
-        "x": 8,
+        "w": 7,
+        "x": 10,
         "y": 39
       },
       "id": 15,
@@ -1045,9 +1130,9 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 4,
-        "w": 4,
-        "x": 12,
+        "h": 8,
+        "w": 7,
+        "x": 17,
         "y": 39
       },
       "id": 16,
@@ -1083,7 +1168,7 @@
         "type": "influxdb",
         "uid": "ceyru5v6xg3r4b"
       },
-      "description": "The GitHub sync state of each space at each export (026, 028 S10).",
+      "description": "The GitHub sync state of each space at each export, over the last 24 hours whatever range is picked (026, 028 S10, revision 1).",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -1134,10 +1219,10 @@
         "overrides": []
       },
       "gridPos": {
-        "h": 8,
+        "h": 10,
         "w": 8,
         "x": 16,
-        "y": 39
+        "y": 21
       },
       "id": 17,
       "options": {
@@ -1161,6 +1246,7 @@
           "refId": "A"
         }
       ],
+      "timeFrom": "24h",
       "title": "Space sync",
       "type": "state-timeline"
     },
@@ -1297,5 +1383,5 @@
   "timezone": "browser",
   "title": "AI",
   "uid": "ai",
-  "version": 1
+  "version": 2
 }
