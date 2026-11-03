@@ -678,6 +678,8 @@ array.from(rows: [{
 }])
 ```
 
+`outdoor_temp` — the hero value: October to April (Europe/Prague) the weather station (weather.temperature); May to September the lower of weather.temperature and estia.outside_temp; a sensor with no value in the range falls back to the other one (change 030). `build_dashboard.py` writes the rule into the query with `patch_panel_70_query`.
+
 ### Rounding
 
 | Field | Precision | Method |

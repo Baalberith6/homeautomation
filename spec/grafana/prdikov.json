@@ -10,10 +10,10 @@
     "url": "/d/q50mEhf7k/prdikov",
     "expires": "0001-01-01T00:00:00Z",
     "created": "2025-09-21T21:04:48+02:00",
-    "updated": "2026-09-29T13:17:54+02:00",
+    "updated": "2026-11-03T09:39:27+01:00",
     "updatedBy": "Anonymous",
     "createdBy": "admin",
-    "version": 780,
+    "version": 820,
     "hasAcl": false,
     "isFolder": false,
     "apiVersion": "v0alpha1",
@@ -118,7 +118,7 @@
               "type": "influxdb",
               "uid": "ceyru5v6xg3r4b"
             },
-            "query": "import \"array\"\nimport \"math\"\nimport \"strings\"\nimport \"date\"\nimport \"timezone\"\n\noption location = timezone.location(name: \"Europe/Prague\")\n\ntemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"temperature\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nestia_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"estia\" and r._field == \"outside_temp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\noutdoor_temp = if estia_temp._value < temp._value then estia_temp._value else temp._value\n\nmaxtemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"maxtemp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nmintemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"mintemp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nhumidity = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"humidity\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecip = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"precip\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecipRate = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"precipRate\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindSpeed = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windSpeed\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindGust = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windGust\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecipTotal = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"precipTotal\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n\nwind30m = from(bucket: \"default\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windSpeed\")\n  |> max()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindGust30m = from(bucket: \"default\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windGust\")\n  |> max()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nsolarRad = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"solarRadiation\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nhourly_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"TempForecast\" and r._field == \"temperature\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nhourly_str = strings.joinStr(arr: hourly_data, v: \",\")\n\nrain_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"RainForecast\" and r._field == \"precipitation\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nrain_str = strings.joinStr(arr: rain_data, v: \",\")\n\n\nwind_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"WindForecast\" and r._field == \"wind_speed\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nwind_str = strings.joinStr(arr: wind_data, v: \",\")\n\narray.from(rows: [{\n  temp: math.round(x: outdoor_temp * 10.0) / 10.0,\n  hi: math.round(x: maxtemp._value),\n  lo: math.round(x: mintemp._value),\n  humidity: math.round(x: humidity._value),\n  rain_fc: math.round(x: precip._value * 10.0) / 10.0,\n  rain_rate: math.round(x: precipRate._value * 10.0) / 10.0,\n  rain_total: math.round(x: precipTotal._value * 10.0) / 10.0,\n  wind: math.round(x: windSpeed._value),\n  gust: math.round(x: windGust._value),\n  wind_30m: math.round(x: wind30m._value),\n  gust_30m: math.round(x: windGust30m._value),\n  hourly: hourly_str,\n  rain_hourly: rain_str,\n  wind_hourly: wind_str,\n  solar_radiation: math.round(x: solarRad._value),\n}])",
+            "query": "import \"array\"\nimport \"math\"\nimport \"strings\"\nimport \"date\"\nimport \"timezone\"\n\noption location = timezone.location(name: \"Europe/Prague\")\n\ntemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"temperature\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nestia_temp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"estia\" and r._field == \"outside_temp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n// 030: winter (October to April, Europe/Prague) = the weather station only;\n// summer (May to September) = the lower of the two sensors.\n// A sensor with no value in the range falls back to the other one.\nmonth = date.month(t: v.timeRangeStop)\nwinter = month >= 10 or month <= 4\nhas_w = exists temp._value\nhas_e = exists estia_temp._value\noutdoor_temp = if has_w and has_e then (if winter or temp._value <= estia_temp._value then temp._value else estia_temp._value)\n  else if has_w then temp._value\n  else estia_temp._value\n\nmaxtemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"maxtemp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nmintemp = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"mintemp\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nhumidity = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"humidity\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecip = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weatherforecast\" and r._field == \"precip\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecipRate = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"precipRate\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindSpeed = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windSpeed\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindGust = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windGust\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nprecipTotal = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"precipTotal\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\n\nwind30m = from(bucket: \"default\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windSpeed\")\n  |> max()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nwindGust30m = from(bucket: \"default\")\n  |> range(start: -30m)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"windGust\")\n  |> max()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nsolarRad = from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"solarRadiation\")\n  |> last()\n  |> findRecord(fn: (key) => true, idx: 0)\n\nhourly_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"TempForecast\" and r._field == \"temperature\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nhourly_str = strings.joinStr(arr: hourly_data, v: \",\")\n\nrain_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"RainForecast\" and r._field == \"precipitation\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nrain_str = strings.joinStr(arr: rain_data, v: \",\")\n\n\nwind_data = from(bucket: \"default\")\n  |> range(start: today(), stop: date.add(d: 1d, to: today()))\n  |> filter(fn: (r) => r._measurement == \"WindForecast\" and r._field == \"wind_speed\")\n  |> sort(columns: [\"_time\"])\n  |> map(fn: (r) => ({r with _encoded: string(v: date.hour(t: r._time)) + \":\" + string(v: r._value)}))\n  |> findColumn(fn: (key) => true, column: \"_encoded\")\n\nwind_str = strings.joinStr(arr: wind_data, v: \",\")\n\narray.from(rows: [{\n  temp: math.round(x: outdoor_temp * 10.0) / 10.0,\n  hi: math.round(x: maxtemp._value),\n  lo: math.round(x: mintemp._value),\n  humidity: math.round(x: humidity._value),\n  rain_fc: math.round(x: precip._value * 10.0) / 10.0,\n  rain_rate: math.round(x: precipRate._value * 10.0) / 10.0,\n  rain_total: math.round(x: precipTotal._value * 10.0) / 10.0,\n  wind: math.round(x: windSpeed._value),\n  gust: math.round(x: windGust._value),\n  wind_30m: math.round(x: wind30m._value),\n  gust_30m: math.round(x: windGust30m._value),\n  hourly: hourly_str,\n  rain_hourly: rain_str,\n  wind_hourly: wind_str,\n  solar_radiation: math.round(x: solarRad._value),\n}])",
             "refId": "A"
           }
         ],
@@ -420,15 +420,15 @@
       "list": [
         {
           "current": {
-            "text": "17",
-            "value": "17"
+            "text": "21",
+            "value": "21"
           },
           "includeAll": false,
           "label": "Temp1NP",
           "name": "Termostat1NP",
           "options": [
             {
-              "selected": true,
+              "selected": false,
               "text": "17",
               "value": "17"
             },
@@ -438,7 +438,7 @@
               "value": "20"
             },
             {
-              "selected": false,
+              "selected": true,
               "text": "21",
               "value": "21"
             },
@@ -473,8 +473,8 @@
         },
         {
           "current": {
-            "text": "90",
-            "value": "90"
+            "text": "60",
+            "value": "60"
           },
           "includeAll": false,
           "label": "DoD",
@@ -506,7 +506,7 @@
               "value": "50"
             },
             {
-              "selected": false,
+              "selected": true,
               "text": "60",
               "value": "60"
             },
@@ -521,7 +521,7 @@
               "value": "80"
             },
             {
-              "selected": true,
+              "selected": false,
               "text": "90",
               "value": "90"
             }
@@ -531,8 +531,8 @@
         },
         {
           "current": {
-            "text": "80",
-            "value": "80"
+            "text": "90",
+            "value": "90"
           },
           "includeAll": false,
           "label": "SoCStop",
@@ -574,12 +574,12 @@
               "value": "70"
             },
             {
-              "selected": true,
+              "selected": false,
               "text": "80",
               "value": "80"
             },
             {
-              "selected": false,
+              "selected": true,
               "text": "90",
               "value": "90"
             },
@@ -871,19 +871,19 @@
         },
         {
           "current": {
-            "text": "Auto",
-            "value": "Auto"
+            "text": "Start",
+            "value": "Start"
           },
           "includeAll": false,
           "name": "WallboxMode",
           "options": [
             {
-              "selected": true,
+              "selected": false,
               "text": "Auto",
               "value": "Auto"
             },
             {
-              "selected": false,
+              "selected": true,
               "text": "Start",
               "value": "Start"
             },
@@ -911,6 +911,6 @@
     "timezone": "",
     "title": "Prdikov",
     "uid": "q50mEhf7k",
-    "version": 780
+    "version": 820
   }
 }

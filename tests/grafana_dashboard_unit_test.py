@@ -159,3 +159,50 @@ def test_panel86_after_render_uses_car_status():
 ])
 def test_car_status(car, other, charge_w, label):
     assert car_status(car, other, charge_w)['label'] == label
+
+
+# Change 030: panel 70, the outdoor temperature by season.
+P70_FIXTURE = (
+    'temp = from(bucket: "default")\n'
+    'estia_temp = from(bucket: "default")\n'
+    '\n'
+    'OLD\n'
+    '\n'
+    '  temp: math.round(x: outdoor_temp * 10.0) / 10.0,\n'
+)
+
+
+def p70_query():
+    return P70_FIXTURE.replace('OLD', bd.PANEL_70_OUTDOOR_OLD)
+
+
+def test_panel70_patch_replaces_lower_of_two():
+    q = bd.patch_panel_70_query(p70_query())
+    assert bd.PANEL_70_OUTDOOR_OLD not in q
+    assert q == p70_query().replace(bd.PANEL_70_OUTDOOR_OLD, bd.PANEL_70_OUTDOOR_NEW)
+
+
+def test_panel70_rule_text():
+    n = bd.PANEL_70_OUTDOOR_NEW
+    assert 'month = date.month(t: v.timeRangeStop)' in n
+    assert 'winter = month >= 10 or month <= 4' in n
+    assert 'has_w = exists temp._value' in n
+    assert 'has_e = exists estia_temp._value' in n
+    assert len(re.findall(r'^outdoor_temp = ', n, re.M)) == 1
+
+
+def test_panel70_patch_is_idempotent():
+    q = bd.patch_panel_70_query(p70_query())
+    assert bd.patch_panel_70_query(q) == q
+
+
+def test_panel70_patch_raises_without_anchor():
+    with pytest.raises(ValueError, match='030'):
+        bd.patch_panel_70_query(P70_FIXTURE.replace('OLD', 'outdoor_temp = temp._value'))
+
+
+def test_build_panel70_patches_query():
+    panel = {'id': 70, 'options': {'content': '', 'afterRender': ''}, 'targets': [{'query': p70_query()}]}
+    p = bd.build_panel_70([panel])
+    assert bd.PANEL_70_OUTDOOR_NEW in p['targets'][0]['query']
+    assert panel['targets'][0]['query'] == p70_query()
