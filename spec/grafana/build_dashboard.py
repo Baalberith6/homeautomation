@@ -144,6 +144,31 @@ def flux_target(query, ref_id="A"):
 # PANEL 70 -- Outdoor (reuse existing, just change gridPos)
 # ===================================================================
 
+# 030: the outdoor temperature by season (../kb/work/030-outdoor-temp-source-by-season/spec.md, section 2).
+PANEL_70_OUTDOOR_OLD = (
+    "outdoor_temp = if estia_temp._value < temp._value then estia_temp._value else temp._value"
+)
+PANEL_70_OUTDOOR_NEW = r"""// 030: winter (October to April, Europe/Prague) = the weather station only;
+// summer (May to September) = the lower of the two sensors.
+// A sensor with no value in the range falls back to the other one.
+month = date.month(t: v.timeRangeStop)
+winter = month >= 10 or month <= 4
+has_w = exists temp._value
+has_e = exists estia_temp._value
+outdoor_temp = if has_w and has_e then (if winter or temp._value <= estia_temp._value then temp._value else estia_temp._value)
+  else if has_w then temp._value
+  else estia_temp._value"""
+
+
+def patch_panel_70_query(query):
+    """Replace the lower-of-two line with the calendar rule. A query that holds the rule stays as it is."""
+    if PANEL_70_OUTDOOR_NEW in query:
+        return query
+    if PANEL_70_OUTDOOR_OLD not in query:
+        raise ValueError("Panel 70: the outdoor_temp line is not in the query (030)")
+    return query.replace(PANEL_70_OUTDOOR_OLD, PANEL_70_OUTDOOR_NEW)
+
+
 def build_panel_70(existing_panels):
     p70 = None
     for p in existing_panels:
@@ -152,6 +177,7 @@ def build_panel_70(existing_panels):
             break
     if p70 is None:
         raise ValueError("Panel 70 not found in existing dashboard")
+    p70["targets"][0]["query"] = patch_panel_70_query(p70["targets"][0]["query"])
     p70["gridPos"] = {"x": 0, "y": 0, "w": 14, "h": 8}
     p70["transparent"] = False
     # Patch global CSS: cascade height:100% through all Grafana wrapper divs
