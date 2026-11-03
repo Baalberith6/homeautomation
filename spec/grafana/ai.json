@@ -1246,9 +1246,9 @@
           "refId": "A"
         }
       ],
+      "timeFrom": "24h",
       "title": "Space sync",
-      "type": "state-timeline",
-      "timeFrom": "24h"
+      "type": "state-timeline"
     },
     {
       "datasource": {
@@ -1383,5 +1383,5 @@
   "timezone": "browser",
   "title": "AI",
   "uid": "ai",
-  "version": 1
+  "version": 2
 }
