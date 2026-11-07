@@ -132,7 +132,7 @@ class FakeRun:
             out = self.comment_ids
         elif cmd[:2] == ["gh", "api"]:
             out = "https://github.com/Baalberith6/homeautomation/pull/9#issuecomment-1\n"
-        elif cmd[:2] == ["git", "clone"]:
+        elif cmd[:1] == ["git"] and "clone" in cmd:
             os.makedirs(cmd[-1], exist_ok=True)
         return SimpleNamespace(returncode=0, stdout=out, stderr="")
 
@@ -172,6 +172,7 @@ class TestUpload(unittest.TestCase):
             self.assertEqual(len(creates), 1)
             pushes = [c for c, _ in run.calls if c[:1] == ["git"] and "push" in c]
             self.assertEqual(len(pushes), 1)
+            self.assertIn("credential.helper=!gh auth git-credential", pushes[0])
             for cmd, kwargs in run.calls:
                 self.assertNotEqual(os.path.abspath(kwargs.get("cwd") or tmp), repo, cmd)
                 self.assertFalse(cmd[:1] == ["git"] and "clone" not in cmd and "-C" not in cmd, cmd)

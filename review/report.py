@@ -226,7 +226,8 @@ def upload(pr, paths, head, gist_id=None, owner="matejpristak", run=subprocess.r
                       cwd=tmp, capture_output=True, text=True, check=True).stdout
             gist_id = out.strip().rstrip("/").split("/")[-1]
         clone = os.path.join(tmp, "gist")
-        run(["git", "clone", "-q", f"https://gist.github.com/{gist_id}.git", clone],
+        auth = ["-c", "credential.helper=", "-c", "credential.helper=!gh auth git-credential"]
+        run(["git"] + auth + ["clone", "-q", f"https://gist.github.com/{gist_id}.git", clone],
             cwd=tmp, capture_output=True, text=True, check=True)
         for name in os.listdir(clone):
             if name.endswith(".png"):
@@ -241,7 +242,7 @@ def upload(pr, paths, head, gist_id=None, owner="matejpristak", run=subprocess.r
         run(git + ["add", "-A"], cwd=tmp, capture_output=True, text=True, check=True)
         run(git + ["commit", "-q", "-m", f"PR {pr} at {head[:7]}"], cwd=tmp, capture_output=True, text=True,
             check=True)
-        run(["git", "-C", clone, "push", "-q"], cwd=tmp, capture_output=True, text=True, check=True)
+        run(["git", "-C", clone] + auth + ["push", "-q"], cwd=tmp, capture_output=True, text=True, check=True)
         return gist_id, urls
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
