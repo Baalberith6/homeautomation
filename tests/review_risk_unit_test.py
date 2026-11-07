@@ -106,6 +106,11 @@ class TestPathRules(RepoCase):
             with self.subTest(path=path):
                 self.assertHigh(self.classify({path: "x\n"}), "Harness")
 
+    def test_push_scripts_are_high(self):
+        for path in ("spec/grafana/push_prdikov.py", "spec/grafana/push_ai_dashboard.py"):
+            with self.subTest(path=path):
+                self.assertHigh(self.classify({path: "x = 1\n"}), "Setpoints")
+
 
 class TestSetpoints(RepoCase):
 
@@ -175,6 +180,13 @@ class TestMessaging(RepoCase):
         base = {"skoda.py": 'client.publish(f"home/car/{name}", 1)\n'}
         result = self.classify({"skoda.py": 'client.publish(f"home/car/{name}/soc", 1)\n'}, base)
         self.assertHigh(result, "Messaging")
+
+    def test_concatenated_topic_prefix_change_is_high(self):
+        base = {"grafana_setter.py": 'client.publish("command/" + item["name"], value)\n'}
+        result = self.classify({"grafana_setter.py": 'client.publish("cmd/" + item["name"], value)\n'}, base)
+        self.assertHigh(result, "Messaging")
+        self.assertTrue(any("command/{}" in r for r in result["reasons"]), result["reasons"])
+        self.assertTrue(result["data_change"])
 
     def test_moved_publish_is_low(self):
         base = {"co2.py": 'def a(client):\n    client.publish("home/weather/sensors/co2", 1)\n\n\n'

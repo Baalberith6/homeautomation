@@ -53,6 +53,8 @@ JUNIT = """<?xml version="1.0" encoding="utf-8"?>
 <testcase classname="tests.review_risk_unit_test.TestSetpoints" name="test_panel_only_change_is_low" time="0.1"/>
 <testcase classname="tests.other_unit_test.TestX" name="test_broken" time="0.1"><failure message="boom">x</failure></testcase>
 <testcase classname="tests.plain_unit_test" name="test_module_level" time="0.1"/>
+<testcase classname="tests.plain_unit_test" name="test_param[a]" time="0.1"/>
+<testcase classname="tests.plain_unit_test" name="test_param[b]" time="0.1"/>
 </testsuite></testsuites>
 """
 
@@ -83,7 +85,9 @@ class TestTable(unittest.TestCase):
         self.assertIn("fail", rows[5])
 
     def test_count_against_main(self):
-        self.assertIn("3 passed (+3 vs main)", self.md)
+        self.assertIn("5 passed (+3 vs main)", self.md)
+        params = report.collected("tests/p.py::test_x[1]\ntests/p.py::test_x[2]\n")
+        self.assertEqual(len(params), 2)
         self.assertIn("tests/other_unit_test.py::TestX::test_broken", self.md)
 
     def test_test_lists(self):
@@ -99,7 +103,9 @@ class TestComment(unittest.TestCase):
 
     def test_comment_order(self):
         images = {"panels": [{"id": 81, "before": "https://g/b.png", "after": "https://g/a.png"}],
-                  "page": {"before": "https://g/pb.png", "after": "https://g/pa.png"}, "warnings": []}
+                  "pages": [{"label": "prdikov", "before": "https://g/pb.png", "after": "https://g/pa.png"},
+                            {"label": "ai", "before": "https://g/ab.png", "after": "https://g/aa.png"}],
+                  "warnings": []}
         findings = [{"file": "co2.py", "line": 23, "kind": "bug", "text": "swapped values"}]
         body = report.comment(dict(RISK, level="high", reasons=["Telegraf: telegraf.conf"]), findings, images,
                               "TABLE-HERE", "RAW-OUTPUT", decision="wait-owner", gist_id="abc123")
@@ -110,6 +116,7 @@ class TestComment(unittest.TestCase):
         order = [body.index(s) for s in marks]
         self.assertEqual(order, sorted(order))
         self.assertLess(len(body), 65536)
+        self.assertIn("https://g/aa.png", body)
 
     def test_no_dashboard_change(self):
         body = report.comment(RISK, [], None, "T", "R", decision="auto-merge")

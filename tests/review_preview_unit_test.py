@@ -64,6 +64,17 @@ class TestPure(unittest.TestCase):
         start, _ = preview.copy_window(['range(start: -40d)'], shot, NOW)
         self.assertEqual(start, NOW - timedelta(days=31))
 
+    def test_copy_plan_mixed_queries(self):
+        shot = (int((NOW - timedelta(hours=3)).timestamp() * 1000), int(NOW.timestamp() * 1000))
+        panels = [{"id": 81, "targets": [{"query": Q81}]},
+                  {"id": 90, "targets": [{"query": 'from(bucket: "default") |> range(start: v.timeRangeStart)'}]}]
+        plan = preview.copy_plan(panels, shot, NOW)
+        named = [p for p in plan if p[1]]
+        whole = [p for p in plan if not p[1]]
+        self.assertEqual([(p[0], p[1]) for p in named], [("default", {"estia", "FVE"})])
+        self.assertEqual(len(whole), 1)
+        self.assertEqual((whole[0][0], whole[0][2], whole[0][3]), ("default", NOW - timedelta(hours=3), NOW))
+
     def test_rewrite_only_changed_panels(self):
         head = _dash()
         after = preview.board(head, "pr9-prdikov-after", "PR 9 after", rewrite_ids={81})
