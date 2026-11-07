@@ -72,6 +72,20 @@ def _panels(dash):
             yield inner
 
 
+def duplicate_ids(dash):
+    """Panel IDs that more than one panel uses. A panel image of such an ID may show the wrong panel."""
+    seen, dups = set(), set()
+    for panel in _panels(_dash(dash)):
+        pid = panel.get("id")
+        (dups if pid in seen else seen).add(pid)
+    return sorted(dups)
+
+
+def duplicate_warning(ids, side):
+    return (f"Panel id {', '.join(str(i) for i in ids)} is used by more than one panel on the {side} board: "
+            "the panel image may show another panel. Give each panel its own id.")
+
+
 def changed_panels(base, head):
     """The IDs of the panels that differ, are added or are removed."""
     old = {p["id"]: p for p in _panels(_dash(base))}
@@ -429,6 +443,10 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
          result):
     key = "prdikov" if "prdikov" in path else "ai"
     ids = changed_panels(base_dash, head_dash)
+    for side, dash in (("before", base_dash), ("after", head_dash)):
+        dups = duplicate_ids(dash)
+        if dups:
+            result["warnings"].append(duplicate_warning(dups, side))
     rng = time_range(head_dash, now)
     rewrite = set()
     if data_change:
