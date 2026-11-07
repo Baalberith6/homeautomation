@@ -1307,7 +1307,7 @@ PANEL_81_CONTENT = r"""<style>
       <span class="dv-prod" style="color:#73bf69">{{m_gen}}</span>
     </div>
   </div>
-  <div class="s"><span class="lab">Self-suff. (test 032)</span><span class="val" style="color:#73bf69">{{self_suf}}<span class="unit">%</span></span></div>
+  <div class="s"><span class="lab">Self-suff.</span><span class="val" style="color:#73bf69">{{self_suf}}<span class="unit">%</span></span></div>
   <div class="s"><span class="lab">Virt. batt.</span><span class="val vb" id="estat-vb">&mdash;</span></div>
 </div>
 </div>"""
