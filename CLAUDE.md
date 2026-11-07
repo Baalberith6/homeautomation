@@ -66,7 +66,22 @@ DEBUG=1 python3 inverter.py
 
 `DEBUG=1` enables verbose output and appends `-dev` to the MQTT client ID so the local instance doesn't disconnect the production one. Netatmo token files also use a `.dev.token` suffix to avoid overwriting prod tokens. **Caution:** services that control devices (`wallbox.py`, `inverter_setter.py`, `estia_optimizer.py`) will still send real commands — avoid running them locally while prod is active.
 
-CI runs on every push via `.github/workflows/test.yaml` (Python 3.9, flake8 + pytest).
+CI runs on every push via `.github/workflows/test.yaml` (Python 3.9, flake8 + pytest). The ruleset `main` requires the check `build (3.9)` before a merge and blocks force pushes; do not rename the job.
+
+## Review (change 032)
+
+After `gh pr create`, start the subagent `pr-reviewer` with the PR number. It follows [`review/reviewer.md`](review/reviewer.md): it sets the risk (`review/risk.py`), reviews the code, takes before and after screenshots of a dashboard change on temporary boards (`review/preview.py`), and writes one PR comment with the test table (`review/report.py`). It returns a decision. The agent never merges, pushes a dashboard or deploys. You do that, by the decision:
+
+| Decision | What you do |
+|---|---|
+| `auto-merge` | If the PR changes `spec/grafana/prdikov.json`: `GRAFANA_TOKEN=... python3 spec/grafana/push_prdikov.py --push` on the PR branch; for `ai.json`: `push_ai_dashboard.py --push`. Commit the sync-back and push it. Run `python3 -m review.risk --base <merge base> --head <new head>`: it must say `low`. Then `gh pr merge <n> --auto --merge`. After the merge, `./deploy.sh <unit>` for each changed service |
+| `wait-owner` | Stop and tell the owner. When the owner says "merge" in the chat, do the same steps and `gh pr merge <n> --merge` |
+| `fix-findings` | Fix the findings or the failed tests, push, and start `pr-reviewer` again |
+| `refuse` | Nothing: the PR is not from the owner or comes from a fork |
+
+- After auto-merge is on, push no commit to the branch. If you must, run `gh pr merge <n> --disable-auto` first.
+- If CI fails after a live push, push the backup back: `push_prdikov.py --push --file <backup>` (the path is in its output).
+- The agent needs the LAN, `secret.py` with `grafanaServiceAccountToken` and `influxPreviewToken`, and `~/homeautomation/review-venv` (see `review/requirements.txt`).
 
 ## Where the architecture lives
 
@@ -87,7 +102,7 @@ The energy loop: `../kb/architecture/data-flows.md`
 - Service account token for dashboard management: `grafanaServiceAccountToken` in `secret.py`
 - `grafana_setter.py` reads dashboard template variables and publishes them to MQTT
 
-**Grafana workflow:** After deploying dashboard changes via API, always fetch the live JSON back and update `spec/grafana/prdikov.json` so the local copy stays in sync. Start from `prdikov.json` when making further changes — never build from scratch. **Always update `spec/grafana/grafana-spec.md`** to reflect any changes made to the dashboard.
+**Grafana workflow:** Push Prdikov with `GRAFANA_TOKEN=... python3 spec/grafana/push_prdikov.py --push` (`--dry-run` first). It saves the live JSON to `~/homeautomation/grafana-backups/`, stops if the setpoint definitions (the template variables without their values) differ from live, pushes with the **live** setpoint values (the owner's latest) and `"overwrite": false`, and syncs the live JSON back into `prdikov.json`; commit the sync-back. After deploying dashboard changes via API, always fetch the live JSON back and update `spec/grafana/prdikov.json` so the local copy stays in sync. Start from `prdikov.json` when making further changes — never build from scratch. **Always update `spec/grafana/grafana-spec.md`** to reflect any changes made to the dashboard.
 
 `spec/grafana/grafana-spec.md` is the build reference for `spec/grafana/build_dashboard.py`, which generates `spec/grafana/prdikov.json`.
 `spec/grafana/prdikov.json` is the generated artefact and the sync-back target after a deploy.

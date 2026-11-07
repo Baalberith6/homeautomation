@@ -1,0 +1,6 @@
+# The review agent on the Mac only (change 032). Not for the host .51: that is requirements.txt.
+# Install: python3 -m venv ~/homeautomation/review-venv
+#          ~/homeautomation/review-venv/bin/pip install -r review/requirements.txt
+#          ~/homeautomation/review-venv/bin/python -m playwright install chromium
+playwright>=1.50,<2
+requests>=2.31

@@ -111,8 +111,24 @@ class TestTick(unittest.TestCase):
         self.assertEqual(self.api.get_hourly_consumption.await_count, 2)
 
 
+class TestClientTokenPath(unittest.TestCase):
+    """Change 019 revision 2: the Device-ID and the token file of the current mode.
+
+    No `debug` patch here: estia_energy computes TOKEN_PATH at import from the real config, so the
+    expected name must come from the same value (change 032, spec section 2.11).
+    """
+
+    def test_client_gets_device_id_and_token_path(self):
+        import estia_energy
+        from config import generalConfig
+        name = ("toshiba_token_estia_energy.dev.json" if generalConfig["debug"]
+                else "toshiba_token_estia_energy.json")
+        self.assertEqual(estia_energy.api.device_id, "14c2a40d2951f0e0")
+        self.assertEqual(estia_energy.api.token_path, name)
+
+
 class TestForgetTokenEnergy(unittest.TestCase):
-    """Change 019 revision 2: the Device-ID, the token file, and when to forget the token."""
+    """Change 019 revision 2: when to forget the token."""
 
     def setUp(self):
         import estia_energy
@@ -134,14 +150,6 @@ class TestForgetTokenEnergy(unittest.TestCase):
     def _tick(self, minute, mono):
         with patch("sys.stdout", new_callable=io.StringIO):
             asyncio.run(self.ee.tick(self.api, self.state, self.backoff, _at(minute), mono))
-
-    def test_client_gets_device_id_and_token_path(self):
-        import estia_energy
-        from config import generalConfig
-        name = ("toshiba_token_estia_energy.dev.json" if generalConfig["debug"]
-                else "toshiba_token_estia_energy.json")
-        self.assertEqual(estia_energy.api.device_id, "14c2a40d2951f0e0")
-        self.assertEqual(estia_energy.api.token_path, name)
 
     def test_auth_error_forgets_token(self):
         from estia_api import ToshibaAcHttpApiAuthError

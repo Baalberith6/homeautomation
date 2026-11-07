@@ -388,7 +388,9 @@ class TestSolarForecastErrors(unittest.TestCase):
         import solarforecast
         err = solarforecast.requests.HTTPError(
             "429 Client Error: Too Many Requests for url: https://api.solcast.com.au/x?api_key=" + self.KEY)
+        # debug makes run() store canned data instead of calling the API: fix it (change 032, spec 2.11).
         with patch.object(solarforecast, "solcastKey", self.KEY), \
+                patch.dict(solarforecast.c, {"debug": False}), \
                 patch.object(solarforecast.requests, "get", side_effect=err), \
                 patch("time.sleep"), \
                 patch("sys.stdout", new_callable=io.StringIO) as out:
