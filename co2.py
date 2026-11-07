@@ -20,8 +20,8 @@ async def store_runtime_data():
             data = sgp30.read_measurements()
             co2_eq_ppm, tvoc_ppb = data.data
 
-            client.publish("home/weather/sensors/co2", co2_eq_ppm)
-            client.publish("home/weather/sensors/voc", tvoc_ppb)
+            client.publish("home/weather/sensors/co2", tvoc_ppb)
+            client.publish("home/weather/sensors/voc", co2_eq_ppm)
         except Exception as e:
             print(f"[co2] Error: {e}")
             traceback.print_exc()
