@@ -99,6 +99,17 @@ class TestTable(unittest.TestCase):
         self.assertIn("Not proven: none", all_proven)
 
 
+class TestMatch(unittest.TestCase):
+
+    def test_class_in_id_matches_only_that_class(self):
+        junit = {"tests/x.py::TestA::test_x": "pass", "tests/x.py::TestB::test_x": "fail",
+                 "tests/x.py::TestC::test_p[1]": "pass"}
+        self.assertEqual(report._matches("tests/x.py::TestA::test_x", junit), ["tests/x.py::TestA::test_x"])
+        self.assertEqual(sorted(report._matches("tests/x.py::test_x", junit)),
+                         ["tests/x.py::TestA::test_x", "tests/x.py::TestB::test_x"])
+        self.assertEqual(report._matches("tests/x.py::TestC::test_p", junit), ["tests/x.py::TestC::test_p[1]"])
+
+
 class TestComment(unittest.TestCase):
 
     def test_comment_order(self):
