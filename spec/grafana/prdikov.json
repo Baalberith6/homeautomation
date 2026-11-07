@@ -10,10 +10,10 @@
     "url": "/d/q50mEhf7k/prdikov",
     "expires": "0001-01-01T00:00:00Z",
     "created": "2025-09-21T21:04:48+02:00",
-    "updated": "2026-11-03T09:39:27+01:00",
+    "updated": "2026-11-07T11:41:41+01:00",
     "updatedBy": "Anonymous",
     "createdBy": "admin",
-    "version": 820,
+    "version": 824,
     "hasAcl": false,
     "isFolder": false,
     "apiVersion": "v0alpha1",
@@ -778,8 +778,8 @@
         },
         {
           "current": {
-            "text": "-1",
-            "value": "-1"
+            "text": "-3",
+            "value": "-3"
           },
           "includeAll": false,
           "label": "CarReserveAmp",
@@ -821,7 +821,7 @@
               "value": "-4"
             },
             {
-              "selected": false,
+              "selected": true,
               "text": "-3",
               "value": "-3"
             },
@@ -831,7 +831,7 @@
               "value": "-2"
             },
             {
-              "selected": true,
+              "selected": false,
               "text": "-1",
               "value": "-1"
             },
@@ -871,19 +871,19 @@
         },
         {
           "current": {
-            "text": "Start",
-            "value": "Start"
+            "text": "Auto",
+            "value": "Auto"
           },
           "includeAll": false,
           "name": "WallboxMode",
           "options": [
             {
-              "selected": false,
+              "selected": true,
               "text": "Auto",
               "value": "Auto"
             },
             {
-              "selected": true,
+              "selected": false,
               "text": "Start",
               "value": "Start"
             },
@@ -911,6 +911,6 @@
     "timezone": "",
     "title": "Prdikov",
     "uid": "q50mEhf7k",
-    "version": 820
+    "version": 824
   }
 }
