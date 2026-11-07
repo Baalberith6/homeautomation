@@ -3,7 +3,6 @@
 Spec: ../kb/work/032-pr-risk-review/spec.md, sections 2.7 and 2.8. No network: subprocess.run is replaced.
 """
 import os
-import subprocess
 import tempfile
 import unittest
 from types import SimpleNamespace
@@ -106,8 +105,9 @@ class TestComment(unittest.TestCase):
                               "TABLE-HERE", "RAW-OUTPUT", decision="wait-owner", gist_id="abc123")
         self.assertTrue(body.startswith(report.MARKER))
         self.assertIn("<!-- gist:abc123 -->", body)
-        order = [body.index(s) for s in ("Telegraf: telegraf.conf", "swapped values", "https://g/a.png",
-                                          "TABLE-HERE", "<details>", "RAW-OUTPUT")]
+        marks = ("Telegraf: telegraf.conf", "swapped values", "https://g/a.png", "TABLE-HERE", "<details>",
+                 "RAW-OUTPUT")
+        order = [body.index(s) for s in marks]
         self.assertEqual(order, sorted(order))
         self.assertLess(len(body), 65536)
 
