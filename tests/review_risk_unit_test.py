@@ -129,6 +129,11 @@ class TestSetpoints(RepoCase):
         result = self._with(new_value)
         self.assertEqual(result["level"], "low", result["reasons"])
 
+    def test_new_dashboard_without_variables_is_low(self):
+        result = self.classify({"spec/grafana/ai.json": json.dumps({"uid": "ai", "panels": [],
+                                                                    "templating": {"list": []}})})
+        self.assertEqual(result["level"], "low", result["reasons"])
+
     def test_panel_only_change_is_low(self):
         head = json.loads(json.dumps(PRDIKOV))
         head["dashboard"]["panels"][0]["options"]["content"] = "<b>Self-suff. (test 032)</b>"
