@@ -84,7 +84,7 @@ class TestPure(unittest.TestCase):
 
     def test_copy_flux_targets_pr_preview(self):
         flux = preview.copy_flux("default", {"weather"}, NOW - timedelta(hours=3), NOW)
-        self.assertTrue(flux.rstrip().endswith('|> to(bucket: "pr_preview", org: "Home")'))
+        self.assertTrue(flux.rstrip().endswith('|> to(bucket: "pr_preview")'))
         self.assertIn('r._measurement == "weather"', flux)
         self.assertIn('from(bucket: "default")', flux)
         db = preview.Influx("http://i:8086", "t", session=FakeSession())

@@ -42,6 +42,7 @@ MAX_COPY_DAYS = 31        # the longest range in the two dashboards: -30d, month
 WAIT_S = 5                # after the load, so that the afterRender scripts finish (design value, spec 2.5.5)
 TIMEOUT_S = 10            # for each API call (design value, spec section 4)
 PAGE_TIMEOUT_S = 60       # for a page load in the browser
+ROW_PX = 38               # one Grafana grid row: 30 px cell + 8 px margin
 LOCK_WAIT_S = 15 * 60
 LOCAL = ZoneInfo("Europe/Prague")
 LOCK = os.path.expanduser("~/homeautomation/review-out/.preview.lock")
@@ -149,7 +150,7 @@ def copy_flux(src_bucket, names, start, stop):
     return (f'from(bucket: "{src_bucket}")\n'
             f"  |> range(start: {_iso(start)}, stop: {_iso(stop)})\n"
             f"  |> filter(fn: (r) => {cond})\n"
-            f'  |> to(bucket: "{BUCKET}", org: "{ORG}")\n')
+            f'  |> to(bucket: "{BUCKET}")\n')  # no org: the preview token cannot read the org by name
 
 
 def preview_block(test_md):
@@ -183,19 +184,18 @@ def _find(dash, pid):
 
 
 def plan_shots(key, ids, before_uid, after_uid, base_dash, head_dash, rng, base_url):
+    """One shot of the whole board per side. Each changed panel is cut out of it by its element."""
     base_url = base_url.rstrip("/")
     frm, to = rng
     shots = []
     for side, uid, dash in (("before", before_uid, base_dash), ("after", after_uid, head_dash)):
         present = [i for i in ids if _find(dash, i)]
-        shots.append({"name": f"{key}-page-{side}.png", "full_page": True, "width": 1920, "height": 1080,
-                      "check_ids": present,
+        rows = max([(p.get("gridPos") or {}).get("y", 0) + (p.get("gridPos") or {}).get("h", 0)
+                    for p in _panels(_dash(dash))] or [0])
+        # Grafana draws only the panels in the viewport, so the viewport holds the whole grid (no full_page).
+        shots.append({"name": f"{key}-page-{side}.png", "width": 1920, "height": max(1080, rows * ROW_PX + 120),
+                      "check_ids": present, "panels": {pid: f"{key}-{pid}-{side}.png" for pid in present},
                       "url": f"{base_url}/d/{uid}/x?orgId=1&from={frm}&to={to}&kiosk"})
-        for pid in present:
-            grid = _find(dash, pid).get("gridPos") or {}
-            shots.append({"name": f"{key}-{pid}-{side}.png", "full_page": False,
-                          "width": max(320, grid.get("w", 12) * 80), "height": max(200, grid.get("h", 8) * 30),
-                          "url": f"{base_url}/d-solo/{uid}/x?orgId=1&panelId={pid}&from={frm}&to={to}"})
     return shots
 
 
@@ -333,7 +333,13 @@ def shoot(token, shots, out_dir, api_user_url):
                                            page.locator('input[name="user"]').count(), counts)
                     if not ok:
                         raise NotSignedIn(reason)
-                page.screenshot(path=os.path.join(out_dir, shot["name"]), full_page=shot["full_page"])
+                page.screenshot(path=os.path.join(out_dir, shot["name"]))
+                for pid, name in shot.get("panels", {}).items():
+                    for sel in PANEL_SELECTORS:
+                        element = page.locator(sel.format(id=pid))
+                        if element.count():
+                            element.first.screenshot(path=os.path.join(out_dir, name))
+                            break
         finally:
             browser.close()
 
@@ -431,7 +437,7 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
     finally:
         grafana.delete(before_uid)
         grafana.delete(after_uid)
-    names = {s["name"] for s in shots}
+    names = {s["name"] for s in shots} | {n for s in shots for n in s.get("panels", {}).values()}
     for pid in ids:
         result["panels"].append({"id": pid if key == "prdikov" else f"AI {pid}",
                                  "before": f"{key}-{pid}-before.png" if f"{key}-{pid}-before.png" in names else None,
@@ -455,7 +461,7 @@ def smoke(uid, panel_id, out_dir, grafana, token, now=None, shooter=shoot):
     finally:
         grafana.delete("pr0-before")
         grafana.delete("pr0-after")
-    return [s["name"] for s in shots]
+    return [n for s in shots for n in [s["name"]] + list(s.get("panels", {}).values())]
 
 
 def _module(name, path):
