@@ -379,11 +379,29 @@ def _source_buckets(panels):
     return found
 
 
+def copy_plan(panels, shot_range, now):
+    """[(source bucket, measurements, start, stop)] to copy for the changed panels (spec 2.6.2, 2.6.3).
+
+    The named measurements over their window; a query that names none: the whole bucket over the shot range.
+    """
+    plan = []
+    shot_to = datetime.fromtimestamp(shot_range[1] / 1000, tz=timezone.utc)
+    shot_from = datetime.fromtimestamp(shot_range[0] / 1000, tz=timezone.utc)
+    for src, queries in sorted(_source_buckets(panels).items()):
+        named = [q for q in queries if measurements(q)]
+        if named:
+            start, stop = copy_window(named, shot_range, now)
+            plan.append((src, set().union(*(measurements(q) for q in named)), start, stop))
+        if len(named) < len(queries):
+            plan.append((src, set(), shot_from, max(shot_to, now)))
+    return plan
+
+
 def run(pr, base, head, out_dir, data_change, test_md, grafana, influx, token, repo=".", now=None, shooter=shoot):
     """Spec 2.5 and 2.6 for one PR. Writes the PNG files and preview.json into out_dir."""
     now = now or datetime.now(timezone.utc).replace(microsecond=0)
     os.makedirs(out_dir, exist_ok=True)
-    result = {"panels": [], "page": None, "warnings": [], "leftovers": [], "failed": None}
+    result = {"panels": [], "pages": [], "warnings": [], "leftovers": [], "failed": None}
     try:
         with _Lock():
             try:
@@ -415,9 +433,7 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
     rewrite = set()
     if data_change:
         changed = [p for p in _panels(head_dash) if p.get("id") in ids]
-        for src, queries in _source_buckets(changed).items():
-            names = set().union(*(measurements(q) for q in queries))
-            start, stop = copy_window(queries if names else [], rng, now)
+        for src, names, start, stop in copy_plan(changed, rng, now):
             influx.query(copy_flux(src, names, start, stop))
         block = None
         if test_md and os.path.exists(test_md):
@@ -442,8 +458,7 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
         result["panels"].append({"id": pid if key == "prdikov" else f"AI {pid}",
                                  "before": f"{key}-{pid}-before.png" if f"{key}-{pid}-before.png" in names else None,
                                  "after": f"{key}-{pid}-after.png" if f"{key}-{pid}-after.png" in names else None})
-    if result["page"] is None:
-        result["page"] = {"before": f"{key}-page-before.png", "after": f"{key}-page-after.png"}
+    result["pages"].append({"label": key, "before": f"{key}-page-before.png", "after": f"{key}-page-after.png"})
 
 
 def smoke(uid, panel_id, out_dir, grafana, token, now=None, shooter=shoot):

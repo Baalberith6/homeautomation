@@ -102,7 +102,7 @@ def _junit_id(classname, name):
     parts = classname.split(".")
     files = [p for p in parts if not p[:1].isupper()]
     classes = [p for p in parts if p[:1].isupper()]
-    return "/".join(files) + ".py::" + "".join(c + "::" for c in classes) + re.sub(r"\[.*\]$", "", name)
+    return "/".join(files) + ".py::" + "".join(c + "::" for c in classes) + name
 
 
 def junit_results(xml_text):
@@ -123,15 +123,14 @@ def junit_results(xml_text):
 
 def collected(text):
     """The test ids of `pytest --collect-only -q`."""
-    return {re.sub(r"\[.*\]$", "", line.strip()) for line in text.splitlines() if "::" in line}
+    return {line.strip() for line in text.splitlines() if "::" in line}
 
 
 def _matches(mapped, junit):
     """The JUnit ids of one test of the table. The table may leave out the class."""
-    if mapped in junit:
-        return [mapped]
     path, name = mapped.split("::")[0], mapped.split("::")[-1]
-    return [t for t in junit if t.split("::")[0] == path and t.split("::")[-1] == name]
+    return [t for t in junit if t == mapped or re.sub(r"\[.*\]$", "", t) == mapped
+            or (t.split("::")[0] == path and re.sub(r"\[.*\]$", "", t.split("::")[-1]) == name)]
 
 
 def _short(text, size=120):
@@ -183,9 +182,8 @@ def _images_md(images):
         before = f"![before]({panel['before']})" if panel.get("before") else "_absent_"
         after = f"![after]({panel['after']})" if panel.get("after") else "_absent_"
         out += [f"**Panel {panel['id']}**", "", "| Before | After |", "|---|---|", f"| {before} | {after} |", ""]
-    page = images.get("page") or {}
-    if page:
-        out += ["**Full page**", "", "| Before | After |", "|---|---|",
+    for page in images.get("pages") or []:
+        out += [f"**Full page — {page.get('label', '')}**", "", "| Before | After |", "|---|---|",
                 f"| ![before]({page.get('before')}) | ![after]({page.get('after')}) |", ""]
     for warning in images.get("warnings", []):
         out.append(f"> ⚠️ {warning}")
@@ -324,7 +322,7 @@ def main(argv=None):
 
     images, gist_id = None, None
     if preview is not None:
-        images = {"panels": preview.get("panels", []), "page": preview.get("page"),
+        images = {"panels": preview.get("panels", []), "pages": preview.get("pages", []),
                   "warnings": list(preview.get("warnings", []))}
         pngs = sorted(os.path.join(out, f) for f in os.listdir(out) if f.endswith(".png"))
         if args.post and pngs:
@@ -337,8 +335,9 @@ def main(argv=None):
                     for side in ("before", "after"):
                         if panel.get(side):
                             panel[side] = urls.get(os.path.basename(panel[side]))
-                if images.get("page"):
-                    images["page"] = {s: urls.get(os.path.basename(p)) for s, p in images["page"].items()}
+                for page in images["pages"]:
+                    for side in ("before", "after"):
+                        page[side] = urls.get(os.path.basename(page[side]))
             except subprocess.CalledProcessError as exc:
                 images["warnings"].append(f"Images not uploaded: {exc.cmd[:3]}")
                 risk_result["reasons"].append("Screenshots: images not uploaded")

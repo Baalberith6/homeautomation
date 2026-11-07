@@ -26,6 +26,7 @@ RULES = [  # (rule, glob) - spec section 2.2
     ("Device commands", "wallbox.py"), ("Device commands", "inverter_setter.py"),
     ("Device commands", "estia_optimizer.py"), ("Device commands", "lights.py"),
     ("Harness", ".github/*"), ("Harness", "review/*"), ("Harness", ".claude/agents/pr-reviewer.md"),
+    ("Setpoints", "spec/grafana/push_*.py"),  # they write the live dashboards and their setpoints
 ]
 DASHBOARDS = ("spec/grafana/prdikov.json", "spec/grafana/ai.json")
 TELEGRAF = ("telegraf.conf", "telegraf-lxc-scripts.conf")
@@ -34,7 +35,7 @@ INFLUX_WRITERS = ("cursor.py", "energyestimator.py", "estia_energy.py", "otefore
 OWNERS = ("matejpristak", "Baalberith6")
 REPO = "Baalberith6/homeautomation"
 SETPOINT_VALUE_KEYS = ("current", "selected")
-DYNAMIC_PUBLISH = re.compile(r"\.publish\(\s*(f[\"']|[A-Za-z_])")
+DYNAMIC_PUBLISH = re.compile(r"\.publish\(\s*(f[\"']|[A-Za-z_]|[\"'][^\"']*[\"']\s*\+)")
 KINDS = (("topics", "topic"), ("influx", "InfluxDB name"), ("payload_keys", "payload key"))
 
 
@@ -116,6 +117,20 @@ def _str(node):
     return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
 
 
+def _pattern(node):
+    """A topic as text: the literal parts kept, the run-time parts as {}. None if no part is literal."""
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.JoinedStr):
+        parts = [v.value if isinstance(v, ast.Constant) else "{}" for v in node.values]
+    elif isinstance(node, ast.BinOp) and isinstance(node.op, ast.Add):
+        parts = [_pattern(node.left) or "{}", _pattern(node.right) or "{}"]
+    else:
+        return None
+    text = "".join(parts)
+    return text if text.replace("{}", "") else None
+
+
 def inventory(sources):
     """{path: python text} -> {"topics" | "influx" | "payload_keys": {name: set of paths}}."""
     found = {"topics": {}, "influx": {}, "payload_keys": {}}
@@ -130,8 +145,8 @@ def inventory(sources):
         for call in calls:
             name = _name(call.func)
             if name in ("publish", "subscribe"):
-                if call.args and _str(call.args[0]) is not None:
-                    add("topics", _str(call.args[0]), path)
+                if call.args and _pattern(call.args[0]) is not None:
+                    add("topics", _pattern(call.args[0]), path)
                 for arg in call.args:
                     if isinstance(arg, (ast.List, ast.Tuple)):
                         for elt in arg.elts:
