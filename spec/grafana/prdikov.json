@@ -10,10 +10,10 @@
     "url": "/d/q50mEhf7k/prdikov",
     "expires": "0001-01-01T00:00:00Z",
     "created": "2025-09-21T21:04:48+02:00",
-    "updated": "2026-11-03T09:39:27+01:00",
+    "updated": "2026-11-07T11:35:53+01:00",
     "updatedBy": "Anonymous",
     "createdBy": "admin",
-    "version": 820,
+    "version": 823,
     "hasAcl": false,
     "isFolder": false,
     "apiVersion": "v0alpha1",
@@ -89,10 +89,10 @@
           "overrides": []
         },
         "gridPos": {
-          "x": 0,
-          "y": 0,
+          "h": 8,
           "w": 14,
-          "h": 8
+          "x": 0,
+          "y": 0
         },
         "id": 70,
         "options": {
@@ -146,10 +146,10 @@
           "overrides": []
         },
         "gridPos": {
-          "x": 14,
-          "y": 0,
+          "h": 8,
           "w": 10,
-          "h": 8
+          "x": 14,
+          "y": 0
         },
         "id": 67,
         "options": {
@@ -203,10 +203,10 @@
           "overrides": []
         },
         "gridPos": {
-          "x": 0,
-          "y": 8,
+          "h": 8,
           "w": 14,
-          "h": 8
+          "x": 0,
+          "y": 8
         },
         "id": 80,
         "options": {
@@ -260,10 +260,10 @@
           "overrides": []
         },
         "gridPos": {
-          "x": 0,
-          "y": 16,
+          "h": 10,
           "w": 14,
-          "h": 10
+          "x": 0,
+          "y": 16
         },
         "id": 81,
         "options": {
@@ -317,10 +317,10 @@
           "overrides": []
         },
         "gridPos": {
-          "x": 14,
-          "y": 16,
+          "h": 10,
           "w": 10,
-          "h": 10
+          "x": 14,
+          "y": 16
         },
         "id": 83,
         "options": {
@@ -374,10 +374,10 @@
           "overrides": []
         },
         "gridPos": {
-          "x": 14,
-          "y": 8,
+          "h": 8,
           "w": 10,
-          "h": 8
+          "x": 14,
+          "y": 8
         },
         "id": 86,
         "options": {
@@ -778,8 +778,8 @@
         },
         {
           "current": {
-            "text": "-1",
-            "value": "-1"
+            "text": "-3",
+            "value": "-3"
           },
           "includeAll": false,
           "label": "CarReserveAmp",
@@ -821,7 +821,7 @@
               "value": "-4"
             },
             {
-              "selected": false,
+              "selected": true,
               "text": "-3",
               "value": "-3"
             },
@@ -831,7 +831,7 @@
               "value": "-2"
             },
             {
-              "selected": true,
+              "selected": false,
               "text": "-1",
               "value": "-1"
             },
@@ -871,19 +871,19 @@
         },
         {
           "current": {
-            "text": "Start",
-            "value": "Start"
+            "text": "Auto",
+            "value": "Auto"
           },
           "includeAll": false,
           "name": "WallboxMode",
           "options": [
             {
-              "selected": false,
+              "selected": true,
               "text": "Auto",
               "value": "Auto"
             },
             {
-              "selected": true,
+              "selected": false,
               "text": "Start",
               "value": "Start"
             },
@@ -911,6 +911,6 @@
     "timezone": "",
     "title": "Prdikov",
     "uid": "q50mEhf7k",
-    "version": 820
+    "version": 823
   }
 }
