@@ -75,6 +75,11 @@ class TestPure(unittest.TestCase):
         self.assertEqual(len(whole), 1)
         self.assertEqual((whole[0][0], whole[0][2], whole[0][3]), ("default", NOW - timedelta(hours=3), NOW))
 
+    def test_duplicate_panel_ids(self):
+        self.assertEqual(preview.duplicate_ids(_dash(extra={"id": 81, "targets": []})), [81])
+        self.assertEqual(preview.duplicate_ids(_dash()), [])
+        self.assertIn("81", preview.duplicate_warning([81], "after"))
+
     def test_rewrite_only_changed_panels(self):
         head = _dash()
         after = preview.board(head, "pr9-prdikov-after", "PR 9 after", rewrite_ids={81})
