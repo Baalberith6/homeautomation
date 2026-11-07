@@ -1357,6 +1357,47 @@
       ],
       "title": "Most expensive jobs",
       "type": "table"
+    },
+    {
+      "id": 19,
+      "type": "stat",
+      "title": "Outdoor °F (test 032)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "ceyru5v6xg3r4b"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 4,
+        "x": 0,
+        "y": 57
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "ceyru5v6xg3r4b"
+          },
+          "query": "from(bucket: \"default\")\n  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)\n  |> filter(fn: (r) => r._measurement == \"weather\" and r._field == \"temperature_f\")\n  |> last()"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        },
+        "colorMode": "value",
+        "graphMode": "none"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "fahrenheit",
+          "decimals": 1
+        },
+        "overrides": []
+      }
     }
   ],
   "refresh": "5m",

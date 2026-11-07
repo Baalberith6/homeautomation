@@ -55,6 +55,7 @@ def get_weather():
     client.publish("jsons/weather/local/temps_24h", json.dumps(temps_24h))
     client.publish("home/weather/local/humidity", humidity)
     client.publish("home/weather/local/temperature", temp)
+    client.publish("home/weather/local/temperature_f", temp * 1.8 + 32)
     client.publish("home/weather/local/windChill", windchill)
     client.publish("home/weather/local/windSpeed", windspeed)
     client.publish("home/weather/local/windGust", windgust)
