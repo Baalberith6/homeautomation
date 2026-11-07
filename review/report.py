@@ -128,9 +128,11 @@ def collected(text):
 
 def _matches(mapped, junit):
     """The JUnit ids of one test of the table. The table may leave out the class."""
-    path, name = mapped.split("::")[0], mapped.split("::")[-1]
-    return [t for t in junit if t == mapped or re.sub(r"\[.*\]$", "", t) == mapped
-            or (t.split("::")[0] == path and re.sub(r"\[.*\]$", "", t.split("::")[-1]) == name)]
+    parts = mapped.split("::")
+    found = [t for t in junit if t == mapped or re.sub(r"\[.*\]$", "", t) == mapped]
+    if found or len(parts) > 2:  # an id with a class matches only that class
+        return found
+    return [t for t in junit if t.split("::")[0] == parts[0] and re.sub(r"\[.*\]$", "", t.split("::")[-1]) == parts[-1]]
 
 
 def _short(text, size=120):
