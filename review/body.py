@@ -23,6 +23,7 @@ import re
 import sys
 
 LABELS = ("What:", "Owner must do:", "Tested:", "Not covered:", "Revert:")
+FIRST = ("Change ", "No change folder")  # the first line names the change, or says that there is none
 MAX_LINES = 12
 ATTRIBUTION = "Generated with [Claude Code]"
 
@@ -45,6 +46,9 @@ def fields(text):
 def problems(text):
     """The reasons why the body does not have the form. An empty list means that it is correct."""
     lines, found, out = _lines(text), fields(text), []
+    if not lines or not lines[0].lstrip("*").startswith(FIRST):
+        out.append("The first line must name the change: \"Change NNN (<path>): <file>, approved <date>.\", "
+                   "or start with \"No change folder\".")
     for label in LABELS:
         if label not in found:
             out.append(f"The line `{label}` is missing.")

@@ -108,6 +108,7 @@ After `gh pr create`, start the subagent `pr-reviewer` with the PR number. It fo
 
 - **The word of the owner is for one commit.** `<sha>` is the head that the comment names. If the head changes after the owner said "merge", run `pr-reviewer` again and ask again. One exception: the sync-back commit of a dashboard. If `git diff --name-only <sha> HEAD` lists only `spec/grafana/prdikov.json` or `spec/grafana/ai.json`, merge with the new head and tell the owner.
 - A low-risk PR also waits for the owner when the diff does something that the intent does not name (the Drift gate).
+- In the Results of the change folder, give each acceptance check a row in a table whose first header cell is `Check`. The last cell is the verdict: `pass`, `fail`, or `open until <date or run>`. The review tool reads only these rows. A check that the Results record as `fail` stops the merge.
 - After auto-merge is on, push no commit to the branch. If you must, run `gh pr merge <n> --disable-auto` first.
 - If CI fails after a live push, push the backup back: `push_prdikov.py --push --file <backup>` (the path is in its output).
 - The agent needs the LAN, `secret.py` with `grafanaServiceAccountToken` and `influxPreviewToken`, and `~/homeautomation/review-venv` (see `review/requirements.txt`).
