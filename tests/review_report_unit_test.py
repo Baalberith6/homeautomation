@@ -215,6 +215,65 @@ class TestChangeFile(unittest.TestCase):
         self.assertIn("Not proven: none", md)
         self.assertEqual(report.checks_summary(list(self.rows.values()))[1], "4 of 5 proven, 1 open")
 
+    def test_only_a_fail_opens_the_checks_gate(self):
+        rows = report.check_rows(SPEC, TESTS, self.junit)
+        self.assertEqual(report.checks_summary(rows), (report.BAD, "2 of 5 proven, 1 open, 1 not proven, 1 failed", True))
+        no_fail = [r for r in rows if r["state"] != "fail"]
+        self.assertEqual(report.checks_summary(no_fail), (report.WARN, "2 of 4 proven, 1 open, 1 not proven", False))
+
+
+FREE = """# Change
+
+## 2. Outcome and acceptance checks
+
+1. The pins.
+2. The install.
+3. The smoke test.
+4. CI.
+
+## 5. Tests
+
+| Test | New / extended / existing | What it proves | Check |
+|---|---|---|---|
+| `pip check` in a clean venv | change-specific | no conflict | 2 |
+| `…::test_module_level` (a fixed string) | new | x | 3 |
+| `tests/plain_unit_test.py::test_param` | new | x | 3 |
+
+## 7. Results
+
+### Run 1 — 2026-11-17
+
+| Check | Result |
+|---|---|
+| 1 pins | pass (diff: six lines) |
+| 2 install, `pip check` | pass on macOS; the install on `.51` is the deploy |
+| 4 CI | waits for the PR |
+
+| 2026-11-17 | pass |
+"""
+
+
+class TestFreeForm(unittest.TestCase):
+    """The change files of 033 and 037 do not follow one form. The tool reads what is certain."""
+
+    def setUp(self):
+        self.junit = report.junit_results(JUNIT)
+        self.rows = {r["n"]: r for r in report.check_rows(FREE, FREE, self.junit)}
+
+    def test_a_word_after_the_check_number(self):
+        self.assertEqual(self.rows[1]["state"], "recorded")
+        self.assertEqual(self.rows[2]["state"], "recorded")
+
+    def test_a_row_with_no_verdict_is_not_proven(self):
+        self.assertEqual(self.rows[4]["state"], "not proven")
+
+    def test_a_date_is_not_a_check_number(self):
+        self.assertEqual(sorted(report.recorded(FREE)), [1, 2])
+
+    def test_test_id_with_no_file_and_with_a_note(self):
+        self.assertEqual(self.rows[3]["state"], "pass")
+        self.assertEqual(len(self.rows[3]["tests"]), 2)
+
 
 class TestComment(unittest.TestCase):
 
@@ -253,7 +312,7 @@ class TestComment(unittest.TestCase):
     def test_no_raw_output_on_a_green_run(self):
         body = report.comment(data())
         self.assertNotIn("RAW-OUTPUT", body)
-        self.assertIn("5 passed", gate(body, "Tests")[1])
+        self.assertIn("6 passed", gate(body, "Tests")[1])
 
     def test_failed_tests_open_the_gate_with_cut_output(self):
         junit = report.junit_results(JUNIT)
