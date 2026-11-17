@@ -74,7 +74,7 @@ DEBUG=1 python3 inverter.py
 
 `DEBUG=1` enables verbose output and appends `-dev` to the MQTT client ID so the local instance doesn't disconnect the production one. Netatmo token files also use a `.dev.token` suffix to avoid overwriting prod tokens. **Caution:** services that control devices (`wallbox.py`, `inverter_setter.py`, `estia_optimizer.py`) will still send real commands — avoid running them locally while prod is active.
 
-CI runs on every push via `.github/workflows/test.yaml` (Python 3.9, flake8 + pytest). The ruleset `main` requires the check `build (3.9)` before a merge and blocks force pushes; do not rename the job.
+CI runs on every push via `.github/workflows/test.yaml` (Python 3.11, the minor version of the production venv on `192.168.1.51`; flake8 + pytest). The ruleset `main` requires the check `build (3.11)` before a merge and blocks force pushes; do not rename the job.
 
 ## Review (change 032)
 
