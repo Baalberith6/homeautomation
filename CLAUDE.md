@@ -112,7 +112,7 @@ After `gh pr create`, start the subagent `pr-reviewer` with the PR number. It fo
 - In the Results of the change folder, give each acceptance check a row in a table whose first header cell is `Check`. The last cell is the verdict: `pass`, `fail`, or `open until <date or run>`. The review tool reads only these rows and shows them in the Checks gate. They do not decide the merge: only the findings of the agent, the test run of the review, the drift and the PR body do.
 - After auto-merge is on, push no commit to the branch. If you must, run `gh pr merge <n> --disable-auto` first.
 - If CI fails after a live push, push the backup back: `push_prdikov.py --push --file <backup>` (the path is in its output).
-- The agent needs the LAN, `secret.py` with `grafanaServiceAccountToken` and `influxPreviewToken`, `~/homeautomation/review-venv` (see `review/requirements.txt`), and `uv`. With `uv` the agent makes the test environment `~/homeautomation/review-test-venv` (Python 3.11, as CI) and installs the `requirements.txt` of the PR head into it in each run (`review/reviewer.md`, step 6).
+- The agent needs the LAN, `secret.py` with `grafanaServiceAccountToken` and `influxPreviewToken`, `~/homeautomation/review-venv` (see `review/requirements.txt`), `uv` and `node`. The dashboard tests run panel JavaScript in `node` and skip without it. With `uv` the agent makes the test environment `~/homeautomation/review-test-venv` (Python 3.11, as CI) and installs the `requirements.txt` of the PR head into it in each run (`review/reviewer.md`, step 6).
 
 ## Where the architecture lives
 
