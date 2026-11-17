@@ -2,5 +2,7 @@
 # Install: python3 -m venv ~/homeautomation/review-venv
 #          ~/homeautomation/review-venv/bin/pip install -r review/requirements.txt
 #          ~/homeautomation/review-venv/bin/python -m playwright install chromium
+# The tests of a PR do not run in this venv. The agent makes ~/homeautomation/review-test-venv with uv
+# (Python 3.11, the requirements.txt of the PR head, pytest, flake8): review/reviewer.md, step 6 (change 038).
 playwright>=1.50,<2
 requests>=2.31

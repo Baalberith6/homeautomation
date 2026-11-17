@@ -107,12 +107,12 @@ After `gh pr create`, start the subagent `pr-reviewer` with the PR number. It fo
 | `refuse` | Nothing: the PR is not from the owner or comes from a fork |
 
 - **The word of the owner is for one commit.** `<sha>` is the head that the comment names. If the head changes after the owner said "merge", run `pr-reviewer` again and ask again. One exception: the sync-back commit of a dashboard. If `git diff --name-only <sha> HEAD` lists only `spec/grafana/prdikov.json` or `spec/grafana/ai.json`, merge with the new head and tell the owner.
-- A low-risk PR also waits for the owner in three cases: the `Owner must do` line of the PR body is not "nothing"; the diff does something that the intent does not name; the PR has a change folder and the agent did not measure the drift. The Approval gate names the case.
+- A low-risk PR also waits for the owner in four cases: the `Owner must do` line of the PR body is not "nothing"; the diff does something that the intent does not name; the PR has a change folder and the agent did not measure the drift; the agent wrote a row of `drift.json` that the tool cannot read. The Approval gate names the case.
 - A file of the review that is missing or broken (`findings.json`, `pr.json`, `drift.json`, `preview.json`) is a finding, never "nothing found". Start `pr-reviewer` again.
 - In the Results of the change folder, give each acceptance check a row in a table whose first header cell is `Check`. The last cell is the verdict: `pass`, `fail`, or `open until <date or run>`. The review tool reads only these rows and shows them in the Checks gate. They do not decide the merge: only the findings of the agent, the test run of the review, the drift and the PR body do.
 - After auto-merge is on, push no commit to the branch. If you must, run `gh pr merge <n> --disable-auto` first.
 - If CI fails after a live push, push the backup back: `push_prdikov.py --push --file <backup>` (the path is in its output).
-- The agent needs the LAN, `secret.py` with `grafanaServiceAccountToken` and `influxPreviewToken`, and `~/homeautomation/review-venv` (see `review/requirements.txt`).
+- The agent needs the LAN, `secret.py` with `grafanaServiceAccountToken` and `influxPreviewToken`, `~/homeautomation/review-venv` (see `review/requirements.txt`), and `uv`. With `uv` the agent makes the test environment `~/homeautomation/review-test-venv` (Python 3.11, as CI) and installs the `requirements.txt` of the PR head into it in each run (`review/reviewer.md`, step 6).
 
 ## Where the architecture lives
 
