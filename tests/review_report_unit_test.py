@@ -544,12 +544,17 @@ class TestReviewOfPr49(unittest.TestCase):
             self.assertIn("not read", out.getvalue())
 
 
-BODY_TEXT = """Change 037 (small path): ../kb/work/037-security-pins-py39/change.md, approved 2026-11-17.
-What: six pins move.
-Owner must do: nothing.
-Tested: 398 passed. Results: change.md section 7.
-Not covered: nothing.
-Revert: revert the commit.
+BODY_TEXT = """**Change 037** (small path) · `../kb/work/037-security-pins-py39/change.md` · approved 2026-11-17
+
+**Owner must do:** nothing.
+
+**What:** six pins move.
+
+**Tested:** 398 passed. Results: change.md section 7.
+
+**Not covered:** nothing.
+
+**Revert:** revert the commit.
 """
 MET = [{"kind": "outcome", "n": 1, "state": "met", "text": "x"}]
 LOW = ("low", 0, False, "matejpristak", False)
@@ -584,6 +589,19 @@ class TestFailClosed(unittest.TestCase):
 
     def test_the_clean_run_is_ready(self):
         self.assertIn("## Ready — LOW", self.run_main())
+
+    def test_the_new_form_reaches_the_approval_gate(self):
+        """Change 039: the labels are bold. The gate shows the text of the owner with no bold marks."""
+        self.assertIn("**Owner must do:** nothing.", BODY_TEXT)
+        action = "create the ruleset `main` before the merge."
+        body = self.run_main(**{"pr.json": json.dumps({
+            "number": 9, "body": BODY_TEXT.replace("**Owner must do:** nothing.", "**Owner must do:** " + action)})})
+        self.assertIn("## Waiting for the owner — LOW", body)
+        inside = gate(body, "Approval")[2]
+        self.assertIn("- **Owner must do:** " + action + "\n", inside)
+        self.assertIn("names an action of the owner", inside)
+        self.assertNotIn("PR body", gate(body, "Findings")[2])
+        self.assertIn("## Ready — LOW", self.run_main())   # "**Owner must do:** nothing." is no action
 
     def test_broken_findings_json(self):
         for text in ('[{"kind": "bug", "text": "x"},]', "", '{"kind": "bug"}', '["a text"]'):
@@ -698,9 +716,12 @@ BAD_INPUTS = [
     ("junit.xml", ""), ("junit.xml", "<testsuites"), ("junit.xml", "<testsuites></testsuites>"),
     ("junit.xml", SKIPPED), ("junit.xml", JUNIT),
     ("preview.json", ""), ("preview.json", "[]"), ("preview.json", '{"failed": "no board"}'),
-    ("pr.json", json.dumps({"body": BODY_TEXT.replace("Owner must do: nothing.",
-                                                      "Owner must do: create the ruleset before the merge.")})),
-    ("pr.json", json.dumps({"body": BODY_TEXT.replace("Owner must do: nothing.", "Owner must do: no")})),
+    ("pr.json", json.dumps({"body": BODY_TEXT.replace("**Owner must do:** nothing.",
+                                                      "**Owner must do:** create the ruleset before the merge.")})),
+    ("pr.json", json.dumps({"body": BODY_TEXT.replace("**Owner must do:** nothing.", "**Owner must do:** no")})),
+    # change 039: the form of the old rule, and a field that is too long
+    ("pr.json", json.dumps({"body": BODY_TEXT.replace("**", "")})),
+    ("pr.json", json.dumps({"body": BODY_TEXT.replace("six pins move.", "x" * 241)})),
 ]
 
 
