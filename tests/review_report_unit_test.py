@@ -124,7 +124,7 @@ def data(**over):
     base = {"risk": dict(RISK, level="high", reasons=["Config: requirements.txt"], head=HEAD), "findings": [],
             "images": None, "rows": report.check_rows(CHANGE, CHANGE, junit), "junit": junit,
             "base_ids": set(), "head_ids": set(), "raw": "RAW-OUTPUT", "decision": "wait-owner", "drift": None,
-            "body": BODY, "round": 1, "gist_id": None, "pr": 47, "approval": "change.md: approved by the owner"}
+            "body": BODY, "gist_id": None, "pr": 47}
     base.update(over)
     return base
 
@@ -207,10 +207,14 @@ class TestChangeFile(unittest.TestCase):
         self.assertEqual(self.rows[5]["state"], "open")
         self.assertEqual(self.rows[5]["when"], "the deploy")
 
-    def test_recorded_fail_stays_a_fail(self):
+    def test_a_recorded_fail_is_shown_as_a_warning(self):
         only_run_1 = CHANGE[:CHANGE.index("### Run 2")]
-        rows = {r["n"]: r for r in report.check_rows(only_run_1, only_run_1, self.junit)}
-        self.assertEqual(rows[1]["state"], "fail")
+        rows = report.check_rows(only_run_1, only_run_1, self.junit)
+        self.assertEqual({r["n"]: r["state"] for r in rows}[1], "recorded fail")
+        icon, text, opened = report.checks_summary(rows)
+        self.assertEqual((icon, opened), (report.WARN, False))
+        self.assertIn("3 recorded fail", text)
+        self.assertIn("recorded fail", report.checks_md(rows))
 
     def test_table_names_the_kind_of_proof(self):
         md = report.checks_md(list(self.rows.values()))
@@ -284,15 +288,14 @@ class TestFreeForm(unittest.TestCase):
 
 class TestComment(unittest.TestCase):
 
-    def test_head_names_the_decision_the_commit_and_the_round(self):
-        body = report.comment(data(round=2))
+    def test_head_names_the_decision_and_the_commit(self):
+        body = report.comment(data())
         self.assertTrue(body.startswith(report.MARKER))
         head = [line for line in body.splitlines() if line.startswith("## ")][0]
         self.assertIn("Waiting for the owner", head)
         self.assertIn("HIGH", head)
         self.assertIn("`d1405dc`", head)
-        self.assertIn("round 2 of 3", head)
-        self.assertIn("<!-- round:2 head:%s -->" % HEAD, body)
+        self.assertNotIn("round", body)
         low = report.comment(data(risk=dict(RISK, head=HEAD), decision="auto-merge"))
         self.assertIn("## Ready — LOW", low)
 
@@ -308,7 +311,7 @@ class TestComment(unittest.TestCase):
         self.assertIn("d1405dc", summary)
         self.assertIn("before deploy on .51, run pip install.", inner)
         self.assertIn("Config: requirements.txt", inner)
-        self.assertIn("change.md: approved by the owner", inner)
+        self.assertIn("--match-head-commit " + HEAD, inner)
 
     def test_green_gates_are_closed(self):
         body = report.comment(data(risk=dict(RISK, head=HEAD), decision="auto-merge",
@@ -408,39 +411,42 @@ class TestDrift(unittest.TestCase):
         self.assertIn("open", tag)
         self.assertIn("❌", summary)
 
+    def test_decide_has_no_round_and_no_approval(self):
+        with self.assertRaises(TypeError):
+            report.decide("low", 0, False, "matejpristak", False, round_no=4)
+        with self.assertRaises(TypeError):
+            report.decide("low", 0, False, "matejpristak", False, approved=False)
+        with self.assertRaises(TypeError):
+            report.decide("low", 0, False, "matejpristak", False, failed_checks=1)
+        for name in ("round_number", "approval", "MAX_ROUNDS"):
+            self.assertFalse(hasattr(report, name), name)
+
     def test_decide_keeps_the_rules_of_risk(self):
         self.assertEqual(report.decide("high", 0, False, "matejpristak", False), "wait-owner")
         self.assertEqual(report.decide("low", 1, False, "matejpristak", False), "fix-findings")
         self.assertEqual(report.decide("low", 0, False, "stranger", False), "refuse")
 
 
-class TestRound(unittest.TestCase):
+class TestOwnerAction(unittest.TestCase):
+    """Finding 6 of round 3: at low risk the line "Owner must do" had no effect."""
 
-    def test_round_counts_new_heads(self):
-        self.assertEqual(report.round_number("", HEAD), 1)
-        last = "<!-- pr-reviewer -->\n<!-- round:2 head:%s -->\n## Not ready — LOW" % HEAD
-        self.assertEqual(report.round_number(last, HEAD), 2)
-        self.assertEqual(report.round_number(last, "f" * 40), 3)
+    def test_only_nothing_is_no_action(self):
+        for text in ("nothing", "Nothing.", " nothing ", "**nothing.**"):
+            self.assertFalse(report.owner_action({"Owner must do:": text}), text)
+        for text in ("create the ruleset before the merge", "no", "none", "nothing, but watch CI", ""):
+            self.assertTrue(report.owner_action({"Owner must do:": text}), text)
+        self.assertFalse(report.owner_action(None))
 
-    def test_a_new_head_after_a_clean_review_is_not_a_new_round(self):
-        clean = "<!-- pr-reviewer -->\n<!-- round:1 head:%s -->\n## Ready — LOW" % HEAD
-        self.assertEqual(report.round_number(clean, "f" * 40), 1)
-
-    def test_after_three_rounds_the_owner_decides(self):
-        self.assertEqual(report.decide("low", 2, False, "matejpristak", False, round_no=3), "fix-findings")
-        self.assertEqual(report.decide("low", 2, False, "matejpristak", False, round_no=4), "wait-owner")
-        body = report.comment(data(round=4, findings=[{"file": "a.py", "line": 1, "kind": "bug", "text": "x"}]))
-        tag, summary, inner = gate(body, "Approval")
-        self.assertIn("Three rounds", inner)
-        self.assertIn("open", tag)
-        self.assertIn("decide on the approach", summary)
-        self.assertNotIn("--match-head-commit", body)
-        self.assertNotIn("the owner merges", body)
-
-    def test_three_rounds_line_needs_an_open_finding(self):
-        body = report.comment(data(round=4))
-        self.assertNotIn("Three rounds", body)
-        self.assertIn("--match-head-commit", body)
+    def test_an_owner_action_makes_a_low_risk_pr_wait(self):
+        args = ("low", 0, False, "matejpristak", False)
+        self.assertEqual(report.decide(*args, owner_action=True), "wait-owner")
+        self.assertEqual(report.decide(*args, owner_action=False), "auto-merge")
+        self.assertEqual(report.decide("low", 1, False, "matejpristak", False, owner_action=True), "fix-findings")
+        body = report.comment(data(risk=dict(RISK, head=HEAD)))
+        self.assertIn("names an action of the owner", gate(body, "Approval")[2])
+        quiet = report.comment(data(risk=dict(RISK, head=HEAD), decision="auto-merge",
+                                    body=dict(BODY, **{"Owner must do:": "nothing."})))
+        self.assertNotIn("names an action", quiet)
 
 
 class TestBodyFindings(unittest.TestCase):
@@ -488,18 +494,20 @@ class TestReviewOfPr49(unittest.TestCase):
         self.assertEqual(report.recorded(RESULTS % "| 5 | Passed |")[5][0], "pass")
         self.assertEqual(report.recorded(RESULTS % "| 5 | Open until 2026-05-01 |")[5], ("open", "2026-05-01"))
 
-    def test_a_failed_check_stops_the_merge(self):
-        self.assertEqual(report.decide("low", 0, False, "matejpristak", False, failed_checks=1), "fix-findings")
-        self.assertEqual(report.decide("high", 0, False, "matejpristak", False, failed_checks=1), "fix-findings")
+    def test_a_failed_run_stops_the_merge(self):
+        self.assertTrue(report.run_failed({}))
+        self.assertTrue(report.run_failed({"tests/a.py::t": "skip"}))
+        self.assertTrue(report.run_failed({"tests/a.py::t": "pass", "tests/a.py::u": "fail"}))
+        self.assertFalse(report.run_failed({"tests/a.py::t": "pass", "tests/a.py::u": "skip"}))
 
     def test_lint_output_is_in_the_tests_gate(self):
         self.assertFalse(report.lint_failed("0\n"))
         self.assertFalse(report.lint_failed(""))
         lint = "./x.py:1:1: F821 undefined name 'y'\n1\n"
         self.assertTrue(report.lint_failed(lint))
-        tag, summary, inner = gate(report.comment(data(lint=lint, decision="fix-findings")), "Tests")
+        tag, summary, inner = gate(report.comment(data(lint=lint)), "Tests")
         self.assertIn("open", tag)
-        self.assertIn(report.BAD, summary)
+        self.assertIn(report.WARN, summary)
         self.assertIn("flake8", summary)
         self.assertIn("F821 undefined name", inner)
 
@@ -685,11 +693,10 @@ BAD_INPUTS = [
     ("drift.json", '[{"kind": "outcome", "state": "met"}, 7]'),
     ("junit.xml", ""), ("junit.xml", "<testsuites"), ("junit.xml", "<testsuites></testsuites>"),
     ("junit.xml", SKIPPED), ("junit.xml", JUNIT),
-    ("flake8.txt", "./x.py:1:1: F821 undefined name\n1\n"), ("flake8.txt", "1"),
     ("preview.json", ""), ("preview.json", "[]"), ("preview.json", '{"failed": "no board"}'),
-    ("change.md", GOOD_CHANGE.replace("| pass |", "| fail |")),
-    ("change.md", GOOD_CHANGE.replace("approved_by: the owner", "approved_by:")),
-    ("change.md", GOOD_CHANGE.replace("approved_on: 2026-11-17\n", "")),
+    ("pr.json", json.dumps({"body": BODY_TEXT.replace("Owner must do: nothing.",
+                                                      "Owner must do: create the ruleset before the merge.")})),
+    ("pr.json", json.dumps({"body": BODY_TEXT.replace("Owner must do: nothing.", "Owner must do: no")})),
 ]
 
 
@@ -718,6 +725,26 @@ class TestNeverGreenerThanTheInputs(TestFailClosed):
         for name, text in BAD_INPUTS:
             body = self.run_with(name, text)
             self.assertNotIn("## Ready", body, (name, text))
+
+    def test_a_missing_risk_json_gives_no_merge_command(self):
+        body = self.run_main(remove=("risk.json",))
+        self.assertIn("## Not ready", body)
+        self.assertNotIn("gh pr merge", body)
+        self.assertIn("risk.json", gate(body, "Findings")[2])
+
+    def test_the_text_of_the_change_folder_is_shown_and_decides_nothing(self):
+        failed = self.run_with("change.md", GOOD_CHANGE.replace("| pass |", "| fail |"))
+        self.assertIn("## Ready", failed)
+        self.assertIn(report.WARN, gate(failed, "Checks")[1])
+        self.assertIn("1 recorded fail", gate(failed, "Checks")[1])
+        not_approved = self.run_with("change.md", GOOD_CHANGE.replace("approved_by: the owner", "approved_by:"))
+        self.assertIn("## Ready", not_approved)
+        self.assertNotIn("approved", not_approved)
+
+    def test_lint_output_is_shown_and_decides_nothing(self):
+        body = self.run_with("flake8.txt", "./x.py:1:1: F821 undefined name\n1\n")
+        self.assertIn("## Ready", body)
+        self.assertIn(report.WARN, gate(body, "Tests")[1])
 
     def test_ready_means_that_every_gate_is_green(self):
         for name, text in BAD_INPUTS + [(None, None)]:
