@@ -535,6 +535,112 @@ class TestReviewOfPr49(unittest.TestCase):
             self.assertIn("not read", out.getvalue())
 
 
+BODY_TEXT = """Change 037 (small path): ../kb/work/037-security-pins-py39/change.md, approved 2026-11-17.
+What: six pins move.
+Owner must do: nothing.
+Tested: 398 passed. Results: change.md section 7.
+Not covered: nothing.
+Revert: revert the commit.
+"""
+MET = [{"kind": "outcome", "n": 1, "state": "met", "text": "x"}]
+LOW = ("low", 0, False, "matejpristak", False)
+
+
+class TestFailClosed(unittest.TestCase):
+    """The findings of the review of PR #49, round 2. One class of bug: a broken or missing input must
+    never give a greener comment. Each case starts from a clean run that says "Ready"."""
+
+    def run_main(self, change=None, remove=(), **files):
+        base = {"risk.json": json.dumps({"level": "low", "reasons": [], "head": HEAD}),
+                "pr.json": json.dumps({"number": 9, "body": BODY_TEXT}), "findings.json": "[]",
+                "junit.xml": JUNIT.replace('<failure message="boom">x</failure>', ""), "flake8.txt": "0\n"}
+        base.update(files)
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, text in base.items():
+                if name not in remove:
+                    with open(os.path.join(tmp, name), "w") as fh:
+                        fh.write(text)
+            args = ["--pr", "9", "--out", tmp, "--author", "matejpristak"]
+            if change is not None:
+                folder = os.path.join(tmp, "change")
+                if change:
+                    os.makedirs(folder)
+                    with open(os.path.join(folder, "change.md"), "w") as fh:
+                        fh.write(change)
+                args += ["--change-dir", folder]
+            out = io.StringIO()
+            with redirect_stdout(out):
+                self.assertEqual(report.main(args), 0)
+            return out.getvalue()
+
+    def test_the_clean_run_is_ready(self):
+        self.assertIn("## Ready — LOW", self.run_main())
+
+    def test_broken_findings_json(self):
+        for text in ('[{"kind": "bug", "text": "x"},]', "", '{"kind": "bug"}', '["a text"]'):
+            body = self.run_main(**{"findings.json": text})
+            self.assertIn("## Not ready", body, text)
+            self.assertIn("findings.json", gate(body, "Findings")[2], text)
+
+    def test_missing_findings_json(self):
+        body = self.run_main(remove=("findings.json",))
+        self.assertIn("## Not ready", body)
+        self.assertIn("findings.json", gate(body, "Findings")[2])
+
+    def test_broken_drift_and_preview_json(self):
+        for name in ("drift.json", "preview.json"):
+            for text in ("[{]", '"a text"'):
+                body = self.run_main(**{name: text})
+                self.assertIn("## Not ready", body, name)
+                self.assertIn(name, gate(body, "Findings")[2], name)
+
+    def test_missing_pr_json(self):
+        body = self.run_main(remove=("pr.json",))
+        self.assertIn("## Not ready", body)
+        self.assertIn("pr.json", gate(body, "Findings")[2])
+
+    def test_a_dashboard_change_with_no_preview_is_high(self):
+        risk_json = json.dumps({"level": "low", "reasons": [], "head": HEAD, "dashboards": ["spec/grafana/ai.json"]})
+        body = self.run_main(**{"risk.json": risk_json})
+        self.assertIn("HIGH", body)
+        self.assertNotIn("## Ready", body)
+
+    def test_a_change_dir_that_is_not_a_folder(self):
+        body = self.run_main(change="")
+        self.assertIn("## Not ready", body)
+
+    def test_a_later_row_with_no_verdict_keeps_a_fail(self):
+        md = (RESULTS % "| 2 | fail |") + "\n### Run 2\n\n| Check | Result |\n|---|---|\n| 2 | not run: it needs the deploy |\n"
+        self.assertEqual(report.recorded(md), {2: ("fail", None)})
+        passed = md.replace("| 2 | fail |", "| 2 | pass |")
+        self.assertEqual(report.recorded(passed), {})
+        fixed = md.replace("| 2 | not run: it needs the deploy |", "| 2 | pass |")
+        self.assertEqual(report.recorded(fixed), {2: ("pass", None)})
+
+    def test_drift_kinds_and_states_in_any_case(self):
+        broken = MET + [{"kind": "Constraint", "state": "Broken", "text": "x"}]
+        self.assertEqual(report.decide(*LOW, drift=broken, drift_required=True), "fix-findings")
+        outside = MET + [{"kind": "Outside", "text": "x", "by_spec": False}]
+        self.assertEqual(report.decide(*LOW, drift=outside, drift_required=True), "wait-owner")
+        upper = [{"kind": "OUTCOME", "n": 1, "state": "Met", "text": "x"}]
+        self.assertEqual(report.decide(*LOW, drift=upper, drift_required=True), "auto-merge")
+
+    def test_a_drift_row_that_the_tool_cannot_read_waits_for_the_owner(self):
+        for row in ({"kind": "note", "text": "x"}, "a text", {"text": "no kind"}):
+            drift = MET + [row]
+            self.assertEqual(report.decide(*LOW, drift=drift, drift_required=True), "wait-owner", row)
+            body = report.comment(data(risk=dict(RISK, head=HEAD), drift=drift))
+            self.assertIn("open", gate(body, "Drift")[0], row)
+            self.assertIn("Drift gate", gate(body, "Approval")[2], row)
+
+    def test_by_spec_must_be_true(self):
+        for value in ("false", "yes", 1):
+            drift = MET + [{"kind": "outside", "text": "x", "by_spec": value}]
+            self.assertEqual(report.decide(*LOW, drift=drift), "wait-owner", value)
+        drift = MET + [{"kind": "outside", "text": "x", "by_spec": True}]
+        self.assertEqual(report.decide(*LOW, drift=drift), "auto-merge")
+
+
 class FakeRun:
     """Records the commands; answers gh calls."""
 
