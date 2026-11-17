@@ -78,15 +78,36 @@ CI runs on every push via `.github/workflows/test.yaml` (Python 3.9, flake8 + py
 
 ## Review (change 032)
 
-After `gh pr create`, start the subagent `pr-reviewer` with the PR number. It follows [`review/reviewer.md`](review/reviewer.md): it sets the risk (`review/risk.py`), reviews the code, takes before and after screenshots of a dashboard change on temporary boards (`review/preview.py`), and writes one PR comment with the test table (`review/report.py`). It returns a decision. The agent never merges, pushes a dashboard or deploys. You do that, by the decision:
+### The PR body
+
+The owner reads the PR body in a few seconds. Write six lines, and no more than 12:
+
+```
+Change NNN (<full or small path>): ../kb/work/NNN-<slug>/<file>, approved <date>.
+What: <one or two sentences>
+Owner must do: <the action before the merge or the deploy, or "nothing">
+Tested: <the counts and the commits>. Results: <the file and the section in ../kb>
+Not covered: <what the tests do not see, or "nothing">
+Revert: <one line>
+```
+
+- No table and no code block. The evidence is in the Results of the change folder; the body points to it.
+- `Owner must do` is the line that the owner needs. A step before the merge (a ruleset, a token) or before the deploy (an install on `.51`) goes there, not into another paragraph.
+- Write the body to a file. `python3 -m review.body <file>` must print `PR body: ok`. Then `gh pr create --body-file <file>`. The review agent runs the same check; a problem is a finding that stops the merge.
+
+### The review
+
+After `gh pr create`, start the subagent `pr-reviewer` with the PR number. It follows [`review/reviewer.md`](review/reviewer.md): it sets the risk (`review/risk.py`), reviews the code, compares the diff with the intent of the change, takes before and after screenshots of a dashboard change on temporary boards (`review/preview.py`), and writes one PR comment (`review/report.py`). The comment starts with the decision, the commit and the round. Then it has one line for each gate: Approval, Drift, Findings, Checks, Tests. A gate that waits for the owner or fails is open. The agent returns a decision. It never merges, pushes a dashboard or deploys. You do that, by the decision:
 
 | Decision | What you do |
 |---|---|
 | `auto-merge` | If the PR changes `spec/grafana/prdikov.json`: `GRAFANA_TOKEN=... python3 spec/grafana/push_prdikov.py --push` on the PR branch; for `ai.json`: `push_ai_dashboard.py --push`. Commit the sync-back and push it. Run `python3 -m review.risk --base <merge base> --head <new head>`: it must say `low`. Then `gh pr merge <n> --auto --merge`. After the merge, `./deploy.sh <unit>` for each changed service |
-| `wait-owner` | Stop and tell the owner. When the owner says "merge" in the chat, do the same steps and `gh pr merge <n> --merge` |
-| `fix-findings` | Fix the findings or the failed tests, push, and start `pr-reviewer` again |
+| `wait-owner` | Stop. Tell the owner the PR, the commit of the comment, and the `Owner must do` line. When the owner says "merge" in the chat, do the same steps and `gh pr merge <n> --merge --match-head-commit <sha>` (the command is in the Approval gate) |
+| `fix-findings` | Fix the findings or the failed tests, push, and start `pr-reviewer` again. After three rounds the decision is `wait-owner`: stop and ask the owner about the approach |
 | `refuse` | Nothing: the PR is not from the owner or comes from a fork |
 
+- **The word of the owner is for one commit.** `<sha>` is the head that the comment names. If the head changes after the owner said "merge", run `pr-reviewer` again and ask again. One exception: the sync-back commit of a dashboard. If `git diff --name-only <sha> HEAD` lists only `spec/grafana/prdikov.json` or `spec/grafana/ai.json`, merge with the new head and tell the owner.
+- A low-risk PR also waits for the owner when the diff does something that the intent does not name (the Drift gate).
 - After auto-merge is on, push no commit to the branch. If you must, run `gh pr merge <n> --disable-auto` first.
 - If CI fails after a live push, push the backup back: `push_prdikov.py --push --file <backup>` (the path is in its output).
 - The agent needs the LAN, `secret.py` with `grafanaServiceAccountToken` and `influxPreviewToken`, and `~/homeautomation/review-venv` (see `review/requirements.txt`).
