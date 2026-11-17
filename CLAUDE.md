@@ -9,19 +9,27 @@ This repo is one half of a pair. The other half is [`../kb`](../kb) — the know
 | Repo | Holds | Your role here |
 | --- | --- | --- |
 | `.` (this one) | Python services, tests, deploy script, Telegraf and Grafana config | Write and maintain |
-| [`../kb`](../kb) | Ideas, plans, specs, architecture, devices, decisions, runbooks | **Read freely. Do not write.** It maintains its own indexes and log |
+| [`../kb`](../kb) | Ideas, plans, specs, architecture, devices, decisions, runbooks | **Read freely. Write only the build records of the change that you implement** (see below). It maintains its own indexes and log |
 
 **`../kb` holds the thinking. This repo holds the typing.**
 
 Start from [`../kb/index.md`](../kb/index.md) when a task needs to know *why* something works the way it does. The rules that control logic must obey — battery SOC floors, comfort limits, tariff rules — live in `../kb/requirements/`. A threshold's reason lives in `../kb/decisions.md`. This file tells you what the code does; `../kb` tells you what it is supposed to do.
 
-### Before implementing a change, look for its spec
+### Before the first edit, find the change
 
-A non-trivial change is worked out in `../kb` first, as idea, then plan, then spec, under `../kb/work/NNN-<slug>/`. A finished `spec.md` names the behaviour, the MQTT topics, the limits, the failure modes, and the acceptance checks. It is written to be implemented without further context.
+Every edit to this repo is a change, also a small fix. A change is worked out in `../kb` first, under `../kb/work/NNN-<slug>/`, on one of two paths ([`../kb/work/README.md`](../kb/work/README.md)):
 
-- **If the user names a spec** — read it and implement it. Treat its acceptance list as the definition of done.
-- **If the user asks for a non-trivial change with no spec** — say so, and offer to work it out in `../kb` first. Do not refuse to proceed; if they want it built now, build it, and say that the knowledge base will be behind until it is told.
-- **A bug fix needs no spec.** The lifecycle is for a change in behaviour, not for every edit.
+- **The full path** — `intent.md`, `spec.md`, `plan.md` and `test.md`. Implement only when `plan.md` and `test.md` are `status: approved`.
+- **The small path** — one file, `change.md`. Implement only when it is `status: approved`.
+
+There is no third path.
+
+- **If the user names a change** — read every file in its folder and implement it. Its acceptance checks are the definition of done.
+- **If the user asks for an edit with no approved change** — stop and say so. The change is opened in `../kb` with `/small` or `/intent`. Do not build first.
+- **A bug fix is a change.** It starts with a test that fails. Record the failure, commit, then fix.
+- **On the small path, watch the four criteria.** If the work needs a new or changed topic, limit, setpoint or device write, a decision, a credential, or a second pull request, stop and tell the user. The change moves to the full path.
+
+During the build, write only these records in `../kb`: `plan.md` when the work departs from it, and the Results section of `test.md`. On the small path, write the Departures and Results sections of `change.md`.
 
 [`../kb/work/CHANGES.md`](../kb/work/CHANGES.md) is the pipeline and the backlog. There is no backlog in this repo.
 
@@ -39,7 +47,7 @@ Never silently make the code match the document, and never assume the document i
 
 ### Reporting back
 
-When a change ships, tell the user in one line what `../kb` now needs to be told: which change shipped, and which pages it affects. A session there folds the spec into the wiki and marks the change `shipped`. Do not do it from here.
+When a change is merged and deployed, tell the user in one line what `../kb` now needs: which change, and which pages it affects. A session there moves the ledger row to `merged`, folds the change into the wiki, and moves the row to `folded`. Do not do it from here.
 
 ## Commands
 
