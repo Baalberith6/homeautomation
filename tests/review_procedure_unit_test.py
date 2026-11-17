@@ -37,6 +37,14 @@ class TestProcedure(unittest.TestCase):
         step = self.md[self.md.index("**The test environment.**"):]
         self.assertIn("`bug`", step[:step.index("\n")])
 
+    def test_node_is_checked(self):
+        """Revision 1: the dashboard tests run panel JavaScript in node and skip without it."""
+        line = [x for x in self.md.splitlines() if "`command -v node`" in x]
+        self.assertEqual(len(line), 1)
+        self.assertIn("`rule`", line[0])
+        self.assertIn("`node` is not installed", line[0])
+        self.assertIn("`node`", read("CLAUDE.md"))
+
     def test_python_version_matches_ci(self):
         ci = re.findall(r'python-version: \["([\d.]+)"\]', read(".github", "workflows", "test.yaml"))
         self.assertEqual(len(ci), 1)
