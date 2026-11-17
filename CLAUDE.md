@@ -80,19 +80,25 @@ CI runs on every push via `.github/workflows/test.yaml` (Python 3.11, the minor 
 
 ### The PR body
 
-The owner reads the PR body in a few seconds. Write six lines, and no more than 12:
+The owner reads the PR body in a few seconds. Write the change line, then five fields. Each field is its own paragraph with a bold label, and has one or two short sentences, 240 characters at most:
 
 ```
-Change NNN (<full or small path>): ../kb/work/NNN-<slug>/<file>, approved <date>.
-What: <one or two sentences>
-Owner must do: <the action before the merge or the deploy, or "nothing">
-Tested: <the counts and the commits>. Results: <the file and the section in ../kb>
-Not covered: <what the tests do not see, or "nothing">
-Revert: <one line>
+**Change NNN** (<full or small path>) · `../kb/work/NNN-<slug>/<file>` · approved <date>
+
+**Owner must do:** <the action before the merge or the deploy, or "nothing">
+
+**What:** <what the PR changes>
+
+**Tested:** <the counts and the commits>. Results: <the file and the section in ../kb>
+
+**Not covered:** <what the tests do not see, or "nothing">
+
+**Revert:** <one line>
 ```
 
-- No table and no code block. The evidence is in the Results of the change folder; the body points to it.
-- `Owner must do` is the line that the owner needs. A step before the merge (a ruleset, a token) or before the deploy (an install on `.51`) goes there, not into another paragraph.
+- Keep the bold labels and the blank line between two fields. GitHub shows plain lines with no blank line as one block of text.
+- `Owner must do` is the first field: it is the line that the owner needs. A step before the merge (a ruleset, a token) or before the deploy (an install on `.51`) goes there, not into another paragraph.
+- No table, no code block, and no more than 12 lines of text. The evidence is in the Results of the change folder; the body points to it.
 - Write the body to a file. `python3 -m review.body <file>` must print `PR body: ok`. Then `gh pr create --body-file <file>`. The review agent runs the same check; a problem is a finding that stops the merge.
 
 ### The review
