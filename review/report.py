@@ -664,6 +664,14 @@ def _load(out, name, kind, problems, required=False):
     return None
 
 
+def _risk_form(result):
+    """True if risk.json has what review/risk.py always writes: the level "low" or "high", a list of
+    reasons that are texts, and the head commit. Without the head the comment would name no commit."""
+    reasons = result.get("reasons", [])
+    return (result.get("level") in ("low", "high") and isinstance(result.get("head"), str) and bool(result["head"])
+            and isinstance(reasons, list) and all(isinstance(r, str) for r in reasons))
+
+
 def _raw(pytest_text):
     """The test output for a failed run: from the first failure."""
     at = re.search(r"(?m)^=+ (FAILURES|ERRORS) =+$", pytest_text)
@@ -683,8 +691,7 @@ def main(argv=None):
 
     problems = []
     risk_result = _load(out, "risk.json", dict, problems, required=True)
-    if risk_result is not None and not (isinstance(risk_result.get("reasons", []), list)
-                                        and isinstance(risk_result.get("head", ""), str)):
+    if risk_result is not None and not _risk_form(risk_result):
         problems.append({"file": "review-out/risk.json", "kind": "rule",
                          "text": "`risk.json` has a wrong form. Run the review again."})
         risk_result = None

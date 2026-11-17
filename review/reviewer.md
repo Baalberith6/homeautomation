@@ -26,6 +26,7 @@ Spec: [`../kb/work/032-pr-risk-review/spec.md`](../../kb/work/032-pr-risk-review
 | `BW` | `~/homeautomation/review-worktrees/prN-base` (the merge base) |
 | `OUT` | `~/homeautomation/review-out/prN` |
 | `V` | `~/homeautomation/review-venv/bin/python` (Playwright) |
+| `T` | `~/homeautomation/review-test-venv/bin/python` (the tests: Python 3.11 and the packages of the PR head; step 6 makes it) |
 
 ## Steps
 
@@ -35,10 +36,12 @@ Spec: [`../kb/work/032-pr-risk-review/spec.md`](../../kb/work/032-pr-risk-review
 4. **The tools.** Run the scripts from `BW` (`TOOLS=BW`), so a PR cannot change the rules that judge it. If `BW` has no `review/` (the PR adds it), use `TOOLS=WT`.
 5. **Risk.** `cd TOOLS && python3 -m review.risk --repo CODE --base BASE --head HEAD > OUT/risk.json`.
 6. **Tests**, in `WT`:
-   - `python3 -m pytest tests/ -q --junitxml=OUT/junit.xml > OUT/pytest.txt 2>&1; echo $? > OUT/pytest-exit.txt` (no `-rA`: the comment shows output only for a failed test)
-   - `python3 -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics > OUT/flake8.txt 2>&1`
-   - `python3 -m pytest tests/ --collect-only -q > OUT/collect-head.txt 2>&1`
-   - in `BW`: `python3 -m pytest tests/ --collect-only -q > OUT/collect-base.txt 2>&1`
+   - **The test environment.** `uv venv --python 3.11 --allow-existing ~/homeautomation/review-test-venv`, then `uv pip install --python T -r WT/requirements.txt pytest flake8`. This follows CI: Python 3.11 and the packages of the PR head. Do it in each run; it is quick when nothing changed. One difference: CI installs into an empty environment, and this one keeps the packages of earlier runs. If the install fails (its exit code is not 0), write a finding of kind `bug` with the file `requirements.txt` and the text "`requirements.txt` does not install on Python 3.11", and go on. The environment then holds the packages of an earlier run, so a green test run proves nothing; the finding stops the merge. Do not run the tests with the Python of the Mac: it is version 3.9 and has no package of the project (change 038).
+   - **`node`.** `command -v node` must print a path. The tests of `tests/grafana_dashboard_unit_test.py` run the JavaScript of the dashboard panels in `node` and skip without it, so the review would not run what CI runs. If it prints nothing, write a finding of kind `rule` with the text "`node` is not installed: the dashboard tests did not run. Install it (`brew install node`) and run the review again", and go on.
+   - `T -m pytest tests/ -q --junitxml=OUT/junit.xml > OUT/pytest.txt 2>&1; echo $? > OUT/pytest-exit.txt` (no `-rA`: the comment shows output only for a failed test)
+   - `T -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics > OUT/flake8.txt 2>&1`
+   - `T -m pytest tests/ --collect-only -q > OUT/collect-head.txt 2>&1`
+   - in `BW`: `T -m pytest tests/ --collect-only -q > OUT/collect-base.txt 2>&1`
 7. **Code review.** Read `git -C CODE diff BASE HEAD`, the change folder and `CODE/CLAUDE.md`. Write `OUT/findings.json`, a JSON list. One item per finding: `{"file": "co2.py", "line": 23, "kind": "bug" | "spec" | "rule", "text": "…"}`.
    - `bug`: the code does something wrong: a wrong value, a wrong topic, a crash, a value sent to the wrong place.
    - `spec`: the code departs from `spec.md` or `plan.md`, and `plan.md` does not record the departure.

@@ -682,6 +682,10 @@ SKIPPED = """<?xml version="1.0" encoding="utf-8"?>
 BAD_INPUTS = [
     ("risk.json", ""), ("risk.json", "[]"), ("risk.json", '{"level": "LOW", "reasons": []}'),
     ("risk.json", '{"reasons": []}'), ("risk.json", '{"level": "low", "reasons": "x"}'),
+    ("risk.json", "{}"), ("risk.json", '{"level": "low", "reasons": []}'),            # change 038: no head
+    ("risk.json", json.dumps({"level": "low", "reasons": [], "head": ""})),
+    ("risk.json", json.dumps({"level": "medium", "reasons": [], "head": HEAD})),
+    ("risk.json", json.dumps({"level": "low", "reasons": [7], "head": HEAD})),
     ("pr.json", ""), ("pr.json", "{}"), ("pr.json", '{"body": null}'), ("pr.json", '{"body": ""}'),
     ("pr.json", '{"body": 7}'), ("pr.json", '{"body": "A long text with no labels."}'),
     ("findings.json", ""), ("findings.json", "{}"), ("findings.json", "[1]"), ("findings.json", '[{"text": "x"}]'),
@@ -731,6 +735,17 @@ class TestNeverGreenerThanTheInputs(TestFailClosed):
         self.assertIn("## Not ready", body)
         self.assertNotIn("gh pr merge", body)
         self.assertIn("risk.json", gate(body, "Findings")[2])
+
+    def test_a_wrong_risk_json_gives_no_merge_command(self):
+        """Change 038: a risk.json with no head gave a comment for the commit 0000000."""
+        for name, text in BAD_INPUTS:
+            if name != "risk.json":
+                continue
+            body = self.run_with(name, text)
+            self.assertIn("## Not ready", body, text)
+            self.assertNotIn("gh pr merge", body, text)
+            self.assertNotIn("0000000", body.replace("`0000000`", "", 1), text)
+            self.assertIn("risk.json", gate(body, "Findings")[2], text)
 
     def test_the_text_of_the_change_folder_is_shown_and_decides_nothing(self):
         failed = self.run_with("change.md", GOOD_CHANGE.replace("| pass |", "| fail |"))
