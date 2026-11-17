@@ -505,7 +505,7 @@ class TestReviewOfPr49(unittest.TestCase):
 
     def test_drift_with_no_outcome_row_is_not_measured(self):
         only_constraint = [{"kind": "constraint", "state": "kept", "text": "x"}]
-        wrong_kind = [{"kind": "Outcome", "n": 1, "state": "met", "text": "x"}]
+        wrong_kind = [{"kind": "result", "n": 1, "state": "met", "text": "x"}]
         for drift in (only_constraint, wrong_kind):
             _, summary, inner = gate(report.comment(data(drift=drift)), "Drift")
             self.assertIn("not measured", summary)
@@ -516,7 +516,8 @@ class TestReviewOfPr49(unittest.TestCase):
         met = [{"kind": "outcome", "n": 1, "state": "met", "text": "x"}]
         args = ("low", 0, False, "matejpristak", False)
         self.assertEqual(report.decide(*args, drift=None, drift_required=True), "wait-owner")
-        self.assertEqual(report.decide(*args, drift=[{"kind": "Outcome"}], drift_required=True), "wait-owner")
+        self.assertEqual(report.decide(*args, drift=[{"kind": "result"}], drift_required=True), "wait-owner")
+        self.assertEqual(report.decide(*args, drift=[{"kind": "Outcome"}], drift_required=True), "fix-findings")
         self.assertEqual(report.decide(*args, drift=met, drift_required=True), "auto-merge")
         self.assertEqual(report.decide(*args, drift=None, drift_required=False), "auto-merge")
         body = report.comment(data(risk=dict(RISK, head=HEAD), drift=None, drift_required=True))
@@ -610,7 +611,8 @@ class TestFailClosed(unittest.TestCase):
         self.assertIn("## Not ready", body)
 
     def test_a_later_row_with_no_verdict_keeps_a_fail(self):
-        md = (RESULTS % "| 2 | fail |") + "\n### Run 2\n\n| Check | Result |\n|---|---|\n| 2 | not run: it needs the deploy |\n"
+        md = ((RESULTS % "| 2 | fail |") + "\n### Run 2\n\n| Check | Result |\n|---|---|\n"
+              "| 2 | not run: it needs the deploy |\n")
         self.assertEqual(report.recorded(md), {2: ("fail", None)})
         passed = md.replace("| 2 | fail |", "| 2 | pass |")
         self.assertEqual(report.recorded(passed), {})
@@ -639,6 +641,92 @@ class TestFailClosed(unittest.TestCase):
             self.assertEqual(report.decide(*LOW, drift=drift), "wait-owner", value)
         drift = MET + [{"kind": "outside", "text": "x", "by_spec": True}]
         self.assertEqual(report.decide(*LOW, drift=drift), "auto-merge")
+
+
+GOOD_CHANGE = """---
+id: 999
+status: approved
+approved_by: the owner
+approved_on: 2026-11-17
+---
+
+# Change
+
+## 2. Outcome and acceptance checks
+
+1. The file says A.
+
+## 7. Results
+
+### Run 1
+
+| Check in §2 | Command | Output | Verdict |
+|---|---|---|---|
+| 1 | `grep` | `1` | pass |
+"""
+SKIPPED = """<?xml version="1.0" encoding="utf-8"?>
+<testsuites><testsuite name="pytest" tests="1">
+<testcase classname="tests.plain_unit_test" name="test_a" time="0.1"><skipped message="x"/></testcase>
+</testsuite></testsuites>
+"""
+# Each entry: a file of --out and a content that is wrong, missing ("" removes nothing: it writes an empty
+# file) or strange. None of them is a clean input, so none of them can give "Ready".
+BAD_INPUTS = [
+    ("risk.json", ""), ("risk.json", "[]"), ("risk.json", '{"level": "LOW", "reasons": []}'),
+    ("risk.json", '{"reasons": []}'), ("risk.json", '{"level": "low", "reasons": "x"}'),
+    ("pr.json", ""), ("pr.json", "{}"), ("pr.json", '{"body": null}'), ("pr.json", '{"body": ""}'),
+    ("pr.json", '{"body": 7}'), ("pr.json", '{"body": "A long text with no labels."}'),
+    ("findings.json", ""), ("findings.json", "{}"), ("findings.json", "[1]"), ("findings.json", '[{"text": "x"}]'),
+    ("findings.json", '[{"kind": "BUG", "text": "x"}]'), ("findings.json", '[{"kind": "note", "text": "x"}]'),
+    ("drift.json", ""), ("drift.json", "{}"), ("drift.json", "[]"), ("drift.json", '[{"kind": "outcome"}]'),
+    ("drift.json", '[{"kind": "outcome", "state": "partly"}]'), ("drift.json", '[{"kind": "outside"}]'),
+    ("drift.json", '[{"kind": "outcome", "state": "met"}, {"kind": "outside", "by_spec": null}]'),
+    ("drift.json", '[{"kind": "outcome", "state": "met"}, {"kind": "constraint"}]'),
+    ("drift.json", '[{"kind": "outcome", "state": "met"}, 7]'),
+    ("junit.xml", ""), ("junit.xml", "<testsuites"), ("junit.xml", "<testsuites></testsuites>"),
+    ("junit.xml", SKIPPED), ("junit.xml", JUNIT),
+    ("flake8.txt", "./x.py:1:1: F821 undefined name\n1\n"), ("flake8.txt", "1"),
+    ("preview.json", ""), ("preview.json", "[]"), ("preview.json", '{"failed": "no board"}'),
+    ("change.md", GOOD_CHANGE.replace("| pass |", "| fail |")),
+    ("change.md", GOOD_CHANGE.replace("approved_by: the owner", "approved_by:")),
+    ("change.md", GOOD_CHANGE.replace("approved_on: 2026-11-17\n", "")),
+]
+
+
+class TestNeverGreenerThanTheInputs(TestFailClosed):
+    """The rule behind the findings of rounds 1 and 2: the heading and the gates come from the same
+    values, and a wrong input never gives "Ready"."""
+
+    def run_with(self, name=None, text=None):
+        files = {"drift.json": json.dumps(MET)}
+        change = GOOD_CHANGE
+        if name == "change.md":
+            change = text
+        elif name:
+            files[name] = text
+        return self.run_main(change=change, **files)
+
+    def icons(self, body):
+        return {name: gate(body, name)[1].split(" ")[0] for name in ("Approval", "Drift", "Findings", "Checks", "Tests")}
+
+    def test_the_clean_run_with_a_change_folder_is_ready(self):
+        body = self.run_with()
+        self.assertIn("## Ready — LOW", body)
+        self.assertEqual(set(self.icons(body).values()), {report.OK})
+
+    def test_no_wrong_input_gives_ready(self):
+        for name, text in BAD_INPUTS:
+            body = self.run_with(name, text)
+            self.assertNotIn("## Ready", body, (name, text))
+
+    def test_ready_means_that_every_gate_is_green(self):
+        for name, text in BAD_INPUTS + [(None, None)]:
+            body = self.run_with(name, text)
+            icons = self.icons(body)
+            if "## Ready" in body:
+                self.assertEqual(set(icons.values()), {report.OK}, (name, text))
+            if report.BAD in icons.values():
+                self.assertIn("## Not ready", body, (name, text, icons))
 
 
 class FakeRun:

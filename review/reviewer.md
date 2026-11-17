@@ -13,6 +13,7 @@ Spec: [`../kb/work/032-pr-risk-review/spec.md`](../../kb/work/032-pr-risk-review
 - `review/report.py` writes the comment. Everything that you want to say goes into `OUT/findings.json` or `OUT/drift.json`. Never edit the comment, never add a section to it, never write a second comment or a notes file.
 - Write no nit. A finding stops the merge, raises the risk, or names something that the checks do not cover. Other remarks are not findings.
 - One finding or one drift row has 200 characters at most. The tool cuts a longer text.
+- Write each JSON file complete and valid. The tool reads a broken or missing `findings.json`, `pr.json`, `drift.json` or `preview.json` as a finding that stops the merge, never as "nothing found". Always write `findings.json`, also when it is `[]`.
 
 ## Names
 
@@ -49,7 +50,7 @@ Spec: [`../kb/work/032-pr-risk-review/spec.md`](../../kb/work/032-pr-risk-review
 8. **Drift from the intent.** Read what the owner asked for: the sections Outcome and Constraints of `intent.md`, or sections 1 and 2 of `change.md`. Compare it with the diff. Write `OUT/drift.json`, a JSON list:
    - One row for each numbered outcome: `{"kind": "outcome", "n": 1, "state": "met" | "partly" | "not met", "text": "<the outcome, short>", "file": "co2.py", "line": 23}`. The file and the line show where the diff meets it.
    - The constraints: one row `{"kind": "constraint", "state": "kept", "text": "<the constraints, short>"}`, or one row with `"state": "broken"` for each constraint that the diff breaks.
-   - One row for each thing that the diff does and no outcome asks for: `{"kind": "outside", "text": "…", "file": "…", "line": 1, "by_spec": false}`. Set `"by_spec": true` if the approved `spec.md` or `plan.md` names it. Do not list a test, the sync-back of a dashboard, or a line that an outcome needs to work.
+   - One row for each thing that the diff does and no outcome asks for: `{"kind": "outside", "text": "…", "file": "…", "line": 1, "by_spec": false}`. Set `"by_spec": true` (the JSON value, not a text) if the approved `spec.md` or `plan.md` names it. Do not list a test, the sync-back of a dashboard, or a line that an outcome needs to work.
    - An outcome that is not met and a broken constraint stop the merge. A row outside the intent with `"by_spec": false` makes the PR wait for the owner, also at low risk.
    - With no change folder, write no `drift.json`: the comment says "not measured".
    - With a change folder, always write the file with one row for each outcome. A missing file, or a file with no row of kind `outcome`, is "not measured" and makes a low-risk PR wait for the owner. Use only the three kinds; the tool does not read another kind.

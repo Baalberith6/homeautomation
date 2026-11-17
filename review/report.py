@@ -136,8 +136,8 @@ def recorded(md):
     A table of checks has "Check" or "§" in its first header cell; a table of steps or of tests is not
     read. The first cell of a row starts with the check numbers; a word can follow them. The verdict is
     the last cell: it starts with "pass" or "fail", or says "open until <date or run>". A row with other
-    words records nothing. In one run a fail stays a fail; a later run ("### ...") wins over an earlier
-    run."""
+    words records nothing. In one run a fail stays a fail. A later run ("### ...") wins over an earlier
+    run, with one limit: a later row with no verdict takes a pass or an "open" away, but never a fail."""
     found = {}
     for block in re.split(r"(?m)^###\s", _section(md, RESULTS_HEADING)):
         run, lines, reading = {}, block.splitlines(), False
@@ -162,7 +162,9 @@ def recorded(md):
             for n in numbers(first.group(1)):
                 if not run.get(n) or run[n][0] != "fail":
                     run[n] = state
-        found.update(run)
+        for n, state in run.items():
+            if state or (found.get(n) or (None,))[0] != "fail":  # only a verdict takes a fail away
+                found[n] = state
     return {n: state for n, state in found.items() if state}
 
 
@@ -174,9 +176,14 @@ def _junit_id(classname, name):
 
 
 def junit_results(xml_text):
-    """{test id: "pass" | "fail" | "skip"} from a pytest JUnit file. A test with any failed entry fails."""
+    """{test id: "pass" | "fail" | "skip"} from a pytest JUnit file. A test with any failed entry fails.
+    A file that is not XML gives {}."""
     results = {}
-    for case in ET.fromstring(xml_text).iter("testcase"):
+    try:
+        cases = list(ET.fromstring(xml_text).iter("testcase"))
+    except ET.ParseError:
+        return {}  # a broken file is "no test result", which stops the merge
+    for case in cases:
         tid = _junit_id(case.get("classname", ""), case.get("name", ""))
         if case.find("failure") is not None or case.find("error") is not None:
             state = "fail"
@@ -276,12 +283,12 @@ def lint_failed(flake8_text):
 
 def tests_summary(junit, base_ids, head_ids, lint=""):
     """(icon, text, open) for the Tests gate."""
-    if not junit:
-        return BAD, "no test result", True
     passed = sum(1 for s in junit.values() if s == "pass")
     failed = sum(1 for s in junit.values() if s == "fail")
     if failed:
         return BAD, f"{failed} failed, {passed} passed", True
+    if not passed:
+        return BAD, "no test result" if not junit else "no test passed", True
     if lint_failed(lint):
         return BAD, f"{passed} passed, flake8 found errors", True
     return OK, f"{passed} passed ({len(head_ids) - len(base_ids):+d} vs main)", False
@@ -306,14 +313,28 @@ def _where(item):
     return f"`{item['file']}`" if item.get("file") else ""
 
 
+def _drift_rows(drift):
+    """The rows of drift.json with the kind and the state in lower case. A row that is not an object
+    becomes a row of the kind "" (unknown)."""
+    rows = []
+    for d in drift or []:
+        if isinstance(d, dict):
+            rows.append(dict(d, kind=str(d.get("kind", "")).strip().lower(),
+                             state=str(d.get("state", "")).strip().lower()))
+        else:
+            rows.append({"kind": "", "text": str(d)})
+    return rows
+
+
 def _drift_parts(drift):
-    drift = [d for d in (drift or []) if isinstance(d, dict)]
-    outcomes = [d for d in drift if d.get("kind") == "outcome"]
-    constraints = [d for d in drift if d.get("kind") == "constraint"]
-    outside = [d for d in drift if d.get("kind") == "outside"]
-    not_met = [d for d in outcomes if d.get("state") != "met"]
-    broken = [d for d in constraints if d.get("state") != "kept"]
-    return outcomes, constraints, outside, not_met, broken, [d for d in outside if not d.get("by_spec")]
+    rows = _drift_rows(drift)
+    outcomes = [d for d in rows if d["kind"] == "outcome"]
+    constraints = [d for d in rows if d["kind"] == "constraint"]
+    outside = [d for d in rows if d["kind"] == "outside"]
+    not_met = [d for d in outcomes if d["state"] != "met"]
+    broken = [d for d in constraints if d["state"] != "kept"]
+    # "by_spec" must be the JSON value true: a text such as "false" does not take the row out of the count
+    return outcomes, constraints, outside, not_met, broken, [d for d in outside if d.get("by_spec") is not True]
 
 
 def drift_measured(drift):
@@ -322,7 +343,9 @@ def drift_measured(drift):
 
 
 def _drift_unknown(drift):
-    return [d for d in (drift or []) if not isinstance(d, dict) or d.get("kind") not in DRIFT_KINDS]
+    """The rows that the tool cannot read. They make a PR wait for the owner: such a row can be a broken
+    constraint or an item outside the intent with a wrong kind."""
+    return [d for d in _drift_rows(drift) if d["kind"] not in DRIFT_KINDS]
 
 
 def drift_summary(drift, required=False):
@@ -334,7 +357,7 @@ def drift_summary(drift, required=False):
         text = "not measured" + (": <code>drift.json</code> has no outcome row" if drift else "")
         if extra:
             text += f", {len(extra)} item{'s' if len(extra) > 1 else ''} outside the intent"
-        return WARN, text, bool(required or extra)
+        return WARN, text, bool(required or extra or unknown)
     text = f"{len(outcomes) - len(not_met)} of {len(outcomes)} outcomes met"
     if broken:
         text += f", {len(broken)} constraint{'s' if len(broken) > 1 else ''} broken"
@@ -343,7 +366,7 @@ def drift_summary(drift, required=False):
     if unknown:
         text += f", {len(unknown)} row{'s' if len(unknown) > 1 else ''} of an unknown kind"
     icon = BAD if not_met or broken else WARN if extra or unknown else OK
-    return icon, text, bool(not_met or broken or extra)
+    return icon, text, bool(not_met or broken or extra or unknown)
 
 
 def drift_md(drift):
@@ -352,19 +375,19 @@ def drift_md(drift):
     outcomes, constraints, outside, _, _, _ = _drift_parts(drift)
     lines = []
     for d in outcomes:
-        state = d.get("state", "not met")
+        state = d["state"] or "not met"
         lines.append(f"- {OK if state == 'met' else BAD} {state} — outcome {d.get('n', '?')}: "
                      f"{_cut(d.get('text', ''))} {_where(d)}".rstrip())
     for d in constraints:
-        state = d.get("state", "broken")
+        state = d["state"] or "broken"
         lines.append(f"- {OK if state == 'kept' else BAD} {state} — constraint: {_cut(d.get('text', ''))} "
                      f"{_where(d)}".rstrip())
     for d in outside:
-        label = "added by the spec" if d.get("by_spec") else f"{WARN} outside the intent"
+        label = "added by the spec" if d.get("by_spec") is True else f"{WARN} outside the intent"
         lines.append(f"- {label} — {_cut(d.get('text', ''))} {_where(d)}".rstrip())
     for d in _drift_unknown(drift):
-        kind = d.get("kind") if isinstance(d, dict) else d
-        lines.append(f"- {WARN} unknown kind `{_cut(kind, 40)}` — the tool did not read this row")
+        lines.append(f"- {WARN} unknown kind `{_cut(d['kind'], 40)}` — the tool cannot read this row: "
+                     f"{_cut(d.get('text', ''), 80)}".rstrip())
     if not outcomes:
         lines.append(f"- {WARN} no row of kind `outcome`: the drift is not measured")
     return "\n".join(lines)
@@ -376,17 +399,20 @@ def _drift_gate(drift, required=False):
 
 
 def decide(level, open_findings, tests_failed, author, cross_repo, drift=None, round_no=1, failed_checks=0,
-           drift_required=False):
+           drift_required=False, approved=None):
     """What the session does with the PR: the rules of review/risk.py, and these.
 
     A failed acceptance check, an outcome that is not met and a broken constraint count as open findings.
-    A PR that would merge by itself waits for the owner when the diff has an item outside the intent, or
-    when the PR has a change folder (drift_required) and the drift is not measured. After MAX_ROUNDS
+    A PR that would merge by itself waits for the owner when the diff has an item outside the intent,
+    when drift.json has a row that the tool cannot read, or when the PR has a change folder
+    (drift_required) and the drift is not measured, or when a file of the change folder has no approval
+    of the owner (approved is False). After MAX_ROUNDS
     rounds with open findings the owner decides on the approach."""
     _, _, _, not_met, broken, extra = _drift_parts(drift)
     blocking = open_findings + failed_checks + len(not_met) + len(broken)
     decision = risk.decide(level, blocking, tests_failed, author, cross_repo)
-    if decision == "auto-merge" and (extra or (drift_required and not drift_measured(drift))):
+    if decision == "auto-merge" and (extra or _drift_unknown(drift) or approved is False
+                                     or (drift_required and not drift_measured(drift))):
         return "wait-owner"
     if decision == "fix-findings" and round_no > MAX_ROUNDS:
         return "wait-owner"
@@ -414,22 +440,25 @@ def body_findings(text):
 
 
 def approval(change_dir):
-    """One line: which files of the change folder the owner approved, from their front matter."""
+    """(text, ok): which files of the change folder the owner approved, from their front matter.
+    ok is None with no change folder, False if a file is missing or has no approved_by and approved_on."""
     if not change_dir or not os.path.isdir(change_dir):
-        return "no change folder"
+        return "no change folder", None
     names = ["change.md"] if os.path.exists(os.path.join(change_dir, "change.md")) else \
         ["intent.md", "spec.md", "plan.md", "test.md"]
-    parts = []
+    parts, ok = [], True
     for name in names:
         text = _read(os.path.join(change_dir, name), None)
+        by = re.search(r"(?m)^approved_by:[ \t]*(\S.*)$", text or "")
+        on = re.search(r"(?m)^approved_on:[ \t]*(\S.*)$", text or "")
         if text is None:
             parts.append(f"`{name}` is missing")
-            continue
-        by = re.search(r"(?m)^approved_by:[ \t]*(\S.*)$", text)
-        on = re.search(r"(?m)^approved_on:[ \t]*(\S.*)$", text)
-        parts.append(f"`{name}` approved by {by.group(1).strip()} on {on.group(1).strip()}" if by and on
-                     else f"`{name}` has no approval")
-    return "; ".join(parts)
+        elif by and on:
+            parts.append(f"`{name}` approved by {by.group(1).strip()} on {on.group(1).strip()}")
+        else:
+            parts.append(f"`{name}` has no approval")
+        ok = ok and bool(text is not None and by and on)
+    return "; ".join(parts), ok
 
 
 def _images_md(images):
@@ -472,6 +501,8 @@ def _approval_gate(data, level, head, extra):
     if stuck:
         summary = (WAIT, "owner: decide on the approach")
     reasons = data["risk"].get("reasons") or []
+    if not isinstance(reasons, list):
+        reasons = [str(reasons)]
     rules = [r for r in reasons if not r.startswith("Agent: ")]
     if fields is None:
         action = "not read: `pr.json` is missing or has no body"
@@ -485,9 +516,15 @@ def _approval_gate(data, level, head, extra):
                      "(the Drift gate).")
     if data.get("drift_required") and not drift_measured(data.get("drift")) and level == "low":
         lines.append("- **Why it waits:** the drift from the intent is not measured (the Drift gate).")
+    unknown = _drift_unknown(data.get("drift"))
+    if unknown and level == "low":
+        lines.append(f"- **Why it waits:** {len(unknown)} row{'s' if len(unknown) > 1 else ''} of `drift.json` "
+                     "that the tool cannot read (the Drift gate).")
     if stuck:
         lines.append(f"- **Three rounds** did not close the findings (round {data.get('round', 1)}). "
                      "The owner decides on the approach. There is nothing to merge.")
+    if data.get("approved") is False and level == "low":
+        lines.append("- **Why it waits:** a file of the change folder has no approval of the owner.")
     lines.append("- **Change:** " + data.get("approval", "no change folder"))
     if decision == "wait-owner" and not stuck:
         lines.append(f"- **Merge:** `gh pr merge {number} --merge --match-head-commit {head}`. "
@@ -517,7 +554,7 @@ def _tests_gate(data):
     inner = tests_md(data["junit"], data["base_ids"], data["head_ids"], data["risk"])
     if opened:
         shown = []
-        if not data["junit"] or any(s == "fail" for s in data["junit"].values()):
+        if not any(s == "pass" for s in data["junit"].values()) or "fail" in data["junit"].values():
             shown.append(data.get("raw") or "")
         if lint_failed(lint):
             shown.append("$ flake8\n" + lint.strip())
@@ -532,7 +569,8 @@ def _tests_gate(data):
 def comment(data):
     """The comment. data: risk, findings (no kind "risk"), images, rows, junit, base_ids, head_ids, raw,
     lint (the flake8 output), decision, drift, drift_required, body (the fields of the PR body, or None if
-    the body is not known), round, gist_id, pr, approval."""
+    the body is not known), round, gist_id, pr, approval (the text), approved (False: a file of the change
+    folder has no approval)."""
     risk_result, decision = data["risk"], data["decision"]
     level = risk_result.get("level", "high")
     head = risk_result.get("head") or "0000000"
@@ -637,12 +675,26 @@ def _read(path, default=""):
         return fh.read()
 
 
-def _json(path, default):
-    """The JSON of a file, or the default if the file is missing, empty or not JSON."""
-    try:
-        return json.loads(_read(path, ""))
-    except ValueError:
-        return default
+def _load(out, name, kind, problems, required=False):
+    """The JSON of a file of --out, or None. A file that is not valid JSON, or not of the kind (list or
+    dict), is never read as "nothing": it adds a finding that stops the merge. So does a missing file
+    that the procedure always writes (required)."""
+    path = os.path.join(out, name)
+    problem = None
+    if not os.path.exists(path):
+        problem = "is missing: a step of the review did not run" if required else None
+    else:
+        try:
+            value = json.loads(_read(path))
+            if isinstance(value, kind):
+                return value
+            problem = f"is not a JSON {'list' if kind is list else 'object'}"
+        except ValueError:
+            problem = "is not valid JSON"
+    if problem:
+        problems.append({"file": f"review-out/{name}", "kind": "rule",
+                         "text": f"`{name}` {problem}. Run the review again."})
+    return None
 
 
 def _raw(pytest_text):
@@ -662,30 +714,49 @@ def main(argv=None):
     args = parser.parse_args(argv)
     out = os.path.expanduser(args.out)
 
-    risk_result = _json(os.path.join(out, "risk.json"), {"level": "high", "reasons": ["no risk.json"]})
-    pr = _json(os.path.join(out, "pr.json"), None)
-    body_text = pr.get("body") if isinstance(pr, dict) else None
-    findings = _json(os.path.join(out, "findings.json"), []) + body_findings(body_text)
+    problems = []
+    risk_result = _load(out, "risk.json", dict, problems) or {"level": "high", "reasons": ["no risk.json"]}
+    pr = _load(out, "pr.json", dict, problems, required=True)
+    body_text = pr.get("body") if pr is not None else None
+    if pr is not None and not isinstance(body_text, str):
+        problems.append({"file": "review-out/pr.json", "kind": "rule",
+                         "text": "`pr.json` has no body: the PR body is not checked. Run the review again."})
+        body_text = None
+    findings = []
+    for item in _load(out, "findings.json", list, problems, required=True) or []:
+        if isinstance(item, dict):
+            findings.append(dict(item, kind=str(item.get("kind", "")).strip().lower()))
+        else:
+            problems.append({"file": "review-out/findings.json", "kind": "rule",
+                             "text": "`findings.json` has an item that is not an object. Run the review again."})
+    preview = _load(out, "preview.json", dict, problems)
+    drift = _load(out, "drift.json", list, problems)
+    change_dir = os.path.expanduser(args.change_dir) if args.change_dir else None
+    if change_dir and not os.path.isdir(change_dir):
+        problems.append({"file": "review-out", "kind": "rule",
+                         "text": f"The change folder `{os.path.basename(change_dir)}` is not a folder. "
+                                 "Run the review again."})
+    findings += body_findings(body_text) + problems
     raised = [f for f in findings if f.get("kind") == "risk"]
     shown = [f for f in findings if f.get("kind") != "risk"]
     open_findings = [f for f in shown if f.get("kind") != "gap"]
     reasons = list(risk_result.get("reasons") or []) + [f"Agent: {f.get('text', '')}" for f in raised]
-    preview = _json(os.path.join(out, "preview.json"), None)
     if preview and preview.get("failed"):
         reasons.append(f"Screenshots: {preview['failed']}")
+    if risk_result.get("dashboards") and preview is None:
+        reasons.append("Screenshots: a dashboard changed and there is no preview")
     level = "high" if reasons else risk_result.get("level", "high")
     risk_result = dict(risk_result, level=level, reasons=reasons)
-    drift = _json(os.path.join(out, "drift.json"), None)
-    drift = drift if isinstance(drift, list) else None
     previous = _read(os.path.join(out, "comment.md"))
     round_no = round_number(previous, risk_result.get("head") or "0000000")
 
     junit_text = _read(os.path.join(out, "junit.xml"))
     junit = junit_results(junit_text) if junit_text else {}
     lint = _read(os.path.join(out, "flake8.txt"))
-    tests_failed = not junit or any(s == "fail" for s in junit.values()) or lint_failed(lint)
+    base_ids = collected(_read(os.path.join(out, "collect-base.txt")))
+    head_ids = collected(_read(os.path.join(out, "collect-head.txt")))
+    tests_failed = tests_summary(junit, base_ids, head_ids, lint)[2]  # the same value as the Tests gate
 
-    change_dir = os.path.expanduser(args.change_dir) if args.change_dir else None
     spec_md = test_md = ""
     if change_dir and os.path.exists(os.path.join(change_dir, "spec.md")):
         spec_md, test_md = _read(os.path.join(change_dir, "spec.md")), _read(os.path.join(change_dir, "test.md"))
@@ -694,10 +765,12 @@ def main(argv=None):
     rows = check_rows(spec_md, test_md, junit)
     failed_checks = sum(1 for r in rows if r["state"] == "fail")
     drift_required = bool(change_dir and os.path.isdir(change_dir))
+    approval_text, approved = approval(change_dir)
 
     def decision_now(level_now):
         return decide(level_now, len(open_findings), tests_failed, args.author, args.cross_repo, drift=drift,
-                      round_no=round_no, failed_checks=failed_checks, drift_required=drift_required)
+                      round_no=round_no, failed_checks=failed_checks, drift_required=drift_required,
+                      approved=approved)
 
     decision = decision_now(level)
 
@@ -726,12 +799,11 @@ def main(argv=None):
 
     body = comment({
         "risk": risk_result, "findings": shown, "images": images, "rows": rows,
-        "junit": junit, "base_ids": collected(_read(os.path.join(out, "collect-base.txt"))),
-        "head_ids": collected(_read(os.path.join(out, "collect-head.txt"))),
+        "junit": junit, "base_ids": base_ids, "head_ids": head_ids,
         "raw": _raw(_read(os.path.join(out, "pytest.txt"))), "lint": lint,
         "decision": decision, "drift": drift, "drift_required": drift_required,
         "body": pr_body.fields(body_text) if body_text is not None else None,
-        "round": round_no, "gist_id": gist_id, "pr": args.pr, "approval": approval(change_dir)})
+        "round": round_no, "gist_id": gist_id, "pr": args.pr, "approval": approval_text, "approved": approved})
     with open(os.path.join(out, "comment.md"), "w") as fh:
         fh.write(body)
     if not args.post:
