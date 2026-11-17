@@ -69,6 +69,13 @@ class TestProblems(unittest.TestCase):
         self.assertEqual(len(found), 1)
         self.assertIn("Owner must do:", found[0])
 
+    def test_first_line_names_the_change(self):
+        found = body.problems(GOOD.split("\n", 1)[1])
+        self.assertEqual(len(found), 1)
+        self.assertIn("first line", found[0])
+        no_folder = GOOD.replace("Change 037 (small path)", "No change folder (the owner's override)")
+        self.assertEqual(body.problems(no_folder), [])
+
     def test_blank_lines_and_attribution_do_not_count(self):
         spaced = GOOD.replace("\n", "\n\n")
         self.assertEqual(body.problems(spaced), [])
