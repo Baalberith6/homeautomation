@@ -11,13 +11,17 @@ preview.json and the PNG files. The command prints the comment, or with --post u
 secret gist, writes the one comment of the agent on the PR (it replaces the last one), sets the label
 risk:low or risk:high, and prints a JSON summary with the decision.
 
-The comment: a heading with the decision, the level, the commit and the round, then the gates Approval,
-Drift, Findings, Checks, Tests and, for a dashboard change, Screenshots. Each gate is one <details> line.
+The comment: a heading with the decision, the level and the commit, then the gates Approval, Drift,
+Findings, Checks, Tests and, for a dashboard change, Screenshots. Each gate is one <details> line.
 A gate that waits for the owner or fails is open; a green gate is closed.
 
+The decision uses only structured inputs: the risk level, the findings and the drift rows of the agent,
+the JUnit result of this run, and the form of the PR body. The text that a session writes in the change
+folder (the Results tables) and the flake8 output are shown and decide nothing: three review rounds
+showed that free text cannot be read safely enough to stop or permit a merge.
+
 Spec: ../kb/work/032-pr-risk-review/spec.md, sections 2.7 and 2.8. The form of the comment, the checks of
-a change.md (change 035), the drift from the intent and the limit of three rounds: decision 2026-11-17 in
-../kb/decisions.md.
+a change.md (change 035) and the drift from the intent: decision 2026-11-17 in ../kb/decisions.md.
 """
 import argparse
 import json
@@ -34,13 +38,11 @@ from review import risk
 
 MARKER = "<!-- pr-reviewer -->"
 GIST_MARK = re.compile(r"<!-- gist:([0-9a-f]+) -->")
-ROUND_MARK = re.compile(r"<!-- round:(\d+) head:([0-9a-f]+) -->")
 REPO = risk.REPO
 MAX_BODY = 60000
 MAX_RAW = 5000    # characters of test output, and only when a test fails
 MAX_TEXT = 200    # characters of one finding, reason or drift row
 MAX_GAPS = 3
-MAX_ROUNDS = 3
 OK, WAIT, BAD, WARN = "✅", "⏳", "❌", "⚠️"
 HEADS = {"auto-merge": "Ready", "wait-owner": "Waiting for the owner", "fix-findings": "Not ready",
          "refuse": "Refused"}
@@ -50,9 +52,8 @@ NEXT = {
     "fix-findings": "Next: the session fixes the findings or the failed tests and runs the review again.",
     "refuse": "Next: nothing. The agent works only on PRs of the owner from a branch of this repo.",
 }
-STUCK = "Next: **the owner decides on the approach.** Three rounds did not close the findings."
 RESULT = {"pass": OK + " pass", "recorded": OK + " recorded pass", "fail": BAD + " fail",
-          "not proven": WARN + " not proven"}
+          "recorded fail": WARN + " recorded fail", "not proven": WARN + " not proven"}
 CHECKS_HEADING = r"^##\s+\d+\.\s+.*[Aa]cceptance checks"
 TESTS_HEADING = r"^##\s+(?:\d+\.\s+)?Tests(?: this change adds or extends)?\s*$"
 RESULTS_HEADING = r"^##\s+(?:\d+\.\s+)?Results\s*$"
@@ -224,17 +225,21 @@ def _short(text, size=120):
 def check_rows(spec_md, test_md, junit):
     """One dict per acceptance check: n, text, tests, state, when.
 
-    The state: "fail" (a test of the check fails, or the Results record a fail), "open" (the Results say
-    "open until"), "pass" (every test of the check passes in this run), "recorded" (no test of this run
-    proves it, and the Results record a pass), or "not proven"."""
+    The state: "fail" (a test of the check fails in this run), "recorded fail" (the Results record a
+    fail), "open" (the Results say "open until"), "pass" (every test of the check passes in this run),
+    "recorded" (no test of this run proves it, and the Results record a pass), or "not proven".
+    Only "fail" comes from this run. The recorded states are the word of the change folder: the comment
+    shows them, and they do not decide."""
     tmap, results = test_map(test_md), recorded(test_md)
     rows = []
     for n, text in acceptance_checks(spec_md):
         tests = [t for t, refs in tmap.items() if n in refs]
         states = [junit[j] for t in tests for j in _matches(t, junit)]
         noted, when = results.get(n, (None, None))
-        if "fail" in states or noted == "fail":
+        if "fail" in states:
             state = "fail"
+        elif noted == "fail":
+            state = "recorded fail"
         elif noted == "open":
             state = "open"
         elif states and all(s == "pass" for s in states) and all(_matches(t, junit) for t in tests):
@@ -248,16 +253,19 @@ def check_rows(spec_md, test_md, junit):
 
 
 def checks_summary(rows):
-    """(icon, text, open) for the Checks gate."""
+    """(icon, text, open) for the Checks gate. The red mark comes only from a test that fails in this run."""
     if not rows:
         return WARN, "no acceptance checks found", False
-    count = {s: sum(1 for r in rows if r["state"] == s) for s in ("pass", "recorded", "open", "fail", "not proven")}
+    states = ("pass", "recorded", "open", "fail", "recorded fail", "not proven")
+    count = {s: sum(1 for r in rows if r["state"] == s) for s in states}
     text = f"{count['pass'] + count['recorded']} of {len(rows)} proven"
-    for state, label in (("open", "open"), ("not proven", "not proven"), ("fail", "failed")):
+    for state, label in (("open", "open"), ("not proven", "not proven"), ("recorded fail", "recorded fail"),
+                         ("fail", "failed")):
         if count[state]:
             text += f", {count[state]} {label}"
-    icon = BAD if count["fail"] else WARN if count["not proven"] else WAIT if count["open"] else OK
-    return icon, text, bool(count["fail"])  # "not proven" is a warning in the line; only a fail opens the gate
+    warn = count["not proven"] or count["recorded fail"]
+    icon = BAD if count["fail"] else WARN if warn else WAIT if count["open"] else OK
+    return icon, text, bool(count["fail"])
 
 
 def checks_md(rows):
@@ -266,13 +274,14 @@ def checks_md(rows):
         names = [t.split("::")[-1] for t in row["tests"]]
         shown = ", ".join(f"`{x}`" for x in names[:3]) + (f" +{len(names) - 3} more" if len(names) > 3 else "")
         result = f"{WAIT} open until {row['when']}" if row["state"] == "open" else RESULT[row["state"]]
-        if row["state"] == "recorded":
+        if row["state"] in ("recorded", "recorded fail"):
             shown = shown or "the Results of the change folder"
         lines.append(f"| {row['n']} | {_short(row['text'])} | {shown or '—'} | {result} |")
     not_proven = [str(r["n"]) for r in rows if r["state"] == "not proven"]
     lines += ["", "Not proven: " + (", ".join(not_proven) if not_proven else "none")]
-    if any(r["state"] == "recorded" for r in rows):
-        lines.append("A recorded pass is a result that the change folder states. No test of this run proves it.")
+    if any(r["state"] in ("recorded", "recorded fail") for r in rows):
+        lines.append("A recorded pass or fail is a result that the change folder states. No test of this run "
+                     "proves it, and it does not decide the merge.")
     return "\n".join(lines)
 
 
@@ -281,17 +290,25 @@ def lint_failed(flake8_text):
     return (flake8_text or "").strip() not in ("", "0")
 
 
+def run_failed(junit):
+    """True if the test run of the review stops the merge: a failed test, or no passed test (no JUnit
+    file, a file that is not XML, an interrupted or empty run)."""
+    return "fail" in junit.values() or "pass" not in junit.values()
+
+
 def tests_summary(junit, base_ids, head_ids, lint=""):
-    """(icon, text, open) for the Tests gate."""
+    """(icon, text, open) for the Tests gate. The flake8 output is shown with a warning mark; it does not
+    decide, because CI runs the same gate before a merge."""
     passed = sum(1 for s in junit.values() if s == "pass")
     failed = sum(1 for s in junit.values() if s == "fail")
     if failed:
         return BAD, f"{failed} failed, {passed} passed", True
     if not passed:
         return BAD, "no test result" if not junit else "no test passed", True
+    text = f"{passed} passed ({len(head_ids) - len(base_ids):+d} vs main)"
     if lint_failed(lint):
-        return BAD, f"{passed} passed, flake8 found errors", True
-    return OK, f"{passed} passed ({len(head_ids) - len(base_ids):+d} vs main)", False
+        return WARN, text + ", flake8 found errors (CI stops them)", True
+    return OK, text, False
 
 
 def tests_md(junit, base_ids, head_ids, risk_result):
@@ -398,38 +415,29 @@ def _drift_gate(drift, required=False):
     return _gate(icon, "Drift", summary, drift_md(drift), opened=opened)
 
 
-def decide(level, open_findings, tests_failed, author, cross_repo, drift=None, round_no=1, failed_checks=0,
-           drift_required=False, approved=None):
+def decide(level, open_findings, tests_failed, author, cross_repo, drift=None, drift_required=False,
+           owner_action=False):
     """What the session does with the PR: the rules of review/risk.py, and these.
 
-    A failed acceptance check, an outcome that is not met and a broken constraint count as open findings.
-    A PR that would merge by itself waits for the owner when the diff has an item outside the intent,
-    when drift.json has a row that the tool cannot read, or when the PR has a change folder
-    (drift_required) and the drift is not measured, or when a file of the change folder has no approval
-    of the owner (approved is False). After MAX_ROUNDS
-    rounds with open findings the owner decides on the approach."""
+    An outcome that is not met and a broken constraint count as open findings. A PR that would merge by
+    itself waits for the owner in four cases: the PR body names an action of the owner (owner_action);
+    the diff has an item outside the intent; drift.json has a row that the tool cannot read; the PR has
+    a change folder (drift_required) and the drift is not measured."""
     _, _, _, not_met, broken, extra = _drift_parts(drift)
-    blocking = open_findings + failed_checks + len(not_met) + len(broken)
-    decision = risk.decide(level, blocking, tests_failed, author, cross_repo)
-    if decision == "auto-merge" and (extra or _drift_unknown(drift) or approved is False
+    decision = risk.decide(level, open_findings + len(not_met) + len(broken), tests_failed, author, cross_repo)
+    if decision == "auto-merge" and (owner_action or extra or _drift_unknown(drift)
                                      or (drift_required and not drift_measured(drift))):
-        return "wait-owner"
-    if decision == "fix-findings" and round_no > MAX_ROUNDS:
         return "wait-owner"
     return decision
 
 
-def round_number(previous, head):
-    """The round of this run. A round is one try to close the findings: the count goes up when the last
-    comment said "Not ready" and the head commit is new. A run on the same head, or a new commit after a
-    clean review (for example the sync-back of a dashboard), stays in the round."""
-    m = ROUND_MARK.search(previous or "")
-    if not m:
-        return 1
-    last = int(m.group(1))
-    if m.group(2) == head or not re.search(r"(?m)^## " + re.escape(HEADS["fix-findings"]), previous):
-        return last
-    return last + 1
+def owner_action(fields):
+    """True if the line "Owner must do:" of the PR body names an action. Only the word "nothing" is no
+    action; every other text makes a low-risk PR wait. fields is None if the body is not known: that
+    case is a finding, not an action."""
+    if fields is None:
+        return False
+    return fields.get("Owner must do:", "").strip().strip("*").strip().rstrip(".").strip().lower() != "nothing"
 
 
 def body_findings(text):
@@ -437,28 +445,6 @@ def body_findings(text):
     if text is None:
         return []
     return [{"file": "PR body", "kind": "rule", "text": p} for p in pr_body.problems(text)]
-
-
-def approval(change_dir):
-    """(text, ok): which files of the change folder the owner approved, from their front matter.
-    ok is None with no change folder, False if a file is missing or has no approved_by and approved_on."""
-    if not change_dir or not os.path.isdir(change_dir):
-        return "no change folder", None
-    names = ["change.md"] if os.path.exists(os.path.join(change_dir, "change.md")) else \
-        ["intent.md", "spec.md", "plan.md", "test.md"]
-    parts, ok = [], True
-    for name in names:
-        text = _read(os.path.join(change_dir, name), None)
-        by = re.search(r"(?m)^approved_by:[ \t]*(\S.*)$", text or "")
-        on = re.search(r"(?m)^approved_on:[ \t]*(\S.*)$", text or "")
-        if text is None:
-            parts.append(f"`{name}` is missing")
-        elif by and on:
-            parts.append(f"`{name}` approved by {by.group(1).strip()} on {on.group(1).strip()}")
-        else:
-            parts.append(f"`{name}` has no approval")
-        ok = ok and bool(text is not None and by and on)
-    return "; ".join(parts), ok
 
 
 def _images_md(images):
@@ -481,25 +467,12 @@ def _gate(icon, name, summary, inner, opened=False):
             + inner.strip() + "\n\n</details>")
 
 
-def _stuck(data):
-    """True if the decision is "wait-owner" while something still stops the merge: the rounds are used up.
-    The owner then decides on the approach; there is nothing to merge."""
-    _, _, _, not_met, broken, _ = _drift_parts(data.get("drift"))
-    blocked = (any(f.get("kind") != "gap" for f in data["findings"]) or not_met or broken
-               or any(r["state"] == "fail" for r in data["rows"])
-               or tests_summary(data["junit"], data["base_ids"], data["head_ids"], data.get("lint", ""))[2])
-    return data["decision"] == "wait-owner" and bool(blocked)
-
-
 def _approval_gate(data, level, head, extra):
     decision, fields, number = data["decision"], data.get("body"), data.get("pr", "N")
-    stuck = _stuck(data)
     summary = {"auto-merge": (OK, "not needed: low risk"),
                "wait-owner": (WAIT, f"owner: merge <code>{head[:7]}</code>"),
                "fix-findings": (WAIT, "after the findings are closed"),
                "refuse": (BAD, "refused: not a PR of the owner from this repo")}.get(decision, (WARN, decision))
-    if stuck:
-        summary = (WAIT, "owner: decide on the approach")
     reasons = data["risk"].get("reasons") or []
     if not isinstance(reasons, list):
         reasons = [str(reasons)]
@@ -511,22 +484,19 @@ def _approval_gate(data, level, head, extra):
     lines = ["- **Owner must do:** " + action]
     lines.append(f"- **Why {level}:** " + ("; ".join(_cut(r) for r in rules) if rules else "no rule fired"))
     lines += ["- **Raised by the agent:** " + _cut(r[len("Agent: "):]) for r in reasons if r.startswith("Agent: ")]
-    if extra and level == "low":
-        lines.append(f"- **Why it waits:** {len(extra)} item{'s' if len(extra) > 1 else ''} outside the intent "
-                     "(the Drift gate).")
-    if data.get("drift_required") and not drift_measured(data.get("drift")) and level == "low":
-        lines.append("- **Why it waits:** the drift from the intent is not measured (the Drift gate).")
-    unknown = _drift_unknown(data.get("drift"))
-    if unknown and level == "low":
-        lines.append(f"- **Why it waits:** {len(unknown)} row{'s' if len(unknown) > 1 else ''} of `drift.json` "
-                     "that the tool cannot read (the Drift gate).")
-    if stuck:
-        lines.append(f"- **Three rounds** did not close the findings (round {data.get('round', 1)}). "
-                     "The owner decides on the approach. There is nothing to merge.")
-    if data.get("approved") is False and level == "low":
-        lines.append("- **Why it waits:** a file of the change folder has no approval of the owner.")
-    lines.append("- **Change:** " + data.get("approval", "no change folder"))
-    if decision == "wait-owner" and not stuck:
+    if level == "low":  # why a low-risk PR does not merge by itself
+        unknown = _drift_unknown(data.get("drift"))
+        if owner_action(fields):
+            lines.append("- **Why it waits:** the PR body names an action of the owner.")
+        if extra:
+            lines.append(f"- **Why it waits:** {len(extra)} item{'s' if len(extra) > 1 else ''} outside the "
+                         "intent (the Drift gate).")
+        if data.get("drift_required") and not drift_measured(data.get("drift")):
+            lines.append("- **Why it waits:** the drift from the intent is not measured (the Drift gate).")
+        if unknown:
+            lines.append(f"- **Why it waits:** {len(unknown)} row{'s' if len(unknown) > 1 else ''} of "
+                         "`drift.json` that the tool cannot read (the Drift gate).")
+    if decision == "wait-owner":
         lines.append(f"- **Merge:** `gh pr merge {number} --merge --match-head-commit {head}`. "
                      "A new commit needs a new word of the owner.")
     return _gate(summary[0], "Approval", summary[1], "\n".join(lines), opened=decision == "wait-owner")
@@ -554,7 +524,7 @@ def _tests_gate(data):
     inner = tests_md(data["junit"], data["base_ids"], data["head_ids"], data["risk"])
     if opened:
         shown = []
-        if not any(s == "pass" for s in data["junit"].values()) or "fail" in data["junit"].values():
+        if run_failed(data["junit"]):
             shown.append(data.get("raw") or "")
         if lint_failed(lint):
             shown.append("$ flake8\n" + lint.strip())
@@ -569,19 +539,16 @@ def _tests_gate(data):
 def comment(data):
     """The comment. data: risk, findings (no kind "risk"), images, rows, junit, base_ids, head_ids, raw,
     lint (the flake8 output), decision, drift, drift_required, body (the fields of the PR body, or None if
-    the body is not known), round, gist_id, pr, approval (the text), approved (False: a file of the change
-    folder has no approval)."""
+    the body is not known), gist_id, pr."""
     risk_result, decision = data["risk"], data["decision"]
     level = risk_result.get("level", "high")
     head = risk_result.get("head") or "0000000"
-    round_no = data.get("round", 1)
     extra = _drift_parts(data.get("drift"))[5]
     parts = [MARKER]
     if data.get("gist_id"):
         parts.append(f"<!-- gist:{data['gist_id']} -->")
-    parts += [f"<!-- round:{round_no} head:{head} -->",
-              f"## {HEADS.get(decision, decision)} — {level.upper()}, `{head[:7]}`, round {round_no} of {MAX_ROUNDS}",
-              "", STUCK if _stuck(data) else NEXT.get(decision, decision), "",
+    parts += [f"## {HEADS.get(decision, decision)} — {level.upper()}, `{head[:7]}`",
+              "", NEXT.get(decision, decision), "",
               _approval_gate(data, level, head, extra),
               _drift_gate(data.get("drift"), data.get("drift_required", False)),
               _findings_gate(data)]
@@ -715,7 +682,13 @@ def main(argv=None):
     out = os.path.expanduser(args.out)
 
     problems = []
-    risk_result = _load(out, "risk.json", dict, problems) or {"level": "high", "reasons": ["no risk.json"]}
+    risk_result = _load(out, "risk.json", dict, problems, required=True)
+    if risk_result is not None and not (isinstance(risk_result.get("reasons", []), list)
+                                        and isinstance(risk_result.get("head", ""), str)):
+        problems.append({"file": "review-out/risk.json", "kind": "rule",
+                         "text": "`risk.json` has a wrong form. Run the review again."})
+        risk_result = None
+    risk_result = risk_result or {"level": "high", "reasons": ["no risk.json"]}
     pr = _load(out, "pr.json", dict, problems, required=True)
     body_text = pr.get("body") if pr is not None else None
     if pr is not None and not isinstance(body_text, str):
@@ -747,15 +720,14 @@ def main(argv=None):
         reasons.append("Screenshots: a dashboard changed and there is no preview")
     level = "high" if reasons else risk_result.get("level", "high")
     risk_result = dict(risk_result, level=level, reasons=reasons)
-    previous = _read(os.path.join(out, "comment.md"))
-    round_no = round_number(previous, risk_result.get("head") or "0000000")
+    previous = _read(os.path.join(out, "comment.md"))  # it holds the gist of the PR
 
     junit_text = _read(os.path.join(out, "junit.xml"))
     junit = junit_results(junit_text) if junit_text else {}
     lint = _read(os.path.join(out, "flake8.txt"))
     base_ids = collected(_read(os.path.join(out, "collect-base.txt")))
     head_ids = collected(_read(os.path.join(out, "collect-head.txt")))
-    tests_failed = tests_summary(junit, base_ids, head_ids, lint)[2]  # the same value as the Tests gate
+    tests_failed = run_failed(junit)
 
     spec_md = test_md = ""
     if change_dir and os.path.exists(os.path.join(change_dir, "spec.md")):
@@ -763,14 +735,12 @@ def main(argv=None):
     elif change_dir:  # the small path: one file holds the checks, the tests and the results
         spec_md = test_md = _read(os.path.join(change_dir, "change.md"))
     rows = check_rows(spec_md, test_md, junit)
-    failed_checks = sum(1 for r in rows if r["state"] == "fail")
     drift_required = bool(change_dir and os.path.isdir(change_dir))
-    approval_text, approved = approval(change_dir)
+    fields = pr_body.fields(body_text) if body_text is not None else None
 
     def decision_now(level_now):
         return decide(level_now, len(open_findings), tests_failed, args.author, args.cross_repo, drift=drift,
-                      round_no=round_no, failed_checks=failed_checks, drift_required=drift_required,
-                      approved=approved)
+                      drift_required=drift_required, owner_action=owner_action(fields))
 
     decision = decision_now(level)
 
@@ -801,9 +771,8 @@ def main(argv=None):
         "risk": risk_result, "findings": shown, "images": images, "rows": rows,
         "junit": junit, "base_ids": base_ids, "head_ids": head_ids,
         "raw": _raw(_read(os.path.join(out, "pytest.txt"))), "lint": lint,
-        "decision": decision, "drift": drift, "drift_required": drift_required,
-        "body": pr_body.fields(body_text) if body_text is not None else None,
-        "round": round_no, "gist_id": gist_id, "pr": args.pr, "approval": approval_text, "approved": approved})
+        "decision": decision, "drift": drift, "drift_required": drift_required, "body": fields,
+        "gist_id": gist_id, "pr": args.pr})
     with open(os.path.join(out, "comment.md"), "w") as fh:
         fh.write(body)
     if not args.post:
@@ -812,8 +781,8 @@ def main(argv=None):
     url = post(args.pr, body)
     set_label(args.pr, level)
     print(json.dumps({"level": level, "decision": decision, "open_findings": len(open_findings),
-                      "failed_checks": failed_checks, "tests_failed": tests_failed, "round": round_no,
-                      "drift": drift_summary(drift)[1],
+                      "tests_failed": tests_failed, "drift": drift_summary(drift)[1],
+                      "owner_must_do": (fields or {}).get("Owner must do:"),
                       "comment": url, "head": risk_result.get("head")}, indent=2))
     return 0
 
