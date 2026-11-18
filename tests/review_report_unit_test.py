@@ -858,5 +858,124 @@ class TestUpload(unittest.TestCase):
             self.assertFalse([c for c, _ in run2.calls if c[:3] == ["gh", "gist", "create"]])
 
 
+# ---- Change 042: only the public images go to the gist -------------------------------------------------------
+# Spec: ../kb/work/042-pr-images-without-private-data/spec.md, sections 2.9 and 2.10.
+
+PREVIEW = {
+    "panels": [
+        {"id": 81, "class": "public", "before": "prdikov-81-before.png", "after": "prdikov-81-after.png"},
+        {"id": 86, "class": "private", "before": None, "after": None,
+         "local": {"before": "private/prdikov-86-before.png", "after": "private/prdikov-86-after.png"}},
+    ],
+    "pages": [{"label": "prdikov", "before": "prdikov-page-before.png", "after": "prdikov-page-after.png",
+               "held": [{"id": 86, "class": "private"}]}],
+    "warnings": [], "leftovers": [], "failed": None,
+}
+
+
+class TestPrivateImages(unittest.TestCase):
+
+    def _folder(self, tmp, names):
+        os.makedirs(os.path.join(tmp, "private"), exist_ok=True)
+        for name in names:
+            with open(os.path.join(tmp, name), "wb") as fh:
+                fh.write(b"\x89PNG\r\n")
+
+    def test_only_public_images_are_uploaded(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._folder(tmp, ["prdikov-81-before.png", "prdikov-81-after.png", "prdikov-page-before.png",
+                               "prdikov-page-after.png", "stale-ai-page-after.png",
+                               os.path.join("private", "prdikov-86-before.png"),
+                               os.path.join("private", "prdikov-86-after.png")])
+            found = report.public_images(tmp, PREVIEW)
+            self.assertEqual([os.path.relpath(p, tmp) for p in found],
+                             ["prdikov-81-after.png", "prdikov-81-before.png", "prdikov-page-after.png",
+                              "prdikov-page-before.png"])
+            sneaky = json.loads(json.dumps(PREVIEW))
+            sneaky["panels"][1]["after"] = "private/prdikov-86-after.png"
+            sneaky["pages"][0]["before"] = "../other/prdikov-page-before.png"
+            sneaky["panels"][0]["before"] = "missing.png"
+            found = report.public_images(tmp, sneaky)
+            self.assertEqual([os.path.relpath(p, tmp) for p in found],
+                             ["prdikov-81-after.png", "prdikov-page-after.png"])
+            self.assertEqual(report.public_images(tmp, {}), [])
+
+    def test_upload_refuses_private(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            self._folder(tmp, [os.path.join("private", "prdikov-86-after.png"), "prdikov-page-after.png"])
+            run = FakeRun()
+            with self.assertRaises(ValueError):
+                report.upload(9, [os.path.join(tmp, "prdikov-page-after.png"),
+                                  os.path.join(tmp, "private", "prdikov-86-after.png")],
+                              head="abcdef1234", owner="matejpristak", run=run)
+            self.assertEqual(run.calls, [])
+
+    def _main(self, *flags):
+        files = {"risk.json": json.dumps({"level": "low", "reasons": [], "head": HEAD,
+                                          "dashboards": ["spec/grafana/prdikov.json"]}),
+                 "pr.json": json.dumps({"number": 9, "body": BODY_TEXT}), "findings.json": "[]",
+                 "junit.xml": JUNIT.replace('<failure message="boom">x</failure>', ""), "flake8.txt": "0\n",
+                 "preview.json": json.dumps(PREVIEW)}
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, text in files.items():
+                with open(os.path.join(tmp, name), "w") as fh:
+                    fh.write(text)
+            self._folder(tmp, ["prdikov-81-before.png", "prdikov-81-after.png", "prdikov-page-before.png",
+                               "prdikov-page-after.png"])
+            out = io.StringIO()
+            with redirect_stdout(out):
+                self.assertEqual(report.main(["--pr", "9", "--out", tmp, "--author", "matejpristak", *flags]), 0)
+            return out.getvalue()
+
+    def test_no_images_flag(self):
+        shown = self._main()
+        self.assertIn("## Ready — LOW", shown)
+        self.assertIn("![after](prdikov-81-after.png)", shown)
+        held = self._main("--no-images")
+        self.assertIn("## Waiting for the owner — HIGH", held)
+        self.assertIn("the agent held the images", held)
+        self.assertNotIn("![", held)
+        self.assertNotIn(".png", held)
+        _, summary, inner = gate(held, "Screenshots")
+        self.assertIn("held", summary)
+        self.assertIn("private data", inner)
+
+    def test_comment_private_and_unknown_panels(self):
+        images = {
+            "panels": [
+                {"id": 81, "class": "public", "before": "https://g/81b.png", "after": "https://g/81a.png"},
+                {"id": 86, "class": "private", "before": None, "after": None,
+                 "local": {"before": "private/prdikov-86-before.png", "after": "private/prdikov-86-after.png"}},
+                {"id": "AI 20", "class": "unknown", "before": None, "after": None,
+                 "local": {"before": None, "after": "private/ai-20-after.png"},
+                 "reason": "the measurement `foo` is not in the data table"},
+            ],
+            "pages": [{"label": "prdikov", "before": "https://g/pb.png", "after": "https://g/pa.png",
+                       "held": [{"id": 86, "class": "private"}, {"id": 90, "class": "unknown"}]},
+                      {"label": "ai", "before": None, "after": None, "held": []}],
+            "warnings": [], "local_dir": "~/homeautomation/review-out/pr47"}
+        body = report.comment(data(images=images, gist_id="abc123"))
+        _, summary, inner = gate(body, "Screenshots")
+        self.assertIn("3 panels (2 not uploaded), 2 pages", summary)
+        self.assertIn("![after](https://g/81a.png)", inner)
+        self.assertIn("**Panel 86** — private data, not uploaded. On the Mac: "
+                      "`~/homeautomation/review-out/pr47/private/prdikov-86-before.png` (before), "
+                      "`~/homeautomation/review-out/pr47/private/prdikov-86-after.png` (after).", inner)
+        self.assertIn("**Panel AI 20** — not classed, not uploaded. On the Mac: absent (before), "
+                      "`~/homeautomation/review-out/pr47/private/ai-20-after.png` (after).", inner)
+        self.assertIn("the measurement `foo` is not in the data table", inner)
+        self.assertIn("Add the measurement to the data table in `review/preview.py`.", inner)
+        self.assertIn("Not shown: panel 86 (private data), panel 90 (not classed).", inner)
+        self.assertNotIn("](private/", inner)
+        self.assertNotIn("](None)", inner)
+        self.assertEqual(inner.count("!["), 4)   # panel 81 and the page of prdikov, before and after
+        self.assertIn("**Full page — ai** — not taken", inner)
+        old = {"panels": [{"id": 81, "before": "https://g/b.png", "after": None}],
+               "pages": [{"label": "ai", "before": "https://g/ab.png", "after": "https://g/aa.png"}], "warnings": []}
+        _, summary, inner = gate(report.comment(data(images=old)), "Screenshots")
+        self.assertIn("1 panels, 1 pages", summary)
+        self.assertIn("_absent_", inner)
+
+
 if __name__ == '__main__':
     unittest.main()

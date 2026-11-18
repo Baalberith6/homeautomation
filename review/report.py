@@ -3,13 +3,18 @@
 Usage, from the repo root (the agent runs it, review/reviewer.md step 10):
 
     python3 -m review.report --pr N --change-dir ../kb/work/NNN-slug --out ~/homeautomation/review-out/prN \
-        --author LOGIN [--cross-repo] [--post]
+        --author LOGIN [--cross-repo] [--post] [--no-images]
 
 --out holds risk.json, findings.json, junit.xml, pytest.txt, flake8.txt, collect-head.txt, collect-base.txt,
 and, when the agent wrote them, pr.json (the PR with its body), drift.json and, after a dashboard change,
 preview.json and the PNG files. The command prints the comment, or with --post uploads the images to a
 secret gist, writes the one comment of the agent on the PR (it replaces the last one), sets the label
 risk:low or risk:high, and prints a JSON summary with the decision.
+
+Private data (change 042): the upload takes only the files that preview.json names as public images, never
+another PNG of the folder and never a file under private/. The comment names a held panel and the path of
+its images on the Mac. --no-images: the agent saw private data in an image; no image is shown or uploaded,
+and the risk is high.
 
 The comment: a heading with the decision, the level and the commit, then the gates Approval, Drift,
 Findings, Checks, Tests and, for a dashboard change, Screenshots. Each gate is one <details> line.
@@ -447,15 +452,56 @@ def body_findings(text):
     return [{"file": "PR body", "kind": "rule", "text": p} for p in pr_body.problems(text)]
 
 
+HELD = {"private": "private data", "unknown": "not classed"}
+HELD_IMAGES = "The agent held the images: an image shows private data."
+
+
+def _held(panel):
+    """True for a panel whose images stay on the Mac (change 042)."""
+    return panel.get("class") in HELD
+
+
+def public_images(out, preview):
+    """The paths of the images that preview.json names as public and that exist in `out` (spec 042, 2.9).
+
+    Only a plain file name counts: a name with a folder in it, for example private/x.png, is never returned.
+    """
+    names = set()
+    for item in (preview.get("panels") or []) + (preview.get("pages") or []):
+        for side in ("before", "after"):
+            name = item.get(side)
+            if isinstance(name, str) and name.endswith(".png") and os.path.basename(name) == name:
+                names.add(name)
+    return [os.path.join(out, name) for name in sorted(names) if os.path.isfile(os.path.join(out, name))]
+
+
 def _images_md(images):
     out = []
+    folder = images.get("local_dir", "").rstrip("/")
     for panel in images.get("panels", []):
+        if _held(panel):
+            local = panel.get("local") or {}
+            sides = ", ".join((f"`{folder}/{local[side]}`" if local.get(side) else "absent") + f" ({side})"
+                              for side in ("before", "after"))
+            out += [f"**Panel {panel['id']}** — {HELD[panel['class']]}, not uploaded. On the Mac: {sides}.", ""]
+            if panel["class"] == "unknown":
+                out += [f"> {WARN} Panel {panel['id']}: {panel.get('reason') or 'the tool cannot class it'}. "
+                        "Add the measurement to the data table in `review/preview.py`.", ""]
+            continue
         before = f"![before]({panel['before']})" if panel.get("before") else "_absent_"
         after = f"![after]({panel['after']})" if panel.get("after") else "_absent_"
         out += [f"**Panel {panel['id']}**", "", "| Before | After |", "|---|---|", f"| {before} | {after} |", ""]
     for page in images.get("pages") or []:
+        if not (page.get("before") or page.get("after")):
+            out += [f"**Full page — {page.get('label', '')}** — not taken: a dashboard variable is not public.", ""]
+            continue
+        before = f"![before]({page['before']})" if page.get("before") else "_absent_"
+        after = f"![after]({page['after']})" if page.get("after") else "_absent_"
         out += [f"**Full page — {page.get('label', '')}**", "", "| Before | After |", "|---|---|",
-                f"| ![before]({page.get('before')}) | ![after]({page.get('after')}) |", ""]
+                f"| {before} | {after} |", ""]
+        if page.get("held"):
+            out += ["Not shown: " + ", ".join(f"panel {h.get('id')} ({HELD.get(h.get('class'), 'held')})"
+                                              for h in page["held"]) + ".", ""]
     for warning in images.get("warnings", []):
         out.append(f"> {WARN} {warning}")
     return "\n".join(out).rstrip()
@@ -559,7 +605,11 @@ def comment(data):
     parts.append(_tests_gate(data))
     images = data.get("images")
     if images is not None:
-        count = f"{len(images.get('panels', []))} panels, {len(images.get('pages') or [])} pages"
+        held = sum(1 for panel in images.get("panels", []) if _held(panel))
+        count = (f"{len(images.get('panels', []))} panels" + (f" ({held} not uploaded)" if held else "")
+                 + f", {len(images.get('pages') or [])} pages")
+        if images.get("no_images"):
+            count = "held by the agent"
         parts.append(_gate(WARN if images.get("warnings") else "🖼️", "Screenshots", count, _images_md(images),
                            opened=True))
     text = "\n".join(parts) + "\n"
@@ -570,8 +620,12 @@ def upload(pr, paths, head, gist_id=None, owner="matejpristak", run=subprocess.r
     """Put the PNG files into the secret gist of the PR. Returns (gist id, {file name: raw URL}).
 
     The files are named <head sha 7>-<name>, so a new run never shows an image from a cache.
-    Nothing is written to this repo.
+    Nothing is written to this repo. A path with a folder "private" is refused before any command runs:
+    the images of a held panel stay on the Mac (change 042).
     """
+    for path in paths:
+        if "private" in os.path.normpath(path).split(os.sep):
+            raise ValueError(f"refused: {os.path.basename(path)} is in a folder private")
     tmp = tempfile.mkdtemp(prefix="pr-reviewer-")
     try:
         if gist_id is None:
@@ -686,6 +740,8 @@ def main(argv=None):
     parser.add_argument("--author", required=True)
     parser.add_argument("--cross-repo", action="store_true")
     parser.add_argument("--post", action="store_true")
+    parser.add_argument("--no-images", action="store_true",
+                        help="the agent saw private data in an image: show and upload no image (change 042)")
     args = parser.parse_args(argv)
     out = os.path.expanduser(args.out)
 
@@ -725,6 +781,8 @@ def main(argv=None):
         reasons.append(f"Screenshots: {preview['failed']}")
     if risk_result.get("dashboards") and preview is None:
         reasons.append("Screenshots: a dashboard changed and there is no preview")
+    if args.no_images and preview is not None:
+        reasons.append("Screenshots: the agent held the images")
     level = "high" if reasons else risk_result.get("level", "high")
     risk_result = dict(risk_result, level=level, reasons=reasons)
     previous = _read(os.path.join(out, "comment.md"))  # it holds the gist of the PR
@@ -752,10 +810,14 @@ def main(argv=None):
     decision = decision_now(level)
 
     images, gist_id = None, None
-    if preview is not None:
+    if preview is not None and args.no_images:
+        images = {"panels": [], "pages": [], "warnings": [HELD_IMAGES], "no_images": True}
+    elif preview is not None:
+        home = os.path.expanduser("~")
         images = {"panels": preview.get("panels", []), "pages": preview.get("pages", []),
-                  "warnings": list(preview.get("warnings", []))}
-        pngs = sorted(os.path.join(out, f) for f in os.listdir(out) if f.endswith(".png"))
+                  "warnings": list(preview.get("warnings", [])),
+                  "local_dir": "~" + out[len(home):] if out.startswith(home + os.sep) else out}
+        pngs = public_images(out, preview)   # never another PNG of the folder, never private/ (change 042)
         if args.post and pngs:
             known = GIST_MARK.search(previous)
             try:
@@ -767,9 +829,10 @@ def main(argv=None):
                             panel[side] = urls.get(os.path.basename(panel[side]))
                 for page in images["pages"]:
                     for side in ("before", "after"):
-                        page[side] = urls.get(os.path.basename(page[side]))
-            except subprocess.CalledProcessError as exc:
-                images["warnings"].append(f"Images not uploaded: {exc.cmd[:3]}")
+                        if page.get(side):
+                            page[side] = urls.get(os.path.basename(page[side]))
+            except (subprocess.CalledProcessError, ValueError) as exc:
+                images["warnings"].append(f"Images not uploaded: {getattr(exc, 'cmd', None) and exc.cmd[:3] or exc}")
                 risk_result["reasons"].append("Screenshots: images not uploaded")
                 risk_result["level"] = level = "high"
                 decision = decision_now(level)
