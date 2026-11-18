@@ -2,7 +2,8 @@
 
 VW shut down the online API the carconnectivity library used, so the ID.3 is
 now read from the EU-Data-Act-mandated self-service portal
-(eu-data-act.drivesomethinggreater.com), which emits a ~15-min ZIP export of a
+(eu-data-act.vwgroup-datahub.com; eu-data-act.drivesomethinggreater.com
+until 2026-11-16), which emits a ~15-min ZIP export of a
 flat key/value telemetry dump.
 
 Auth is the VW ID (identity.vwgroup.io) OIDC form-login, pointed at the
@@ -40,7 +41,12 @@ USER_AGENT = (
 NO_CONTENT_SUFFIX = "_no_content_found.zip"
 
 _AUTHORIZE_URL = cfg["identity_base"] + "/oidc/v1/authorize"
-_REDIRECT_URI = cfg["base_url"] + "/login"
+# The redirect URI stays on the old host: the OAuth client is registered with
+# it, and the old host 301s /login to the new one (change 040).
+_REDIRECT_URI = cfg["legacy_base_url"] + "/login"
+# The login may land on either portal host.
+_PORTAL_HOSTS = {urlparse(cfg["base_url"]).netloc,
+                 urlparse(cfg["legacy_base_url"]).netloc}
 _STATE = f"{cfg['country']}__{cfg['language']}__{cfg['brand']}"
 _METADATA = (cfg["base_url"] +
              "/proxy_api/euda-apim/datarequest/vehicles/{vin}/metadata/partial")
@@ -206,7 +212,6 @@ class EudaClient:
     def login(self):
         """Run the full OIDC login, populating the session cookie jar."""
         s = self._session
-        portal_host = urlparse(cfg["base_url"]).netloc
 
         # 0. Prime the portal session (sets AEM/load-balancer cookies).
         try:
@@ -253,7 +258,7 @@ class EudaClient:
         if "signin-service" in landing or "/error" in landing:
             raise AuthError(
                 _login_error(r.text) or "Login failed - check email/password")
-        if urlparse(landing).netloc != portal_host:
+        if urlparse(landing).netloc not in _PORTAL_HOSTS:
             raise AuthError(f"Login did not complete (ended at {landing})")
         # The redirect chain already dropped the session cookies by the time
         # the browser lands on the portal page, so the landing page's own
