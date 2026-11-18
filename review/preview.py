@@ -447,11 +447,21 @@ def rewrite_buckets(query):
     return FROM_BUCKET.sub(f'from(bucket: "{BUCKET}")', query)
 
 
-def board(dash, uid, title, rewrite_ids=()):
-    """A copy of a dashboard as a temporary board; the panels in rewrite_ids read pr_preview."""
+def board(dash, uid, title, rewrite_ids=(), held=None):
+    """A copy of a dashboard as a temporary board; the panels in rewrite_ids read pr_preview.
+
+    held is {panel id: class}: each of these panels becomes a placeholder (change 042).
+    """
     out = copy.deepcopy(_dash(dash))
     out.update({"uid": uid, "title": title, "id": None})
     out.pop("version", None)
+    if held:
+        def swap(panels):
+            return [placeholder(p, held[p.get("id")]) if p.get("id") in held else p for p in panels]
+        out["panels"] = swap(out.get("panels", []))
+        for panel in out["panels"]:
+            if panel.get("panels"):
+                panel["panels"] = swap(panel["panels"])
     for panel in _panels(out):
         if panel.get("id") in rewrite_ids:
             for target in panel.get("targets", []):
@@ -464,8 +474,12 @@ def _find(dash, pid):
     return next((p for p in _panels(_dash(dash)) if p.get("id") == pid), None)
 
 
-def plan_shots(key, ids, before_uid, after_uid, base_dash, head_dash, rng, base_url):
-    """One shot of the whole board per side. Each changed panel is cut out of it by its element."""
+def plan_shots(key, ids, before_uid, after_uid, base_dash, head_dash, rng, base_url, page=True, folder=""):
+    """One shot of the whole board per side. Each changed panel is cut out of it by its element.
+
+    page=False: the board is loaded, but no image of the full page is kept. folder goes before the name of
+    each panel image ("private/" for the held panels, change 042).
+    """
     base_url = base_url.rstrip("/")
     frm, to = rng
     shots = []
@@ -474,9 +488,12 @@ def plan_shots(key, ids, before_uid, after_uid, base_dash, head_dash, rng, base_
         rows = max([(p.get("gridPos") or {}).get("y", 0) + (p.get("gridPos") or {}).get("h", 0)
                     for p in _panels(_dash(dash))] or [0])
         # Grafana draws only the panels in the viewport, so the viewport holds the whole grid (no full_page).
-        shots.append({"name": f"{key}-page-{side}.png", "width": 1920, "height": max(1080, rows * ROW_PX + 120),
-                      "check_ids": present, "panels": {pid: f"{key}-{pid}-{side}.png" for pid in present},
-                      "url": f"{base_url}/d/{uid}/x?orgId=1&from={frm}&to={to}&kiosk"})
+        shot = {"name": f"{key}-page-{side}.png", "width": 1920, "height": max(1080, rows * ROW_PX + 120),
+                "check_ids": present, "panels": {pid: f"{folder}{key}-{pid}-{side}.png" for pid in present},
+                "url": f"{base_url}/d/{uid}/x?orgId=1&from={frm}&to={to}&kiosk"}
+        if not page:
+            shot["page"] = False
+        shots.append(shot)
     return shots
 
 
@@ -614,7 +631,8 @@ def shoot(token, shots, out_dir, api_user_url):
                                            page.locator('input[name="user"]').count(), counts)
                     if not ok:
                         raise NotSignedIn(reason)
-                page.screenshot(path=os.path.join(out_dir, shot["name"]))
+                if shot.get("page", True):
+                    page.screenshot(path=os.path.join(out_dir, shot["name"]))
                 for pid, name in shot.get("panels", {}).items():
                     for sel in PANEL_SELECTORS:
                         element = page.locator(sel.format(id=pid))
@@ -682,6 +700,7 @@ def run(pr, base, head, out_dir, data_change, test_md, grafana, influx, token, r
     """Spec 2.5 and 2.6 for one PR. Writes the PNG files and preview.json into out_dir."""
     now = now or datetime.now(timezone.utc).replace(microsecond=0)
     os.makedirs(out_dir, exist_ok=True)
+    clear_images(out_dir)
     result = {"panels": [], "pages": [], "warnings": [], "leftovers": [], "failed": None}
     try:
         with _Lock():
@@ -714,6 +733,17 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
         dups = duplicate_ids(dash)
         if dups:
             result["warnings"].append(duplicate_warning(dups, side))
+    held = {}             # {panel id: (class, reason)}: a panel is held if one side is not public (042)
+    for dash in (base_dash, head_dash):
+        for pid, found in held_panels(dash).items():
+            if pid not in held or WORST[found[0]] > WORST[held[pid][0]]:
+                held[pid] = found
+    classes = {pid: cls for pid, (cls, _) in held.items()}
+    public_ids = [i for i in ids if i not in held]
+    held_ids = [i for i in ids if i in held]
+    page = variables_public(base_dash) and variables_public(head_dash)
+    if not page:
+        result["warnings"].append(f"No full-page image of {key}: a dashboard variable reads data that is not public.")
     rng = time_range(head_dash, now)
     rewrite = set()
     if data_change:
@@ -730,20 +760,57 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
             result["warnings"].append(PREVIEW_MISSING)
         rewrite = set(ids)
     before_uid, after_uid = f"pr{pr}-{key}-before", f"pr{pr}-{key}-after"
-    grafana.put(board(base_dash, before_uid, f"PR {pr} {key} before"))
-    grafana.put(board(head_dash, after_uid, f"PR {pr} {key} after", rewrite_ids=rewrite))
+    # The public pair: each held panel is a placeholder, so no private query runs on these boards.
+    grafana.put(board(base_dash, before_uid, f"PR {pr} {key} before", held=classes))
+    grafana.put(board(head_dash, after_uid, f"PR {pr} {key} after", rewrite_ids=rewrite & set(public_ids),
+                      held=classes))
     try:
-        shots = plan_shots(key, ids, before_uid, after_uid, base_dash, head_dash, rng, grafana.base)
+        shots = plan_shots(key, public_ids, before_uid, after_uid, base_dash, head_dash, rng, grafana.base, page=page)
         shooter(token, shots, out_dir, grafana.base + "/api/user")
     finally:
         grafana.delete(before_uid)
         grafana.delete(after_uid)
-    names = {s["name"] for s in shots} | {n for s in shots for n in s.get("panels", {}).values()}
+    names = {n for s in shots for n in s.get("panels", {}).values()}
+    # The private pair, only if a held panel changed: the real panels, and only the images of the held panels.
+    local, local_error = set(), None
+    if held_ids:
+        os.makedirs(os.path.join(out_dir, "private"), exist_ok=True)
+        pairs = ((base_dash, before_uid + "-private", f"PR {pr} {key} before (private)", ()),
+                 (head_dash, after_uid + "-private", f"PR {pr} {key} after (private)", rewrite & set(held_ids)))
+        made = []
+        try:
+            for dash, uid, title, rewrite_ids in pairs:
+                grafana.put(board(dash, uid, title, rewrite_ids=rewrite_ids))
+                made.append(uid)
+            local_shots = plan_shots(key, held_ids, pairs[0][1], pairs[1][1], base_dash, head_dash, rng,
+                                     grafana.base, page=False, folder="private/")
+            shooter(token, local_shots, out_dir, grafana.base + "/api/user")
+            local = {n for s in local_shots for n in s.get("panels", {}).values()}
+        except Exception as exc:  # the public images stay; the report makes the risk high (plan 042, correction 5)
+            local_error = f"{type(exc).__name__}: {exc}"
+        finally:
+            for uid in made:
+                try:
+                    grafana.delete(uid)
+                except Exception as exc:
+                    local_error = local_error or f"{type(exc).__name__}: {exc}"
     for pid in ids:
-        result["panels"].append({"id": pid if key == "prdikov" else f"AI {pid}",
-                                 "before": f"{key}-{pid}-before.png" if f"{key}-{pid}-before.png" in names else None,
-                                 "after": f"{key}-{pid}-after.png" if f"{key}-{pid}-after.png" in names else None})
-    result["pages"].append({"label": key, "before": f"{key}-page-before.png", "after": f"{key}-page-after.png"})
+        label = pid if key == "prdikov" else f"AI {pid}"
+        if pid in held:
+            files = {side: f"private/{key}-{pid}-{side}.png" for side in ("before", "after")}
+            result["panels"].append({"id": label, "class": held[pid][0], "before": None, "after": None,
+                                     "local": {side: name if name in local else None for side, name in files.items()},
+                                     "reason": held[pid][1]})
+        else:
+            files = {side: f"{key}-{pid}-{side}.png" for side in ("before", "after")}
+            result["panels"].append({"id": label, "class": "public",
+                                     "before": files["before"] if files["before"] in names else None,
+                                     "after": files["after"] if files["after"] in names else None})
+    if local_error:
+        result["failed"] = f"Local image failed: {local_error}"
+    result["pages"].append({"label": key, "before": f"{key}-page-before.png" if page else None,
+                            "after": f"{key}-page-after.png" if page else None,
+                            "held": [{"id": pid, "class": classes[pid]} for pid in sorted(classes, key=str)]})
 
 
 def smoke(uid, panel_id, out_dir, grafana, token, now=None, shooter=shoot):
@@ -752,11 +819,12 @@ def smoke(uid, panel_id, out_dir, grafana, token, now=None, shooter=shoot):
     os.makedirs(out_dir, exist_ok=True)
     live = grafana.get(uid)["dashboard"]
     grafana.ensure_folder()
-    grafana.put(board(live, "pr0-before", "PR 0 before"))
-    grafana.put(board(live, "pr0-after", "PR 0 after"))
+    held = {pid: cls for pid, (cls, _) in held_panels(live).items()}   # placeholders, as in a review (042)
+    grafana.put(board(live, "pr0-before", "PR 0 before", held=held))
+    grafana.put(board(live, "pr0-after", "PR 0 after", held=held))
     try:
-        shots = plan_shots("smoke", [panel_id], "pr0-before", "pr0-after", live, live, time_range(live, now),
-                           grafana.base)
+        shots = plan_shots("smoke", [] if panel_id in held else [panel_id], "pr0-before", "pr0-after", live, live,
+                           time_range(live, now), grafana.base)
         shooter(token, shots, out_dir, grafana.base + "/api/user")
     finally:
         grafana.delete("pr0-before")
