@@ -29,7 +29,12 @@ skodaConfig = {
 # carConnectivityConfig (VW ID == MySkoda account). See vw_euda.py.
 vwEudaConfig = {
     "identity_base": "https://identity.vwgroup.io",
-    "base_url": "https://eu-data-act.drivesomethinggreater.com",
+    # VW moved the portal on 2026-11-16 (change 040). The old host 301s its
+    # API paths to a path that 404s, so every API call uses the new host.
+    "base_url": "https://eu-data-act.vwgroup-datahub.com",
+    # The OAuth client is registered with the old host's /login as its
+    # redirect URI; the old host 301s /login to the new host.
+    "legacy_base_url": "https://eu-data-act.drivesomethinggreater.com",
     "client_id": "9b58543e-1c15-4193-91d5-8a14145bebb0@apps_vw-dilab_com",
     "scope": "openid cars profile",
     "brand": "VOLKSWAGEN_PASSENGER_CARS",
