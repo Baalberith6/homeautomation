@@ -206,3 +206,27 @@ def test_build_panel70_patches_query():
     p = bd.build_panel_70([panel])
     assert bd.PANEL_70_OUTDOOR_NEW in p['targets'][0]['query']
     assert panel['targets'][0]['query'] == p70_query()
+
+
+# Change 043: the Krb ON pill of panel 83 is green, as the Heat Pump Compressor pill.
+def _panel83_style():
+    return re.search(r'<style>(.*?)</style>', bd.PANEL_83_CONTENT, re.S).group(1)
+
+
+def test_panel83_pill_sm_on_is_green():
+    rule = re.search(r'\.pill-sm-on\{([^}]*)\}', _panel83_style())
+    assert rule, '.pill-sm-on has no rule in the style of panel 83'
+    assert 'color:#73bf69' in rule.group(1)
+    assert 'rgba(115,191,105,.14)' in rule.group(1)
+    assert 'rgba(115,191,105,.28)' in rule.group(1)
+
+
+def test_panel83_every_pill_class_has_a_rule():
+    style = _panel83_style()
+    html = bd.PANEL_83_CONTENT.split('</style>', 1)[1]
+    used = set()
+    for attr in re.findall(r'class="([^"]*)"', html):
+        used.update(c for c in attr.split() if c.startswith('pill-sm-'))
+    assert used
+    missing = sorted(c for c in used if '.%s{' % c not in style)
+    assert not missing, 'no rule for %s' % missing

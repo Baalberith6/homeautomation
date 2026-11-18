@@ -433,7 +433,7 @@ Three tiles, left to right: **Krb · COP · Heat Pump**. Chart legend above the 
 
 **Krb tile** (fireplace):
 - Caption: `Krb` (no "Fireplace ·" prefix)
-- Status pill top-right — 4-state colour per the **Status pills → Krb (fireplace)** table below (gray/red/green/orange by ON/OFF × body-temp band). The simple 2-colour "green when `krb_w > 20`, red otherwise" rule is retired.
+- Status pill top-right — 2-state pill per the **Status pills → Krb (fireplace)** table below: green `ON` when `krb_w > 20`, gray `OFF` otherwise. The body-temp bands colour the temperature value, not the pill.
 - Current body temp: big green value (e.g. 21.1°)
 - Rate of change ("per hour" cool/heat): prominent 28 px blue, right of the temp, arrow glyph (`↓` cooling, `↑` heating) + value + `°/h` unit
 - `last fire` timestamp **removed** — not available in current data setup
@@ -522,7 +522,7 @@ One function, `carStatus(car, other, chargeW)` (`CAR_STATUS_JS` in `build_dashbo
 **Krb (fireplace)** — current implementation is a simple 2-state pill driven by fireplace power draw:
 | State | Condition | Pill class | Colour | Hex |
 |---|---|---|---|---|
-| `ON` | `krb_w > 20` | `pill-sm-on` | Orange | `#FF9830` |
+| `ON` | `krb_w > 20` | `pill-sm-on` | Green (same as the Heat Pump `Compressor` pill, `pill-sm-comp`) | `#73bf69` |
 | `OFF` | `krb_w ≤ 20` | `pill-sm-off` | Gray | `#6a6a6a` |
 
 The body-temperature value next to the pill is colour-coded independently (4-tier ramp): blue ≤ 15 °C, green 15–40 °C, orange 40–60 °C, red > 60 °C. This carries the "hot mass after shutdown" safety cue without complicating the pill.

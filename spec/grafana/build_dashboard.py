@@ -1809,6 +1809,7 @@ PANEL_83_CONTENT = r"""<style>
 .pill-sm-comp{background:rgba(115,191,105,.14);color:#73bf69;border-color:rgba(115,191,105,.28)}
 .pill-sm-coil{background:rgba(242,73,92,.14);color:#f2495c;border-color:rgba(242,73,92,.28)}
 .pill-sm-off{background:rgba(142,142,142,.10);color:#6a6a6a;border-color:rgba(142,142,142,.18)}
+.pill-sm-on{background:rgba(115,191,105,.14);color:#73bf69;border-color:rgba(115,191,105,.28)}
 .pill-sm .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
 .htile-row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
 .tc-chart{flex:1;min-height:80px;margin:0 -4px}
