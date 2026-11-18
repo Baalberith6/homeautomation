@@ -111,5 +111,51 @@ class TestLoginLanding(unittest.TestCase):
             c.login()
 
 
+class _RecordingSession(_FakeSession):
+    """A fake session that records the cookie names of each GET."""
+
+    def __init__(self, landing, token=True):
+        super().__init__(landing, token)
+        self.sent = []
+
+    def get(self, url, **kwargs):
+        self.sent.append(sorted(ck.name for ck in self.cookies))
+        return super().get(url, **kwargs)
+
+
+def _stale(session):
+    """Fill the jar as the pickle of 2026-11-16 did (change 041)."""
+    session.cookies.set("SESSION", "old", domain="identity.vwgroup.io")
+    session.cookies.set("JSESSIONID", "old", domain="identity.vwgroup.io")
+    session.cookies.set("access_token", "old",
+                        domain="eu-data-act.drivesomethinggreater.com")
+    return session
+
+
+class TestStaleJar(unittest.TestCase):
+    """The login starts with an empty cookie jar (change 041)."""
+
+    def test_no_old_cookie_sent(self):
+        s = _stale(_RecordingSession(NEW + "/cz/en/home"))
+        _client(s).login()
+        # The priming GET and the authorize GET carry no cookie.
+        self.assertEqual(s.sent, [[], []])
+
+    def test_old_token_does_not_pass_login(self):
+        s = _stale(_FakeSession(NEW + "/cz/en/home", token=False))
+        c = _client(s)
+        with self.assertRaises(auth.AuthError):
+            c.login()
+        self.assertFalse(c._logged_in)
+
+    def test_stale_jar_login_ok(self):
+        s = _stale(_FakeSession(NEW + "/cz/en/home"))
+        c = _client(s)
+        c.login()
+        self.assertTrue(c._logged_in)
+        self.assertEqual([(ck.name, ck.value) for ck in s.cookies],
+                         [("access_token", "jwt")])
+
+
 if __name__ == "__main__":
     unittest.main()
