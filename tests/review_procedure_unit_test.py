@@ -64,6 +64,20 @@ class TestProcedure(unittest.TestCase):
         self.assertIn("review-test-venv", head)
         self.assertIn("reviewer.md", head)
 
+    def test_step_9_private_images(self):
+        """Change 042: the agent does not open the held images, and it checks the public ones."""
+        step = [x for x in self.md.splitlines() if x.startswith("9. **Screenshots.**")]
+        self.assertEqual(len(step), 1)
+        self.assertIn("Do not open a file in `OUT/private/`", step[0])
+        self.assertIn("no file name and no page path of the family wiki", step[0])
+        self.assertIn("no data of a car", step[0])
+        self.assertIn("`--no-images`", step[0])
+        report = [x for x in self.md.splitlines() if x.startswith("10. **Report.**")]
+        self.assertEqual(len(report), 1)
+        self.assertIn("`--no-images`", report[0])
+        self.assertIn("only the public images", report[0])
+        self.assertIn("`private/`", read("CLAUDE.md"))
+
 
 if __name__ == '__main__':
     unittest.main()
