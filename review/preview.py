@@ -13,10 +13,18 @@ one fixed time range, and deletes both boards. For a data change it first copies
 changed panels read into the bucket pr_preview, runs the "Preview data" block of the change's test.md, and
 points the changed panels of the after board at pr_preview. It never writes to a live board or bucket.
 
+Private data (change 042): the data of the family wiki and of the cars. The script classes each panel from
+the data that its queries read (PUBLIC_DATA, PARTLY_PRIVATE). A panel that is private, or that the rule
+does not know, is a placeholder on both boards, so its query does not run there. If such a panel changed,
+a second pair of boards "…-private" holds the real panels; only the images of the held panels come from
+it, and they go to OUT/private/, which review/report.py never uploads. A new measurement holds its panel
+until it is in the data table.
+
 The tokens come from secret.py of the main checkout (REVIEW_SECRET_DIR, default ~/homeautomation/code):
 grafanaServiceAccountToken and influxPreviewToken. The script never prints a token.
 
 Spec: ../kb/work/032-pr-risk-review/spec.md, sections 2.5 and 2.6; plan.md, correction 1.
+Private data: ../kb/work/042-pr-images-without-private-data/spec.md; plan.md, "How the patterns read a query".
 """
 import argparse
 import copy
@@ -51,6 +59,29 @@ PREVIEW_MISSING = "Preview data missing: the after image shows today's data only
 TO_BUCKET = re.compile(r'to\(\s*bucket\s*:\s*"([^"]*)"')
 FROM_BUCKET = re.compile(r'from\(\s*bucket\s*:\s*"(default|ai)"\s*\)')
 UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+
+# Private data (change 042, spec 2.2). Every measurement that prdikov.json and ai.json read is here.
+# A measurement that is not here is unknown, and its panel is held until somebody adds it.
+PUBLIC_DATA = frozenset({
+    "Estia", "FVE", "OTE", "RainForecast", "SolarForecast", "TempForecast", "WindForecast", "becka", "cez",
+    "command", "estia", "krb", "netatmo", "on", "rehau", "rehau_hum", "rehau_output", "rehau_set", "temp_target",
+    "weather", "weatherforecast",                             # the bucket default
+    "ai_pushover", "ai_queue", "ai_sync", "ai_usage"})        # the bucket ai
+PARTLY_PRIVATE = {                                            # measurement: its public fields
+    "Car": frozenset({"car_connected", "charging_wallbox_power"}),   # energy data of the house (042, D1)
+    "ai_jobs": frozenset({"run_s", "state"}),                        # the other columns name family files
+}
+IMPORTS = frozenset({"array", "math", "strings", "date", "timezone"})   # packages that read no data
+PLACEHOLDER = {"private": "Private data: not shown (panel {id})", "unknown": "Not classed: not shown (panel {id})"}
+WORST = {"public": 0, "unknown": 1, "private": 2}
+ANY = None                # in a cube: every measurement, or every field
+FROM = re.compile(r"(?<![\w.])from\s*\(")
+BUCKET_ARG = re.compile(r'\s*bucket\s*:\s*"([^"\\]*)"\s*')
+PIPE_CALL = re.compile(r"\s*\|>\s*([A-Za-z_][\w.]*)\s*\(")
+FILTER_FN = re.compile(r"\s*fn\s*:\s*\(\s*r\s*\)\s*=>(.*)", re.S)
+MEAS_EQ = re.compile(r'r(?:\._measurement|\["_measurement"\])\s*==\s*"([^"\\]*)"')
+FIELD_EQ = re.compile(r'r(?:\._field|\["_field"\])\s*==\s*"([^"\\]*)"')
+IMPORT = re.compile(r'^\s*import\s+(?:\w+\s+)?"([^"]*)"', re.M)
 
 
 class GuardError(Exception):
@@ -91,6 +122,242 @@ def changed_panels(base, head):
     old = {p["id"]: p for p in _panels(_dash(base))}
     new = {p["id"]: p for p in _panels(_dash(head))}
     return sorted(i for i in set(old) | set(new) if old.get(i) != new.get(i))
+
+
+# ---- The class of a query and of a panel (change 042) ----------------------------------------------------
+# The reader is small and fails closed: a form that it does not know lets "any" data through, and "any"
+# is never public. A ValueError from a helper makes the query unknown.
+
+def _string_end(text, i):
+    """The index after the string that starts at text[i]."""
+    j = i + 1
+    while j < len(text):
+        if text[j] == "\\":
+            j += 2
+        elif text[j] == '"':
+            return j + 1
+        else:
+            j += 1
+    raise ValueError("a string does not end")
+
+
+def _strip_comments(text):
+    """The Flux text with no // comment. A // inside a string stays."""
+    out, i = [], 0
+    while i < len(text):
+        if text[i] == '"':
+            j = _string_end(text, i)
+            out.append(text[i:j])
+            i = j
+        elif text.startswith("//", i):
+            j = text.find("\n", i)
+            i = len(text) if j < 0 else j
+        else:
+            out.append(text[i])
+            i += 1
+    return "".join(out)
+
+
+def _close(text, i):
+    """The index of the bracket that closes the bracket at text[i]."""
+    pairs, stack, j = {"(": ")", "[": "]", "{": "}"}, [], i
+    while j < len(text):
+        ch = text[j]
+        if ch == '"':
+            j = _string_end(text, j)
+            continue
+        if ch in pairs:
+            stack.append(pairs[ch])
+        elif ch in ")]}":
+            if not stack or stack.pop() != ch:
+                raise ValueError("the brackets do not match")
+            if not stack:
+                return j
+        j += 1
+    raise ValueError("a bracket does not close")
+
+
+def _split(expr, word):
+    """The parts of an expression between the keyword `word`, outside brackets and strings."""
+    parts, depth, start, j = [], 0, 0, 0
+    while j < len(expr):
+        ch = expr[j]
+        if ch == '"':
+            j = _string_end(expr, j)
+            continue
+        if ch in "([{":
+            depth += 1
+        elif ch in ")]}":
+            depth -= 1
+        elif (depth == 0 and expr.startswith(word, j) and not re.match(r"[\w.]", expr[j - 1:j] or " ")
+              and not re.match(r"\w", expr[j + len(word):j + len(word) + 1] or " ")):
+            parts.append(expr[start:j])
+            j += len(word)
+            start = j
+            continue
+        j += 1
+    parts.append(expr[start:])
+    return parts
+
+
+def _both(left, right):
+    """The cubes that both lists let through."""
+    out = []
+    for names1, fields1 in left:
+        for names2, fields2 in right:
+            names = names2 if names1 is ANY else names1 if names2 is ANY else names1 & names2
+            fields = fields2 if fields1 is ANY else fields1 if fields2 is ANY else fields1 & fields2
+            if (names is ANY or names) and (fields is ANY or fields):
+                out.append((names, fields))
+    return out
+
+
+def _cubes(expr):
+    """What a filter expression lets through: a list of (measurements, fields); ANY means no limit.
+
+    Only `r._measurement == "x"` and `r._field == "x"` narrow. Every other term lets everything through.
+    """
+    alternatives = _split(expr, "or")
+    if len(alternatives) > 1:
+        return [cube for part in alternatives for cube in _cubes(part)]
+    terms = _split(expr, "and")
+    if len(terms) > 1:
+        out = [(ANY, ANY)]
+        for term in terms:
+            out = _both(out, _cubes(term))
+        return out
+    term = expr.strip()
+    if term.startswith("(") and _close(term, 0) == len(term) - 1:
+        return _cubes(term[1:-1])
+    found = MEAS_EQ.fullmatch(term)
+    if found:
+        return [(frozenset({found.group(1)}), ANY)]
+    found = FIELD_EQ.fullmatch(term)
+    if found:
+        return [(ANY, frozenset({found.group(1)}))]
+    return [(ANY, ANY)]
+
+
+def _chains(text):
+    """[(bucket or None, [the arguments of each filter of the chain])] for each from() of the text.
+
+    Only the filters of the pipe chain of the from() itself count (plan 042, rule 5).
+    """
+    chains = []
+    for start in FROM.finditer(text):
+        end = _close(text, start.end() - 1)
+        bucket = BUCKET_ARG.fullmatch(text[start.end():end])
+        filters, pos = [], end + 1
+        while True:
+            call = PIPE_CALL.match(text, pos)
+            if not call:
+                break
+            close = _close(text, call.end() - 1)
+            if call.group(1) == "filter":
+                filters.append(text[call.end():close])
+            pos = close + 1
+        chains.append((bucket.group(1) if bucket else None, filters))
+    return chains
+
+
+def _cube_class(names, fields):
+    if names is ANY:
+        return "unknown", "a from() pipeline has no filter on a measurement"
+    worst = ("public", "")
+    for name in sorted(names):
+        if name in PUBLIC_DATA:
+            continue
+        if name not in PARTLY_PRIVATE:
+            found = ("unknown", f"the measurement `{name}` is not in the data table")
+        elif fields is ANY or not fields <= PARTLY_PRIVATE[name]:
+            found = ("private", f"the query reads private fields of the measurement `{name}`")
+        else:
+            continue
+        if WORST[found[0]] > WORST[worst[0]]:
+            worst = found
+    return worst
+
+
+def query_class(query):
+    """("public" | "private" | "unknown", the reason) for one Flux query (spec 042, section 2.3)."""
+    found = []
+    try:
+        text = _strip_comments(query or "")
+        other = sorted(set(IMPORT.findall(text)) - IMPORTS)
+        if other:
+            found.append(("unknown", f"the query imports the package `{other[0]}`"))
+        chains = _chains(text)
+        if not chains:
+            found.append(("unknown", "the query has no from()"))
+        for bucket, filters in chains:
+            if bucket not in SOURCE_BUCKETS:
+                found.append(("unknown", "a from() reads a bucket that is not `default` or `ai`"))
+                continue
+            cubes = [(ANY, ANY)]
+            for args in filters:
+                fn = FILTER_FN.fullmatch(args)
+                cubes = _both(cubes, _cubes(fn.group(1)) if fn else [(ANY, ANY)])
+            found += [_cube_class(names, fields) for names, fields in cubes]
+    except ValueError as exc:
+        return "unknown", f"the tool cannot read the query: {exc}"
+    return max(found, key=lambda item: WORST[item[0]]) if found else ("public", "")
+
+
+def panel_class(panel):
+    """The class of a panel and the reason: the worst class of its queries (spec 042, section 2.4)."""
+    if "libraryPanel" in panel:
+        return "unknown", "a library panel keeps its queries in Grafana"
+    worst = ("public", "")
+    for target in panel.get("targets") or []:
+        query = target.get("query") if isinstance(target, dict) else None
+        if isinstance(query, str) and query.strip():
+            found = query_class(query)
+        else:
+            found = ("unknown", "a target has no Flux query")
+        if WORST[found[0]] > WORST[worst[0]]:
+            worst = found
+    return worst
+
+
+def held_panels(dash):
+    """{panel id: (class, reason)} for each panel that is not public."""
+    held = {}
+    for panel in _panels(_dash(dash)):
+        found = panel_class(panel)
+        if found[0] != "public":
+            held[panel.get("id")] = found
+    return held
+
+
+def variables_public(dash):
+    """False if a variable of the type "query" reads data that is not public (spec 042, section 2.5)."""
+    for variable in (_dash(dash).get("templating") or {}).get("list") or []:
+        if variable.get("type") != "query":
+            continue
+        query = variable.get("query")
+        if isinstance(query, dict):
+            query = query.get("query")
+        if not isinstance(query, str) or query_class(query)[0] != "public":
+            return False
+    return True
+
+
+def placeholder(panel, cls):
+    """The text panel that takes the place of a held panel: the same id and position, no query, no script."""
+    tile = {"id": panel.get("id"), "type": "text", "title": "",
+            "options": {"mode": "markdown", "content": PLACEHOLDER[cls].format(id=panel.get("id"))}}
+    if panel.get("gridPos") is not None:
+        tile["gridPos"] = copy.deepcopy(panel["gridPos"])
+    return tile
+
+
+def clear_images(out_dir):
+    """Delete the PNG files of an earlier run, so that none of them can go into an upload."""
+    for folder in (out_dir, os.path.join(out_dir, "private")):
+        if os.path.isdir(folder):
+            for name in os.listdir(folder):
+                if name.endswith(".png"):
+                    os.remove(os.path.join(folder, name))
 
 
 def _start_of(unit, when):
