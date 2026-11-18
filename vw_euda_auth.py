@@ -212,6 +212,11 @@ class EudaClient:
     def login(self):
         """Run the full OIDC login, populating the session cookie jar."""
         s = self._session
+        # Start from an empty jar (change 041). A stale jar (old identity
+        # SESSION cookies, an old access_token) broke the login on
+        # 2026-11-18, and an old token could hide a failed login. With
+        # prompt=login the flow needs no earlier cookie.
+        s.cookies.clear()
 
         # 0. Prime the portal session (sets AEM/load-balancer cookies).
         try:
