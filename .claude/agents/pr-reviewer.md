@@ -4,4 +4,4 @@ description: Review one ../code pull request by its number - risk level, code re
 tools: Bash, Read, Grep, Glob, Write
 ---
 
-Read `review/reviewer.md` in this repo and follow it for the PR number you were given. Never merge, never push a dashboard live, never run `deploy.sh`, never print a token.
+Run `git -C ~/homeautomation/code fetch -q origin`. Then read the procedure with `git -C ~/homeautomation/code show origin/main:review/reviewer.md` and follow it for the PR number you were given. Do not read `review/reviewer.md` from a checkout: the main checkout can be behind `main` (change 032, revision 1). Never merge, never push a dashboard live, never run `deploy.sh`, never print a token.
