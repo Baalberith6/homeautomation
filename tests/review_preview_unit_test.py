@@ -771,5 +771,91 @@ class TestState(unittest.TestCase):
         self.assertEqual((result["range"], result["failed"]), ("now-7d", None))
 
 
+# ---- Change 032, revision 1, D23: a refresh before each shot ---------------------------------------------------
+
+class _FakeLocator:
+    def __init__(self, log, selector, panels):
+        self.log, self.selector, self.panels = log, selector, panels
+        self.first = self
+
+    def count(self):
+        return 1 if self.panels and "data-panelid" in self.selector else 0
+
+    def screenshot(self, path):
+        self.log.append(("image", os.path.basename(path)))
+
+
+class _FakePage:
+    def __init__(self, log, url=None):
+        self.log, self.fixed_url, self.url = log, url, ""
+        self.keyboard = SimpleNamespace(press=lambda key: log.append(("key", key)))
+        self.request = SimpleNamespace(get=lambda url: SimpleNamespace(status=200))
+
+    def set_viewport_size(self, size):
+        pass
+
+    def goto(self, url, **kwargs):
+        self.url = self.fixed_url or url
+        self.log.append(("goto", url))
+
+    def wait_for_timeout(self, ms):
+        self.log.append(("wait", ms))
+
+    def wait_for_load_state(self, state, **kwargs):
+        self.log.append(("idle", state))
+
+    def locator(self, selector):
+        return _FakeLocator(self.log, selector, panels=True)
+
+    def screenshot(self, path):
+        self.log.append(("image", os.path.basename(path)))
+
+
+def _fake_playwright(page):
+    """A module that stands for playwright.sync_api: sync_playwright() gives one browser with one page."""
+    class _Manager:
+        def __enter__(self):
+            context = SimpleNamespace(new_page=lambda: page)
+            browser = SimpleNamespace(new_context=lambda **kwargs: context, close=lambda: page.log.append(("close",)))
+            return SimpleNamespace(chromium=SimpleNamespace(launch=lambda: browser))
+
+        def __exit__(self, *exc):
+            return False
+
+    return SimpleNamespace(sync_playwright=_Manager)
+
+
+class TestShoot(unittest.TestCase):
+
+    def _shoot(self, page, tmp):
+        shots = preview.plan_shots("prdikov", [83], "pr9-prdikov-before", "pr9-prdikov-after", _krb_dash(), _krb_dash(),
+                                   preview.time_range(_krb_dash(), NOW), "http://g:3000")
+        modules = {"playwright": SimpleNamespace(), "playwright.sync_api": _fake_playwright(page)}
+        with mock.patch.dict("sys.modules", modules):
+            preview.shoot("t", shots, tmp, "http://g:3000/api/user")
+
+    def test_shoot_refreshes_before_the_shot(self):
+        log = []
+        with tempfile.TemporaryDirectory() as tmp:
+            self._shoot(_FakePage(log), tmp)
+        starts = [i for i, entry in enumerate(log) if entry[0] == "goto"]
+        self.assertEqual(len(starts), 2)
+        for start, end in zip(starts, starts[1:] + [len(log)]):
+            part = log[start:end]
+            kinds = [entry[0] for entry in part]
+            first_image = kinds.index("image")
+            self.assertEqual([entry for entry in part if entry[0] == "key"], [("key", "d"), ("key", "r")])
+            self.assertLess(part.index(("key", "r")), part.index(("idle", "networkidle")))
+            self.assertLess(part.index(("idle", "networkidle")), first_image)
+            self.assertEqual(part[first_image - 1], ("wait", preview.REFRESH_WAIT_S * 1000))
+            self.assertEqual(kinds.count("image"), 2)        # the page and panel 83
+        self.assertEqual(log[-1], ("close",))
+        log = []
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(preview.NotSignedIn):
+                self._shoot(_FakePage(log, url="http://g:3000/login"), tmp)
+        self.assertEqual([entry for entry in log if entry[0] in ("key", "image")], [])
+
+
 if __name__ == '__main__':
     unittest.main()
