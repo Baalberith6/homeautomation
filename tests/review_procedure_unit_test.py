@@ -78,6 +78,28 @@ class TestProcedure(unittest.TestCase):
         self.assertIn("only the public images", report[0])
         self.assertIn("`private/`", read("CLAUDE.md"))
 
+    def test_step_9_preview_state(self):
+        """Change 032, revision 1: the Preview state, equal images and the longer time range."""
+        step = [x for x in self.md.splitlines() if x.startswith("9. **Screenshots.**")]
+        self.assertEqual(len(step), 1)
+        self.assertIn("`--test-md <change folder>/test.md`, or `<change folder>/change.md` for a small change", step[0])
+        self.assertIn("If `OUT/preview.json` has a `state`", step[0])
+        self.assertIn("both images must show the state", step[0])
+        self.assertIn('`"equal": true`', step[0])
+        self.assertIn("Screenshots cannot show the change: before and after are equal. "
+                      "The change folder has no Preview state.", step[0])
+        self.assertIn("Do not write a finding for it.", step[0])
+        self.assertIn("`--range now-24h`", step[0])
+        self.assertIn("`--range now-7d`", step[0])
+        self.assertIn("Preview state", read("CLAUDE.md"))
+
+    def test_agent_reads_the_procedure_from_origin_main(self):
+        """Change 032, revision 1, D20: the main checkout can be behind main."""
+        agent = read(".claude", "agents", "pr-reviewer.md")
+        self.assertIn("git -C ~/homeautomation/code fetch -q origin", agent)
+        self.assertIn("git -C ~/homeautomation/code show origin/main:review/reviewer.md", agent)
+        self.assertNotIn("Read `review/reviewer.md` in this repo", agent)
+
 
 if __name__ == '__main__':
     unittest.main()

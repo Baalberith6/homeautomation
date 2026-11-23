@@ -474,5 +474,302 @@ class TestPrivate(unittest.TestCase):
         self.assertEqual(result["panels"][0]["after"], "prdikov-81-after.png")
 
 
+# ---- Change 032, revision 1: the Preview state ---------------------------------------------------------------
+# Spec: ../kb/work/032-pr-risk-review/spec.md, section 9; plan.md, "Revision 1".
+
+KRB = _chain('r._measurement == "krb" and r._field == "apower"')
+STATE = [("krb", "apower", "500.0")]
+
+
+def _state_md(*rows, heading="## Preview state"):
+    lines = [heading, "", "| Measurement | Field | Value |", "|---|---|---|"]
+    lines += ["| " + " | ".join(row) + " |" for row in rows]
+    return "# T\n\n## Preview data\n\nNo data change.\n\n" + "\n".join(lines) + "\n\n## Bug fixes\n\nNone.\n"
+
+
+def _krb_dash(query=KRB):
+    return _dash(extra={"id": 83, "type": "marcusolsson-dynamictext-panel", "gridPos": POS,
+                        "targets": [{"query": query}], "options": {"content": "x"}})
+
+
+def _flux(session):
+    return [c[2]["data"] for c in session.calls if "/api/v2/query" in c[1]]
+
+
+def _query_of(dash, pid):
+    return next(p for p in dash["panels"] if p["id"] == pid)["targets"][0]["query"]
+
+
+class StateSession(FakeSession):
+    """A FakeSession that answers a count query of InfluxDB with a number of points."""
+
+    def __init__(self, points=181, **kwargs):
+        super().__init__(**kwargs)
+        self.points = points
+
+    def request(self, method, url, **kwargs):
+        answer = super().request(method, url, **kwargs)
+        if "/api/v2/query" in url and "count()" in kwargs.get("data", ""):
+            answer.text = f",result,table,_value\n,_result,0,{self.points}\n"
+        return answer
+
+
+class WritingShooter(FakeShooter):
+    """Writes each image file. `content` maps a part of a file name to the bytes of that file."""
+
+    def __init__(self, content=None, skip=()):
+        super().__init__()
+        self.content, self.skip = content or {}, skip
+
+    def __call__(self, token, shots, out_dir, api_user_url):
+        super().__call__(token, shots, out_dir, api_user_url)
+        for shot in shots:
+            names = list(shot["panels"].values()) + ([shot["name"]] if shot.get("page", True) else [])
+            for name in names:
+                if any(part in name for part in self.skip):
+                    continue
+                data = next((b for part, b in self.content.items() if part in name), b"same")
+                with open(os.path.join(out_dir, name), "wb") as fh:
+                    fh.write(data)
+
+
+class TestState(unittest.TestCase):
+
+    def _one(self, base, head, tmp, state=(), data_change=False, test_md=None, points=181, shooter=None, **more):
+        session = StateSession(points=points)
+        api = preview.GuardedGrafana("http://g:3000/", "t", session=session)
+        influx = preview.Influx("http://i:8086", "t", session=session)
+        result = _result()
+        shooter = shooter or FakeShooter()
+        preview._one(9, "spec/grafana/prdikov.json", base, head, tmp, data_change, test_md, api, influx, "t", NOW,
+                     shooter, result, state=state, **more)
+        return session, result, shooter
+
+    def _run(self, tmp, test_md, dashes, data_change=False, **more):
+        session = StateSession()
+        api = preview.GuardedGrafana("http://g:3000/", "t", session=session)
+        influx = preview.Influx("http://i:8086", "t", session=session)
+        shooter = FakeShooter()
+        with mock.patch.object(preview, "_Lock", _NoLock), \
+                mock.patch.object(preview, "_show", lambda repo, sha, path: dashes[sha] if "prdikov" in path else None):
+            result = preview.run(9, "b", "h", os.path.join(tmp, "out"), data_change, test_md, api, influx, "t",
+                                 now=NOW, shooter=shooter, **more)
+        return session, result, shooter
+
+    def test_state_rows(self):
+        self.assertEqual(preview.state_rows(_state_md(("`krb`", "`apower`", "`500.0`"))), STATE)
+        small = _state_md(("krb", "apower", "500"), ("estia", "coil_on", "true"), ("ai_sync", "state", '"diverged"'),
+                          ("weather", " temperature ", "-3.5"), heading="### Preview state")
+        self.assertEqual(preview.state_rows(small),
+                         [("krb", "apower", "500"), ("estia", "coil_on", "true"), ("ai_sync", "state", '"diverged"'),
+                          ("weather", "temperature", "-3.5")])
+        self.assertEqual(preview.state_rows(_state_md(("krb", "apower", "1"), heading="#### Preview state")),
+                         [("krb", "apower", "1")])
+        for none in ("# T\n\n## Preview state\n\nNone.\n\n## Results\n", "# T\n\n## Preview data\n\nNo data change.\n",
+                     "# T\n\n## Preview state\n\nText with no table.\n", ""):
+            self.assertEqual(preview.state_rows(none), [], none)
+        other = ("## Preview state\n\nNone.\n\n## Results\n\n| Measurement | Field | Value |\n|---|---|---|\n"
+                 "| a | b | 1 |\n")
+        self.assertEqual(preview.state_rows(other), [])
+
+    def test_state_rows_refuse(self):
+        bad = [('kr"b', "apower", "1"), ("krb x", "apower", "1"), ("krb", "apower", "500.0)"), ("krb", "apower", "on"),
+               ("krb", "apower", '"a"b"'), ("krb", "apower", '"a\\b"'), ("krb", "", "1"), ("krb", "apower", ""),
+               ("krb", "apower) |> to(bucket: \"default\"", "1")]
+        for row in bad:
+            with self.assertRaises(ValueError, msg=row) as caught:
+                preview.state_rows(_state_md(("krb", "apower", "1"), row))
+            self.assertIn("Preview state: row 2 is not valid", str(caught.exception), row)
+        with self.assertRaises(ValueError) as caught:
+            preview.state_rows("## Preview state\n\n| Measurement | Field | Value |\n|---|---|---|\n| krb | apower |\n")
+        self.assertIn("Preview state: row 1 is not valid", str(caught.exception))
+        with self.assertRaises(ValueError) as caught:
+            preview.state_rows(_state_md(*[("krb", f"f{i}", "1") for i in range(11)]))
+        self.assertIn("more than 10 rows", str(caught.exception))
+        self.assertEqual(len(preview.state_rows(_state_md(*[("krb", f"f{i}", "1") for i in range(10)]))), 10)
+
+    def test_bad_state_gives_failed(self):
+        dashes = {"b": _krb_dash(), "h": _krb_dash(KRB + "\n  |> yield()")}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "change.md")
+            with open(path, "w") as fh:
+                fh.write(_state_md(("krb", "apower", "lots"), heading="### Preview state"))
+            session, result, shooter = self._run(tmp, path, dashes)
+            with open(os.path.join(tmp, "out", "preview.json")) as fh:
+                self.assertEqual(json.load(fh)["failed"], result["failed"])
+        self.assertIn("Preview state: row 1 is not valid", result["failed"])
+        self.assertEqual(_posted(session), [])
+        self.assertEqual(shooter.calls, [])
+
+    def test_state_flux_only_pr_preview(self):
+        flux = preview.state_flux("krb", "apower", "500.0")
+        self.assertEqual(flux, ('from(bucket: "pr_preview")\n'
+                                "  |> range(start: 0)\n"
+                                '  |> filter(fn: (r) => r._measurement == "krb" and r._field == "apower")\n'
+                                "  |> map(fn: (r) => ({r with _value: 500.0}))\n"
+                                '  |> to(bucket: "pr_preview")\n'))
+        self.assertIn('_value: "diverged"', preview.state_flux("ai_sync", "state", '"diverged"'))
+        session = FakeSession()
+        db = preview.Influx("http://i:8086", "t", session=session)
+        db.query(flux)
+        self.assertEqual(len(session.calls), 1)
+        for target in ("default", "ai"):
+            with self.assertRaises(preview.GuardError):
+                db.query(flux.replace('to(bucket: "pr_preview")', f'to(bucket: "{target}")'))
+        self.assertEqual(len(session.calls), 1)
+
+    def test_state_both_boards_read_the_copy(self):
+        head = _krb_dash(KRB + "\n  |> yield()")
+        with tempfile.TemporaryDirectory() as tmp:
+            session, result, shooter = self._one(_krb_dash(), head, tmp, state=STATE)
+        flux = _flux(session)
+        self.assertEqual(len(flux), 3)
+        self.assertIn('from(bucket: "default")', flux[0])
+        self.assertIn('r._measurement == "krb"', flux[0])
+        self.assertTrue(flux[0].rstrip().endswith('|> to(bucket: "pr_preview")'))
+        self.assertEqual(flux[1], preview.state_flux(*STATE[0]))
+        self.assertIn("count()", flux[2])
+        boards = {b["uid"]: b for b in _posted(session)}
+        self.assertEqual(sorted(boards), ["pr9-prdikov-after", "pr9-prdikov-before"])
+        for uid, board in boards.items():
+            self.assertIn('from(bucket: "pr_preview")', _query_of(board, 83), uid)
+            self.assertNotIn('from(bucket: "default")', _query_of(board, 83), uid)
+            self.assertIn('from(bucket: "default")', _query_of(board, 70), uid)
+            self.assertIn('from(bucket: "default")', _query_of(board, 81), uid)
+        self.assertEqual(result["state"], [{"measurement": "krb", "field": "apower", "value": "500.0", "points": 181}])
+        self.assertEqual(result["warnings"], [])
+        self.assertEqual(len(shooter.calls), 1)
+
+    def test_state_copies_base_and_head_queries(self):
+        base = _krb_dash(_chain('r._measurement == "aaa"'))
+        head = _krb_dash(_chain('r._measurement == "bbb"'))
+        with tempfile.TemporaryDirectory() as tmp:
+            session, _, _ = self._one(base, head, tmp, state=[("aaa", "x", "1")])
+        copy = _flux(session)[0]
+        self.assertIn('r._measurement == "aaa"', copy)
+        self.assertIn('r._measurement == "bbb"', copy)
+        with tempfile.TemporaryDirectory() as tmp:    # with a data change and no state: the head only, as before
+            session, _, _ = self._one(base, head, tmp, data_change=True)
+        self.assertNotIn('"aaa"', _flux(session)[0])
+
+    def test_state_run_empties_the_bucket(self):
+        dashes = {"b": _krb_dash(), "h": _krb_dash(KRB + "\n  |> yield()")}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "test.md")
+            with open(path, "w") as fh:
+                fh.write(_state_md(("krb", "apower", "500.0")))
+            session, result, _ = self._run(tmp, path, dashes)
+        self.assertIsNone(result["failed"])
+        kinds = [("delete" if "/api/v2/delete" in c[1] else "query") for c in session.calls if "/api/v2/" in c[1]]
+        self.assertEqual(kinds, ["delete", "query", "query", "query", "delete"])
+        for call in session.calls:
+            if "/api/v2/delete" in call[1]:
+                self.assertIn("bucket=pr_preview", call[1])
+        self.assertEqual(result["state"][0]["points"], 181)
+
+    def test_state_held_panel(self):
+        head = _car_dash(q86=CAR_ADDRESS + "\n  |> yield()")
+        with tempfile.TemporaryDirectory() as tmp:
+            session, result, _ = self._one(_car_dash(), head, tmp, state=[("Car", "address_vw", '"Nowhere"')])
+        boards = {b["uid"]: b for b in _posted(session)}
+        self.assertEqual(len(boards), 4)
+        for uid in ("pr9-prdikov-before", "pr9-prdikov-after"):
+            tile = next(p for p in boards[uid]["panels"] if p["id"] == 86)
+            self.assertEqual(tile["type"], "text", uid)
+            self.assertNotIn("Car", json.dumps(boards[uid]), uid)
+        for uid in ("pr9-prdikov-before-private", "pr9-prdikov-after-private"):
+            self.assertIn('from(bucket: "pr_preview")', _query_of(boards[uid], 86), uid)
+            self.assertIn('from(bucket: "default")', _query_of(boards[uid], 81), uid)
+        self.assertEqual(result["panels"][0]["class"], "private")
+
+    def test_state_with_preview_data(self):
+        head = _krb_dash(KRB + "\n  |> yield()")
+        block = 'from(bucket: "pr_preview")\n  |> range(start: -3h)\n  |> to(bucket: "pr_preview")\n'
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "test.md")
+            with open(path, "w") as fh:
+                fh.write("# T\n\n## Preview data\n\n```flux\n" + block + "```\n\n## Bug fixes\n")
+            session, result, _ = self._one(_krb_dash(), head, tmp, state=STATE, data_change=True, test_md=path)
+        flux = _flux(session)
+        self.assertEqual([flux.index(preview.state_flux(*STATE[0])), flux.index(block)], [1, 3])
+        self.assertIn("The before image also reads the preview data.", result["warnings"])
+        self.assertNotIn(preview.PREVIEW_MISSING, result["warnings"])
+
+    def test_no_state_is_the_run_of_today(self):
+        head = _krb_dash(KRB + "\n  |> yield()")
+        with tempfile.TemporaryDirectory() as tmp:
+            session, result, _ = self._one(_krb_dash(), head, tmp)
+        self.assertEqual(_flux(session), [])
+        self.assertNotIn("pr_preview", json.dumps(_posted(session)))
+        self.assertEqual(result["state"], [])
+        with tempfile.TemporaryDirectory() as tmp:
+            session, result, _ = self._one(_krb_dash(), head, tmp, data_change=True)
+        boards = {b["uid"]: b for b in _posted(session)}
+        self.assertIn('from(bucket: "default")', _query_of(boards["pr9-prdikov-before"], 83))
+        self.assertIn('from(bucket: "pr_preview")', _query_of(boards["pr9-prdikov-after"], 83))
+        self.assertEqual(len(_flux(session)), 1)
+        self.assertEqual(result["state"], [])
+        self.assertEqual(result["warnings"], [preview.PREVIEW_MISSING])
+        dashes = {"b": _krb_dash(), "h": head}
+        with tempfile.TemporaryDirectory() as tmp:       # run with no file and no data change: no InfluxDB call
+            session, result, _ = self._run(tmp, None, dashes)
+        self.assertEqual([c for c in session.calls if "/api/v2/" in c[1]], [])
+        self.assertEqual((result["state"], result["range"], result["failed"]), ([], None, None))
+
+    def test_equal_images(self):
+        head = _krb_dash(KRB + "\n  |> yield()")
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, _ = self._one(_krb_dash(), head, tmp, shooter=WritingShooter())
+        self.assertIs(result["panels"][0]["equal"], True)
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, _ = self._one(_krb_dash(), head, tmp, shooter=WritingShooter({"83-after": b"green"}))
+        self.assertIs(result["panels"][0]["equal"], False)
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, _ = self._one(_krb_dash(), head, tmp, shooter=WritingShooter(skip=("83-after",)))
+        self.assertIs(result["panels"][0]["equal"], False)
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, _ = self._one(_krb_dash(), head, tmp)                 # no file at all
+        self.assertIs(result["panels"][0]["equal"], False)
+        held = _car_dash(q86=CAR_ADDRESS + "\n  |> yield()")
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, _ = self._one(_car_dash(), held, tmp, shooter=WritingShooter())
+        self.assertEqual((result["panels"][0]["class"], result["panels"][0]["equal"]), ("private", True))
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, _ = self._one(_car_dash(), held, tmp, shooter=WritingShooter({"private/prdikov-86-after": b"n"}))
+        self.assertIs(result["panels"][0]["equal"], False)
+
+    def test_state_zero_points_warns(self):
+        head = _krb_dash(KRB + "\n  |> yield()")
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, shooter = self._one(_krb_dash(), head, tmp, state=[("krb", "nope", "1.0")], points=0)
+        self.assertIn("Preview state not applied: the copy has no point of `krb.nope`.", result["warnings"])
+        self.assertIsNone(result["failed"])
+        self.assertEqual(result["state"], [{"measurement": "krb", "field": "nope", "value": "1.0", "points": 0}])
+        self.assertEqual(len(shooter.calls), 1)
+
+    def test_range_option(self):
+        head = _krb_dash(KRB + "\n  |> yield()")
+        with tempfile.TemporaryDirectory() as tmp:
+            session, result, shooter = self._one(_krb_dash(), head, tmp, state=STATE, range_from="now-24h")
+        self.assertEqual(result["range"], "now-24h")
+        day_ago = int((NOW - timedelta(hours=24)).timestamp() * 1000)
+        for shot in shooter.calls[0]:
+            self.assertIn(f"from={day_ago}&to={int(NOW.timestamp() * 1000)}", shot["url"])
+        self.assertIn("range(start: 2026-11-06T10:00:00Z, stop: 2026-11-07T10:00:00Z)", _flux(session)[0])
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, shooter = self._one(_krb_dash(), head, tmp)
+        self.assertIsNone(result["range"])
+        three_hours = int((NOW - timedelta(hours=3)).timestamp() * 1000)
+        self.assertIn(f"from={three_hours}&", shooter.calls[0][0]["url"])
+        dashes = {"b": _krb_dash(), "h": head}
+        with tempfile.TemporaryDirectory() as tmp:
+            session, result, shooter = self._run(tmp, None, dashes, range_from="now-40d")
+        self.assertIn("more than 31 days", result["failed"])
+        self.assertEqual(shooter.calls, [])
+        with tempfile.TemporaryDirectory() as tmp:
+            _, result, _ = self._run(tmp, None, dashes, range_from="now-7d")
+        self.assertEqual((result["range"], result["failed"]), ("now-7d", None))
+
+
 if __name__ == '__main__':
     unittest.main()
