@@ -82,7 +82,7 @@ class TestProcedure(unittest.TestCase):
         """Change 032, revision 1: the Preview state, equal images and the longer time range."""
         step = [x for x in self.md.splitlines() if x.startswith("9. **Screenshots.**")]
         self.assertEqual(len(step), 1)
-        self.assertIn("`--test-md <change folder>/test.md`, or `<change folder>/change.md` for a small change", step[0])
+        self.assertIn("--test-md <change folder>/test.md`, or `<change folder>/change.md` for a small change", step[0])
         self.assertIn("If `OUT/preview.json` has a `state`", step[0])
         self.assertIn("both images must show the state", step[0])
         self.assertIn('`"equal": true`', step[0])
