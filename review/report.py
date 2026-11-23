@@ -475,8 +475,48 @@ def public_images(out, preview):
     return [os.path.join(out, name) for name in sorted(names) if os.path.isfile(os.path.join(out, name))]
 
 
-def _images_md(images):
+EQUAL_IMAGES = ("Before and after are equal. If the change shows only in one data state, add a Preview state "
+                "to the change folder.")
+MOCK_TAIL = ("The changed panels of both images read a copy of the live data with these values. "
+             "The live board does not show this state.")
+
+
+def _code(text):
+    """A short text for a code span of the comment: no backtick, no line break."""
+    return str(text).replace("`", "'").replace("\n", " ")[:60]
+
+
+def _mock_md(images):
+    """The lines that say what is not live in the images: mocked values, a time range (spec 032, section 9).
+
+    A state or a range that the tool cannot read still gives a line: a mocked image is never shown as live.
+    """
     out = []
+    state = images.get("state")
+    if state:
+        readable = isinstance(state, list) and all(
+            isinstance(row, dict) and all(isinstance(row.get(key), str) for key in ("measurement", "field", "value"))
+            for row in state)
+        if readable:
+            rows = "; ".join(f"`{_code(row['measurement'])}.{_code(row['field'])}` = `{_code(row['value'])}` "
+                             f"({_code(row.get('points', '?'))} points)" for row in state)
+            out += [f"Mocked data: {rows}. {MOCK_TAIL}", ""]
+        else:
+            out += ["Mocked data: the tool cannot read the values.", ""]
+    span = images.get("range")
+    if isinstance(span, str) and span:
+        out += [f"Time range: `{_code(span)}` to now, not the default range of the dashboard.", ""]
+    elif span:
+        out += ["Time range: not the default range of the dashboard.", ""]
+    return out
+
+
+def _equal_md(panel):
+    return [f"> {WARN} {EQUAL_IMAGES}", ""] if panel.get("equal") is True else []
+
+
+def _images_md(images):
+    out = _mock_md(images)
     folder = images.get("local_dir", "").rstrip("/")
     for panel in images.get("panels", []):
         if _held(panel):
@@ -487,10 +527,12 @@ def _images_md(images):
             if panel["class"] == "unknown":
                 out += [f"> {WARN} Panel {panel['id']}: {panel.get('reason') or 'the tool cannot class it'}. "
                         "Add the measurement to the data table in `review/preview.py`.", ""]
+            out += _equal_md(panel)
             continue
         before = f"![before]({panel['before']})" if panel.get("before") else "_absent_"
         after = f"![after]({panel['after']})" if panel.get("after") else "_absent_"
         out += [f"**Panel {panel['id']}**", "", "| Before | After |", "|---|---|", f"| {before} | {after} |", ""]
+        out += _equal_md(panel)
     for page in images.get("pages") or []:
         if not (page.get("before") or page.get("after")):
             out += [f"**Full page — {page.get('label', '')}** — not taken: a dashboard variable is not public.", ""]
@@ -607,7 +649,7 @@ def comment(data):
     if images is not None:
         held = sum(1 for panel in images.get("panels", []) if _held(panel))
         count = (f"{len(images.get('panels', []))} panels" + (f" ({held} not uploaded)" if held else "")
-                 + f", {len(images.get('pages') or [])} pages")
+                 + f", {len(images.get('pages') or [])} pages" + (", mocked data" if images.get("state") else ""))
         if images.get("no_images"):
             count = "held by the agent"
         parts.append(_gate(WARN if images.get("warnings") else "🖼️", "Screenshots", count, _images_md(images),
@@ -816,6 +858,7 @@ def main(argv=None):
         home = os.path.expanduser("~")
         images = {"panels": preview.get("panels", []), "pages": preview.get("pages", []),
                   "warnings": list(preview.get("warnings", [])),
+                  "state": preview.get("state"), "range": preview.get("range"),
                   "local_dir": "~" + out[len(home):] if out.startswith(home + os.sep) else out}
         pngs = public_images(out, preview)   # never another PNG of the folder, never private/ (change 042)
         if args.post and pngs:
