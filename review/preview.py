@@ -56,7 +56,12 @@ MAX_COPY_DAYS = 31        # the longest range in the two dashboards: -30d, month
 WAIT_S = 5                # after the load, so that the afterRender scripts finish (design value, spec 2.5.5)
 TIMEOUT_S = 10            # for each API call (design value, spec section 4)
 PAGE_TIMEOUT_S = 60       # for a page load in the browser
-REFRESH_WAIT_S = 3        # after the refresh before a shot (measured 2026-11-23: 8 of 8 shots had the full chart)
+REFRESH_WAIT_S = 3        # after the data of a refresh, for the panel scripts (measured 2026-11-23, spec 9.2)
+REFRESH_START_S = 2       # a refresh that starts no data request in this time has none (design value)
+REFRESH_QUIET_MS = 500    # no open data request for this time: the refresh has ended (design value)
+STEP_MS = 100             # one step of the wait for a refresh
+QUERY_PATH = "/api/ds/query"                     # the data requests of the panels
+ERROR_TABLE = re.compile(r"(?m)^,?error,reference\s*$")   # InfluxDB: HTTP 200 with an error in the body
 ROW_PX = 38               # one Grafana grid row: 30 px cell + 8 px margin
 LOCK_WAIT_S = 15 * 60
 LOCAL = ZoneInfo("Europe/Prague")
@@ -645,6 +650,9 @@ class Influx:
                                  timeout=TIMEOUT_S * 6)
         if r.status_code >= 400:
             raise RuntimeError(f"InfluxDB query -> HTTP {r.status_code}: {r.text[:200]}")
+        found = ERROR_TABLE.search(r.text)
+        if found:         # for example "partial write: field type conflict" (measured 2026-11-23, spec 9.4)
+            raise RuntimeError(f"InfluxDB query -> error: {r.text[found.end():].strip()[:200]}")
         return r.text
 
     def empty_bucket(self, now):
@@ -677,6 +685,47 @@ def cleanup(grafana, influx, now=None):
     return left
 
 
+class _Queries:
+    """The data requests of a page: how many started, and which are still open."""
+
+    def __init__(self, page):
+        self.started, self.open = 0, []
+        page.on("request", self._start)
+        page.on("requestfinished", self._end)
+        page.on("requestfailed", self._end)
+
+    def _start(self, request):
+        if QUERY_PATH in request.url:
+            self.started += 1
+            self.open.append(request)
+
+    def _end(self, request):
+        if request in self.open:
+            self.open.remove(request)
+
+
+def _refresh(page, queries):
+    """Refresh all panels (the Grafana keys "d", "r") and wait until their data requests have ended.
+
+    A panel script that reads the size of its element when it draws can draw before the layout is final:
+    the chart of panel 83 was low in about 7 of 20 shots (032 revision 1, D23). wait_for_load_state is not
+    used: it returns at once on a page that was idle before (review round 1 of PR 57). Returns the number
+    of data requests that the refresh started. Raises if one is still open after PAGE_TIMEOUT_S.
+    """
+    before, waited, quiet = queries.started, 0, 0
+    page.keyboard.press("d")
+    page.keyboard.press("r")
+    while waited < PAGE_TIMEOUT_S * 1000:
+        page.wait_for_timeout(STEP_MS)
+        waited += STEP_MS
+        begun = queries.started > before or waited >= REFRESH_START_S * 1000
+        quiet = quiet + STEP_MS if begun and not queries.open else 0
+        if quiet >= REFRESH_QUIET_MS + STEP_MS:      # the first quiet step can be the one in which a request ended
+            page.wait_for_timeout(REFRESH_WAIT_S * 1000)
+            return queries.started - before
+    raise RuntimeError(f"the refresh did not end in {PAGE_TIMEOUT_S} s: {len(queries.open)} data requests are open")
+
+
 def shoot(token, shots, out_dir, api_user_url):
     """Take the screenshots with headless Chromium. Raises NotSignedIn if a page check fails."""
     from playwright.sync_api import sync_playwright  # only on the Mac: CI has no Playwright
@@ -686,6 +735,7 @@ def shoot(token, shots, out_dir, api_user_url):
         try:
             context = browser.new_context(extra_http_headers={"Authorization": f"Bearer {token}"})
             page = context.new_page()
+            queries = _Queries(page)
             for shot in shots:
                 page.set_viewport_size({"width": shot["width"], "height": shot["height"]})
                 page.goto(shot["url"], wait_until="networkidle", timeout=PAGE_TIMEOUT_S * 1000)
@@ -697,13 +747,7 @@ def shoot(token, shots, out_dir, api_user_url):
                                            page.locator('input[name="user"]').count(), counts)
                     if not ok:
                         raise NotSignedIn(reason)
-                # Refresh all panels one time (the Grafana keys "d", "r"). A panel script that reads the size
-                # of its element when it draws can draw before the layout is final: the chart of panel 83
-                # was low in about 7 of 20 shots (032 revision 1, D23).
-                page.keyboard.press("d")
-                page.keyboard.press("r")
-                page.wait_for_load_state("networkidle", timeout=PAGE_TIMEOUT_S * 1000)
-                page.wait_for_timeout(REFRESH_WAIT_S * 1000)
+                _refresh(page, queries)
                 if shot.get("page", True):
                     page.screenshot(path=os.path.join(out_dir, shot["name"]))
                 for pid, name in shot.get("panels", {}).items():
