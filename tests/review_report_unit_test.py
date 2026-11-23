@@ -977,5 +977,91 @@ class TestPrivateImages(unittest.TestCase):
         self.assertIn("_absent_", inner)
 
 
+# ---- Change 032, revision 1: mocked data, equal images, the time range ----------------------------------------
+# Spec: ../kb/work/032-pr-risk-review/spec.md, section 9.
+
+MOCK = [{"measurement": "krb", "field": "apower", "value": "500.0", "points": 181}]
+
+
+def _shots(**over):
+    images = {"panels": [{"id": 83, "class": "public", "before": "https://g/b.png", "after": "https://g/a.png"}],
+              "pages": [{"label": "prdikov", "before": "https://g/pb.png", "after": "https://g/pa.png", "held": []}],
+              "warnings": []}
+    images.update(over)
+    return gate(report.comment(data(images=images, gist_id="abc123")), "Screenshots")
+
+
+class TestMockedImages(unittest.TestCase):
+
+    def test_mock_line(self):
+        _, summary, inner = _shots(state=MOCK)
+        self.assertTrue(inner.strip().startswith("Mocked data: `krb.apower` = `500.0` (181 points)."), inner[:200])
+        self.assertIn("read a copy of the live data with these values", inner)
+        self.assertIn("The live board does not show this state.", inner)
+        self.assertTrue(summary.rstrip().endswith("mocked data"), summary)
+        two = MOCK + [{"measurement": "estia", "field": "coil_on", "value": "true", "points": 0}]
+        _, _, inner = _shots(state=two)
+        self.assertIn("`krb.apower` = `500.0` (181 points); `estia.coil_on` = `true` (0 points).", inner)
+
+    def test_no_state_no_mock_line(self):
+        plain = _shots()
+        for images in (_shots(state=[]), _shots(state=None)):
+            self.assertEqual(images, plain)
+        self.assertNotIn("Mocked data", plain[2])
+        self.assertIn("1 panels, 1 pages", plain[1])
+        self.assertNotIn("mocked", plain[1])
+        self.assertNotIn("Time range", plain[2])
+        self.assertNotIn("are equal", plain[2])
+
+    def test_equal_line(self):
+        line = "Before and after are equal. If the change shows only in one data state, add a Preview state"
+        public = {"id": 83, "class": "public", "before": "https://g/b.png", "after": "https://g/a.png"}
+        held = {"id": 86, "class": "private", "before": None, "after": None,
+                "local": {"before": "private/prdikov-86-before.png", "after": "private/prdikov-86-after.png"}}
+        _, _, inner = _shots(panels=[dict(public, equal=True), dict(held, equal=True)])
+        self.assertEqual(inner.count(line), 2)
+        for value in (False, None, "true", 1):
+            _, _, inner = _shots(panels=[dict(public, equal=value), dict(held, equal=value)])
+            self.assertNotIn(line, inner, value)
+        _, _, inner = _shots(panels=[public, held])
+        self.assertNotIn(line, inner)
+
+    def test_unreadable_state_is_never_silent(self):
+        for broken in ("krb", [1, 2], [{"measurement": "krb", "value": "1"}], {"krb": 1}, [MOCK[0], "x"],
+                       [{"measurement": 1, "field": "apower", "value": "1"}], 7):
+            _, summary, inner = _shots(state=broken)
+            self.assertIn("Mocked data: the tool cannot read the values.", inner, broken)
+            self.assertTrue(summary.rstrip().endswith("mocked data"), broken)
+
+    def test_range_line(self):
+        _, _, inner = _shots(range="now-24h")
+        self.assertIn("Time range: `now-24h` to now, not the default range of the dashboard.", inner)
+        _, _, inner = _shots(state=MOCK, range="now-7d")
+        self.assertLess(inner.index("Mocked data"), inner.index("Time range: `now-7d` to now"))
+        _, _, inner = _shots(range=None)
+        self.assertNotIn("Time range", inner)
+        for broken in (7, ["now-24h"], {"from": "now-24h"}):
+            _, _, inner = _shots(range=broken)
+            self.assertIn("Time range: not the default range of the dashboard.", inner, broken)
+
+    def test_main_passes_the_state(self):
+        files = {"risk.json": json.dumps({"level": "low", "reasons": [], "head": HEAD,
+                                          "dashboards": ["spec/grafana/prdikov.json"]}),
+                 "pr.json": json.dumps({"number": 9, "body": BODY_TEXT}), "findings.json": "[]",
+                 "junit.xml": JUNIT.replace('<failure message="boom">x</failure>', ""), "flake8.txt": "0\n",
+                 "preview.json": json.dumps(dict(PREVIEW, state=MOCK, range="now-24h"))}
+        with tempfile.TemporaryDirectory() as tmp:
+            for name, text in files.items():
+                with open(os.path.join(tmp, name), "w") as fh:
+                    fh.write(text)
+            out = io.StringIO()
+            with redirect_stdout(out):
+                self.assertEqual(report.main(["--pr", "9", "--out", tmp, "--author", "matejpristak"]), 0)
+        shown = out.getvalue()
+        self.assertIn("Mocked data: `krb.apower` = `500.0` (181 points).", shown)
+        self.assertIn("Time range: `now-24h` to now", shown)
+        self.assertIn("## Ready — LOW", shown)       # mocked data and a range decide nothing (D18)
+
+
 if __name__ == '__main__':
     unittest.main()

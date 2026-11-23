@@ -3,7 +3,8 @@
 Usage, from the repo root, with the review virtualenv (Playwright):
 
     ~/homeautomation/review-venv/bin/python -m review.preview --pr N --base SHA --head SHA \
-        --out ~/homeautomation/review-out/prN [--data-change] [--test-md ../kb/work/NNN-slug/test.md]
+        --out ~/homeautomation/review-out/prN [--data-change] [--test-md ../kb/work/NNN-slug/test.md] \
+        [--range now-24h]
     ~/homeautomation/review-venv/bin/python -m review.preview --smoke UID PANEL --out DIR
     ~/homeautomation/review-venv/bin/python -m review.preview --cleanup
 
@@ -12,6 +13,11 @@ the JSON of the base and the JSON of the head. It takes each changed panel and t
 one fixed time range, and deletes both boards. For a data change it first copies the live data that the
 changed panels read into the bucket pr_preview, runs the "Preview data" block of the change's test.md, and
 points the changed panels of the after board at pr_preview. It never writes to a live board or bucket.
+
+Revision 1 (spec section 9): if the file of --test-md (a test.md or a change.md) has a table under a heading
+"Preview state", the script writes each value into the copied points of that series, and the changed panels
+of both boards read pr_preview. So the two images use one snapshot of the data and differ only by the PR.
+--range gives a longer time range, from that start to now, when the default range has no data.
 
 Private data (change 042): the data of the family wiki and of the cars. The script classes each panel from
 the data that its queries read (PUBLIC_DATA, PARTLY_PRIVATE). A panel that is private, or that the rule
@@ -50,12 +56,24 @@ MAX_COPY_DAYS = 31        # the longest range in the two dashboards: -30d, month
 WAIT_S = 5                # after the load, so that the afterRender scripts finish (design value, spec 2.5.5)
 TIMEOUT_S = 10            # for each API call (design value, spec section 4)
 PAGE_TIMEOUT_S = 60       # for a page load in the browser
+REFRESH_WAIT_S = 3        # after the data of a refresh, for the panel scripts (measured 2026-11-23, spec 9.2)
+REFRESH_START_S = 2       # a refresh that starts no data request in this time has none (design value)
+REFRESH_QUIET_MS = 500    # no open data request for this time: the refresh has ended (design value)
+STEP_MS = 100             # one step of the wait for a refresh
+QUERY_PATH = "/api/ds/query"                     # the data requests of the panels
+ERROR_TABLE = re.compile(r"(?m)^,?error,reference\s*$")   # InfluxDB: HTTP 200 with an error in the body
 ROW_PX = 38               # one Grafana grid row: 30 px cell + 8 px margin
 LOCK_WAIT_S = 15 * 60
 LOCAL = ZoneInfo("Europe/Prague")
 LOCK = os.path.expanduser("~/homeautomation/review-out/.preview.lock")
 PANEL_SELECTORS = ('[data-panelid="{id}"]', '[data-viz-panel-key="panel-{id}"]')
 PREVIEW_MISSING = "Preview data missing: the after image shows today's data only."
+STATE_HEADING = re.compile(r"^#{2,4} Preview state\s*$", re.M)
+STATE_NAME = re.compile(r"[A-Za-z0-9_.-]+")                        # a measurement or a field
+STATE_VALUE = re.compile(r'-?\d+(\.\d+)?|true|false|"[^"\\]*"')    # a Flux literal
+MAX_STATE_ROWS = 10       # design value: a state names the few series that the change depends on (spec 9.4)
+STATE_NOT_APPLIED = "Preview state not applied: the copy has no point of `{m}.{f}`."
+STATE_AND_DATA = "The before image also reads the preview data."
 TO_BUCKET = re.compile(r'to\(\s*bucket\s*:\s*"([^"]*)"')
 FROM_BUCKET = re.compile(r'from\(\s*bucket\s*:\s*"(default|ai)"\s*\)')
 UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
@@ -443,6 +461,59 @@ def preview_block(test_md):
     return block.group(1) if block else None
 
 
+def state_rows(md):
+    """The rows of the table under a heading "Preview state": [(measurement, field, value)] (spec 9.2).
+
+    The heading has level 2 to 4, in a test.md or a change.md. No heading or no table gives []. The row
+    above the separator line is the header. A row that is not valid raises ValueError: the names and the
+    value go into a Flux text, so they are checked in full.
+    """
+    found = STATE_HEADING.search(md or "")
+    if not found:
+        return []
+    lines = []
+    for line in md[found.end():].splitlines():
+        if line.startswith("#"):
+            break
+        lines.append(line.strip())
+    sep = next((i for i, line in enumerate(lines) if re.fullmatch(r"\|[\s:|-]+\|", line)), None)
+    if sep is None:
+        return []
+    rows = []
+    for line in lines[sep + 1:]:
+        if not line.startswith("|"):
+            break
+        cells = [c.strip() for c in line.strip("|").split("|")]
+        cells = [c[1:-1].strip() if len(c) > 1 and c[0] == c[-1] == "`" else c for c in cells]
+        if (len(cells) != 3 or not STATE_NAME.fullmatch(cells[0]) or not STATE_NAME.fullmatch(cells[1])
+                or not STATE_VALUE.fullmatch(cells[2])):
+            raise ValueError(f"Preview state: row {len(rows) + 1} is not valid")
+        rows.append(tuple(cells))
+    if len(rows) > MAX_STATE_ROWS:
+        raise ValueError(f"Preview state: more than {MAX_STATE_ROWS} rows")
+    return rows
+
+
+def state_flux(measurement, field, value):
+    """The Flux of one row: each copied point of the series gets the value (spec 9.2, D13)."""
+    return (f'from(bucket: "{BUCKET}")\n'
+            "  |> range(start: 0)\n"
+            f'  |> filter(fn: (r) => r._measurement == "{measurement}" and r._field == "{field}")\n'
+            f"  |> map(fn: (r) => ({{r with _value: {value}}}))\n"
+            f'  |> to(bucket: "{BUCKET}")\n')  # no org, as copy_flux
+
+
+def _same_file(out_dir, first, second):
+    """True if both image files exist and hold the same bytes."""
+    if not (first and second):
+        return False
+    try:
+        with open(os.path.join(out_dir, first), "rb") as a, open(os.path.join(out_dir, second), "rb") as b:
+            return a.read() == b.read()
+    except OSError:
+        return False
+
+
 def rewrite_buckets(query):
     return FROM_BUCKET.sub(f'from(bucket: "{BUCKET}")', query)
 
@@ -579,6 +650,9 @@ class Influx:
                                  timeout=TIMEOUT_S * 6)
         if r.status_code >= 400:
             raise RuntimeError(f"InfluxDB query -> HTTP {r.status_code}: {r.text[:200]}")
+        found = ERROR_TABLE.search(r.text)
+        if found:         # for example "partial write: field type conflict" (measured 2026-11-23, spec 9.4)
+            raise RuntimeError(f"InfluxDB query -> error: {r.text[found.end():].strip()[:200]}")
         return r.text
 
     def empty_bucket(self, now):
@@ -611,6 +685,47 @@ def cleanup(grafana, influx, now=None):
     return left
 
 
+class _Queries:
+    """The data requests of a page: how many started, and which are still open."""
+
+    def __init__(self, page):
+        self.started, self.open = 0, []
+        page.on("request", self._start)
+        page.on("requestfinished", self._end)
+        page.on("requestfailed", self._end)
+
+    def _start(self, request):
+        if QUERY_PATH in request.url:
+            self.started += 1
+            self.open.append(request)
+
+    def _end(self, request):
+        if request in self.open:
+            self.open.remove(request)
+
+
+def _refresh(page, queries):
+    """Refresh all panels (the Grafana keys "d", "r") and wait until their data requests have ended.
+
+    A panel script that reads the size of its element when it draws can draw before the layout is final:
+    the chart of panel 83 was low in about 7 of 20 shots (032 revision 1, D23). wait_for_load_state is not
+    used: it returns at once on a page that was idle before (review round 1 of PR 57). Returns the number
+    of data requests that the refresh started. Raises if one is still open after PAGE_TIMEOUT_S.
+    """
+    before, waited, quiet = queries.started, 0, 0
+    page.keyboard.press("d")
+    page.keyboard.press("r")
+    while waited < PAGE_TIMEOUT_S * 1000:
+        page.wait_for_timeout(STEP_MS)
+        waited += STEP_MS
+        begun = queries.started > before or waited >= REFRESH_START_S * 1000
+        quiet = quiet + STEP_MS if begun and not queries.open else 0
+        if quiet >= REFRESH_QUIET_MS + STEP_MS:      # the first quiet step can be the one in which a request ended
+            page.wait_for_timeout(REFRESH_WAIT_S * 1000)
+            return queries.started - before
+    raise RuntimeError(f"the refresh did not end in {PAGE_TIMEOUT_S} s: {len(queries.open)} data requests are open")
+
+
 def shoot(token, shots, out_dir, api_user_url):
     """Take the screenshots with headless Chromium. Raises NotSignedIn if a page check fails."""
     from playwright.sync_api import sync_playwright  # only on the Mac: CI has no Playwright
@@ -620,6 +735,7 @@ def shoot(token, shots, out_dir, api_user_url):
         try:
             context = browser.new_context(extra_http_headers={"Authorization": f"Bearer {token}"})
             page = context.new_page()
+            queries = _Queries(page)
             for shot in shots:
                 page.set_viewport_size({"width": shot["width"], "height": shot["height"]})
                 page.goto(shot["url"], wait_until="networkidle", timeout=PAGE_TIMEOUT_S * 1000)
@@ -631,6 +747,7 @@ def shoot(token, shots, out_dir, api_user_url):
                                            page.locator('input[name="user"]').count(), counts)
                     if not ok:
                         raise NotSignedIn(reason)
+                _refresh(page, queries)
                 if shot.get("page", True):
                     page.screenshot(path=os.path.join(out_dir, shot["name"]))
                 for pid, name in shot.get("panels", {}).items():
@@ -696,16 +813,22 @@ def copy_plan(panels, shot_range, now):
     return plan
 
 
-def run(pr, base, head, out_dir, data_change, test_md, grafana, influx, token, repo=".", now=None, shooter=shoot):
-    """Spec 2.5 and 2.6 for one PR. Writes the PNG files and preview.json into out_dir."""
+def run(pr, base, head, out_dir, data_change, test_md, grafana, influx, token, repo=".", now=None, shooter=shoot,
+        range_from=None):
+    """Spec 2.5, 2.6 and 9 for one PR. Writes the PNG files and preview.json into out_dir."""
     now = now or datetime.now(timezone.utc).replace(microsecond=0)
     os.makedirs(out_dir, exist_ok=True)
     clear_images(out_dir)
-    result = {"panels": [], "pages": [], "warnings": [], "leftovers": [], "failed": None}
+    result = {"panels": [], "pages": [], "warnings": [], "leftovers": [], "failed": None, "state": [],
+              "range": range_from}
+    state = []
     try:
         with _Lock():
             try:
-                result["leftovers"] = cleanup(grafana, influx if data_change else None, now)
+                if test_md and os.path.exists(test_md):
+                    with open(test_md) as fh:
+                        state = state_rows(fh.read())
+                result["leftovers"] = cleanup(grafana, influx if data_change or state else None, now)
                 for uid in result["leftovers"]:
                     result["warnings"].append(f"Deleted a board left by an earlier run: {uid}")
                 grafana.ensure_folder()
@@ -714,9 +837,9 @@ def run(pr, base, head, out_dir, data_change, test_md, grafana, influx, token, r
                     if old == new:
                         continue
                     _one(pr, path, _dash(old), _dash(new), out_dir, data_change, test_md, grafana, influx,
-                         token, now, shooter, result)
+                         token, now, shooter, result, state=state, range_from=range_from)
             finally:
-                if data_change:
+                if data_change or state:
                     influx.empty_bucket(now)
     except Exception as exc:  # spec section 4: a failure makes the PR high risk, the report says why
         result["failed"] = f"Screenshots failed: {type(exc).__name__}: {exc}"
@@ -726,7 +849,7 @@ def run(pr, base, head, out_dir, data_change, test_md, grafana, influx, token, r
 
 
 def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana, influx, token, now, shooter,
-         result):
+         result, state=(), range_from=None):
     key = "prdikov" if "prdikov" in path else "ai"
     ids = changed_panels(base_dash, head_dash)
     for side, dash in (("before", base_dash), ("after", head_dash)):
@@ -745,23 +868,47 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
     if not page:
         result["warnings"].append(f"No full-page image of {key}: a dashboard variable reads data that is not public.")
     rng = time_range(head_dash, now)
-    rewrite = set()
-    if data_change:
+    if range_from:        # D22: a longer range that ends now, when the default range has no data
+        first = _relative(range_from, now)
+        if first < now - timedelta(days=MAX_COPY_DAYS):
+            raise ValueError(f"--range: more than {MAX_COPY_DAYS} days")
+        rng = (_ms(first), _ms(now))
+    result.setdefault("state", [])
+    result.setdefault("range", range_from)
+    rewrite, rewrite_before = set(), set()
+    if data_change or state:
         changed = [p for p in _panels(head_dash) if p.get("id") in ids]
+        if state:         # the before board also reads the copy (spec 9.2)
+            changed += [p for p in _panels(base_dash) if p.get("id") in ids]
         for src, names, start, stop in copy_plan(changed, rng, now):
             influx.query(copy_flux(src, names, start, stop))
-        block = None
-        if test_md and os.path.exists(test_md):
-            with open(test_md) as fh:
-                block = preview_block(fh.read())
-        if block:
-            influx.query(block)
-        else:
-            result["warnings"].append(PREVIEW_MISSING)
+        for measurement, field, value in state:
+            influx.query(state_flux(measurement, field, value))
+            row = {"measurement": measurement, "field": field, "value": value,
+                   "points": influx.count(measurement, field)}
+            result["state"] = [r for r in result["state"]
+                               if (r["measurement"], r["field"]) != (measurement, field)] + [row]
+            warning = STATE_NOT_APPLIED.format(m=measurement, f=field)
+            if not row["points"] and warning not in result["warnings"]:
+                result["warnings"].append(warning)
+        if data_change:
+            block = None
+            if test_md and os.path.exists(test_md):
+                with open(test_md) as fh:
+                    block = preview_block(fh.read())
+            if block:
+                influx.query(block)
+                if state:
+                    result["warnings"].append(STATE_AND_DATA)
+            else:
+                result["warnings"].append(PREVIEW_MISSING)
         rewrite = set(ids)
+        if state:
+            rewrite_before = set(ids)
     before_uid, after_uid = f"pr{pr}-{key}-before", f"pr{pr}-{key}-after"
     # The public pair: each held panel is a placeholder, so no private query runs on these boards.
-    grafana.put(board(base_dash, before_uid, f"PR {pr} {key} before", held=classes))
+    grafana.put(board(base_dash, before_uid, f"PR {pr} {key} before", rewrite_ids=rewrite_before & set(public_ids),
+                      held=classes))
     grafana.put(board(head_dash, after_uid, f"PR {pr} {key} after", rewrite_ids=rewrite & set(public_ids),
                       held=classes))
     try:
@@ -775,7 +922,8 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
     local, local_error = set(), None
     if held_ids:
         os.makedirs(os.path.join(out_dir, "private"), exist_ok=True)
-        pairs = ((base_dash, before_uid + "-private", f"PR {pr} {key} before (private)", ()),
+        pairs = ((base_dash, before_uid + "-private", f"PR {pr} {key} before (private)",
+                  rewrite_before & set(held_ids)),
                  (head_dash, after_uid + "-private", f"PR {pr} {key} after (private)", rewrite & set(held_ids)))
         made = []
         try:
@@ -806,6 +954,7 @@ def _one(pr, path, base_dash, head_dash, out_dir, data_change, test_md, grafana,
             result["panels"].append({"id": label, "class": "public",
                                      "before": files["before"] if files["before"] in names else None,
                                      "after": files["after"] if files["after"] in names else None})
+        result["panels"][-1]["equal"] = _same_file(out_dir, files["before"], files["after"])
     if local_error:
         result["failed"] = f"Local image failed: {local_error}"
     result["pages"].append({"label": key, "before": f"{key}-page-before.png" if page else None,
@@ -862,7 +1011,9 @@ def main(argv=None):
     parser.add_argument("--head")
     parser.add_argument("--out", default="~/homeautomation/review-out/pr0")
     parser.add_argument("--data-change", action="store_true")
-    parser.add_argument("--test-md")
+    parser.add_argument("--test-md", help="the test.md or the change.md of the change folder")
+    parser.add_argument("--range", dest="range_from", metavar="START",
+                        help="the start of the time range, for example now-24h; the end is now (spec 9, D22)")
     parser.add_argument("--repo", default=".")
     args = parser.parse_args(argv)
     grafana, influx, token = _clients()
@@ -876,7 +1027,8 @@ def main(argv=None):
     if not (args.base and args.head):
         parser.error("--pr needs --base and --head")
     result = run(args.pr, args.base, args.head, out, args.data_change,
-                 os.path.expanduser(args.test_md) if args.test_md else None, grafana, influx, token, repo=args.repo)
+                 os.path.expanduser(args.test_md) if args.test_md else None, grafana, influx, token, repo=args.repo,
+                 range_from=args.range_from)
     print(json.dumps(result, indent=2))
     return 0
 
