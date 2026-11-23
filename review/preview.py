@@ -56,6 +56,7 @@ MAX_COPY_DAYS = 31        # the longest range in the two dashboards: -30d, month
 WAIT_S = 5                # after the load, so that the afterRender scripts finish (design value, spec 2.5.5)
 TIMEOUT_S = 10            # for each API call (design value, spec section 4)
 PAGE_TIMEOUT_S = 60       # for a page load in the browser
+REFRESH_WAIT_S = 3        # after the refresh before a shot (measured 2026-11-23: 8 of 8 shots had the full chart)
 ROW_PX = 38               # one Grafana grid row: 30 px cell + 8 px margin
 LOCK_WAIT_S = 15 * 60
 LOCAL = ZoneInfo("Europe/Prague")
@@ -696,6 +697,13 @@ def shoot(token, shots, out_dir, api_user_url):
                                            page.locator('input[name="user"]').count(), counts)
                     if not ok:
                         raise NotSignedIn(reason)
+                # Refresh all panels one time (the Grafana keys "d", "r"). A panel script that reads the size
+                # of its element when it draws can draw before the layout is final: the chart of panel 83
+                # was low in about 7 of 20 shots (032 revision 1, D23).
+                page.keyboard.press("d")
+                page.keyboard.press("r")
+                page.wait_for_load_state("networkidle", timeout=PAGE_TIMEOUT_S * 1000)
+                page.wait_for_timeout(REFRESH_WAIT_S * 1000)
                 if shot.get("page", True):
                     page.screenshot(path=os.path.join(out_dir, shot["name"]))
                 for pid, name in shot.get("panels", {}).items():
