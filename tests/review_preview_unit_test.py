@@ -747,6 +747,30 @@ class TestState(unittest.TestCase):
         self.assertEqual(result["state"], [{"measurement": "krb", "field": "nope", "value": "1.0", "points": 0}])
         self.assertEqual(len(shooter.calls), 1)
 
+    def test_error_table_in_the_body_raises(self):
+        """InfluxDB can answer HTTP 200 with an error table, for example for a partial write (measured)."""
+        error = (',result,table,_time,_measurement,_field,_value\r\n,to1,0,2026-11-23T16:16:58Z,probe,x,2\r\n\r\n'
+                 ',error,reference\r\n,"partial write: field type conflict: input field ""x"" on measurement '
+                 '""probe"" is type integer, already exists as type float dropped=1",\r\n')
+
+        class Answers(FakeSession):
+            def __init__(self, text):
+                super().__init__()
+                self.text = text
+
+            def request(self, method, url, **kwargs):
+                answer = super().request(method, url, **kwargs)
+                answer.text = self.text
+                return answer
+
+        with self.assertRaises(RuntimeError) as caught:
+            preview.Influx("http://i:8086", "t", session=Answers(error)).query(preview.state_flux(*STATE[0]))
+        self.assertIn("field type conflict", str(caught.exception))
+        fine = ",result,table,_time,_measurement,_field,_value\r\n,to1,0,2026-11-23T16:16:58Z,krb,apower,500\r\n\r\n"
+        self.assertEqual(preview.Influx("http://i:8086", "t", session=Answers(fine)).query("x"), fine)
+        named = ",result,table,_value\r\n,_result,0,error\r\n"       # a value "error" is not an error table
+        self.assertEqual(preview.Influx("http://i:8086", "t", session=Answers(named)).query("x"), named)
+
     def test_range_option(self):
         head = _krb_dash(KRB + "\n  |> yield()")
         with tempfile.TemporaryDirectory() as tmp:
@@ -773,42 +797,74 @@ class TestState(unittest.TestCase):
 
 # ---- Change 032, revision 1, D23: a refresh before each shot ---------------------------------------------------
 
+QUERY = "http://g:3000/api/ds/query?ds_type=influxdb&requestId=Q100"
+
+
+class _FakeRequest:
+    def __init__(self, url):
+        self.url = url
+
+
 class _FakeLocator:
-    def __init__(self, log, selector, panels):
-        self.log, self.selector, self.panels = log, selector, panels
+    def __init__(self, log, selector):
+        self.log, self.selector = log, selector
         self.first = self
 
     def count(self):
-        return 1 if self.panels and "data-panelid" in self.selector else 0
+        return 1 if "data-panelid" in self.selector else 0
 
     def screenshot(self, path):
         self.log.append(("image", os.path.basename(path)))
 
 
 class _FakePage:
-    def __init__(self, log, url=None):
-        self.log, self.fixed_url, self.url = log, url, ""
-        self.keyboard = SimpleNamespace(press=lambda key: log.append(("key", key)))
+    """A page with a clock. `queries` lists the data requests that a refresh starts: the ms until each one
+    ends, or None for a request that never ends. wait_for_timeout moves the clock and ends the requests."""
+
+    def __init__(self, log, url=None, queries=(1500, 4000)):
+        self.log, self.fixed_url, self.url, self.queries = log, url, "", queries
+        self.clock, self.handlers, self.due = 0, {}, []
+        self.keyboard = SimpleNamespace(press=self._press)
         self.request = SimpleNamespace(get=lambda url: SimpleNamespace(status=200))
+
+    def on(self, event, handler):
+        self.handlers.setdefault(event, []).append(handler)
+
+    def _fire(self, event, request):
+        for handler in self.handlers.get(event, []):
+            handler(request)
+
+    def _press(self, key):
+        self.log.append(("key", key, self.clock))
+        if key == "r":
+            self._fire("request", _FakeRequest("http://g:3000/api/annotations"))     # not a data request
+            for lasts in self.queries:
+                request = _FakeRequest(QUERY)
+                self._fire("request", request)
+                if lasts is not None:
+                    self.due.append((self.clock + lasts, request))
 
     def set_viewport_size(self, size):
         pass
 
     def goto(self, url, **kwargs):
         self.url = self.fixed_url or url
-        self.log.append(("goto", url))
+        self.log.append(("goto", url, self.clock))
 
     def wait_for_timeout(self, ms):
-        self.log.append(("wait", ms))
+        self.clock += ms
+        for when, request in [d for d in self.due if d[0] <= self.clock]:
+            self.due.remove((when, request))
+            self._fire("requestfinished", request)
 
     def wait_for_load_state(self, state, **kwargs):
-        self.log.append(("idle", state))
+        raise AssertionError("wait_for_load_state returns at once on a page that was idle: do not use it")
 
     def locator(self, selector):
-        return _FakeLocator(self.log, selector, panels=True)
+        return _FakeLocator(self.log, selector)
 
     def screenshot(self, path):
-        self.log.append(("image", os.path.basename(path)))
+        self.log.append(("image", os.path.basename(path), self.clock))
 
 
 def _fake_playwright(page):
@@ -834,27 +890,57 @@ class TestShoot(unittest.TestCase):
         with mock.patch.dict("sys.modules", modules):
             preview.shoot("t", shots, tmp, "http://g:3000/api/user")
 
+    def _parts(self, log):
+        starts = [i for i, entry in enumerate(log) if entry[0] == "goto"]
+        return [log[a:b] for a, b in zip(starts, starts[1:] + [len(log)])]
+
     def test_shoot_refreshes_before_the_shot(self):
         log = []
         with tempfile.TemporaryDirectory() as tmp:
             self._shoot(_FakePage(log), tmp)
-        starts = [i for i, entry in enumerate(log) if entry[0] == "goto"]
-        self.assertEqual(len(starts), 2)
-        for start, end in zip(starts, starts[1:] + [len(log)]):
-            part = log[start:end]
-            kinds = [entry[0] for entry in part]
-            first_image = kinds.index("image")
-            self.assertEqual([entry for entry in part if entry[0] == "key"], [("key", "d"), ("key", "r")])
-            self.assertLess(part.index(("key", "r")), part.index(("idle", "networkidle")))
-            self.assertLess(part.index(("idle", "networkidle")), first_image)
-            self.assertEqual(part[first_image - 1], ("wait", preview.REFRESH_WAIT_S * 1000))
-            self.assertEqual(kinds.count("image"), 2)        # the page and panel 83
+        parts = self._parts(log)
+        self.assertEqual(len(parts), 2)
+        for part in parts:
+            keys = [entry for entry in part if entry[0] == "key"]
+            self.assertEqual([k[1] for k in keys], ["d", "r"])
+            images = [entry for entry in part if entry[0] == "image"]
+            self.assertEqual(len(images), 2)                  # the page and panel 83
+            self.assertLess(part.index(keys[1]), part.index(images[0]))
+            waited = images[0][2] - keys[1][2]                # the page image has the time of the clock
+            longest = 4000 + preview.REFRESH_QUIET_MS + preview.REFRESH_WAIT_S * 1000
+            self.assertGreaterEqual(waited, longest)
+            self.assertLess(waited, longest + 500)
         self.assertEqual(log[-1], ("close",))
         log = []
         with tempfile.TemporaryDirectory() as tmp:
             with self.assertRaises(preview.NotSignedIn):
                 self._shoot(_FakePage(log, url="http://g:3000/login"), tmp)
         self.assertEqual([entry for entry in log if entry[0] in ("key", "image")], [])
+
+    def test_refresh_with_no_query(self):
+        log = []
+        with tempfile.TemporaryDirectory() as tmp:
+            self._shoot(_FakePage(log, queries=()), tmp)
+        for part in self._parts(log):
+            keys = [entry for entry in part if entry[0] == "key"]
+            images = [entry for entry in part if entry[0] == "image"]
+            self.assertEqual(len(images), 2)
+            waited = images[0][2] - keys[1][2]
+            least = preview.REFRESH_START_S * 1000 + preview.REFRESH_WAIT_S * 1000
+            self.assertGreaterEqual(waited, least)
+            self.assertLessEqual(waited, least + preview.REFRESH_QUIET_MS + 200)
+
+    def test_refresh_that_does_not_end(self):
+        log = []
+        page = _FakePage(log, queries=(1000, None))
+        with tempfile.TemporaryDirectory() as tmp:
+            with self.assertRaises(RuntimeError) as caught:
+                self._shoot(page, tmp)
+        self.assertIn("the refresh did not end", str(caught.exception))
+        self.assertIn("1 ", str(caught.exception))
+        self.assertGreaterEqual(page.clock, preview.PAGE_TIMEOUT_S * 1000)
+        self.assertEqual([entry for entry in log if entry[0] == "image"], [])
+        self.assertEqual(log[-1], ("close",))
 
 
 if __name__ == '__main__':
